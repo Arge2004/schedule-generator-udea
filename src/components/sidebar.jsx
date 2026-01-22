@@ -5,6 +5,7 @@ import { useMateriasStore } from '../store/materiasStore.js';
 
 export default function Sidebar() {
     const [isLoading, setIsLoading] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [generationMode, setGenerationMode] = useState('manual'); // 'manual' o 'automatico'
@@ -140,6 +141,14 @@ export default function Sidebar() {
             fileInputRef.current.files = dataTransfer.files;
             handleFileUpload({ target: { files: dataTransfer.files } });
         }
+    };
+
+    const handleGenerate = async () => {
+        setIsGenerating(true);
+        // Simular proceso de generación
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setIsGenerating(false);
+        // Aquí irá la lógica de generación de horarios
     };
 
     return (
@@ -281,6 +290,41 @@ export default function Sidebar() {
                             </div>
                         </div>
                     </div>
+                    
+                    {/* Botón Generar Horario */}
+                    <div className="px-4 pb-4">
+                        <button
+                            onClick={handleGenerate}
+                            disabled={isGenerating || Object.keys(materiasSeleccionadas).length === 0}
+                            className={`w-full py-3 ${isGenerating ? 'bg-primary cursor-not-allowed' : 'bg-primary hover:bg-primary/90 disabled:bg-zinc-100 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed'} text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md disabled:shadow-none`}
+                            style={(Object.keys(materiasSeleccionadas).length === 0) ? {
+                                backgroundImage: `repeating-linear-gradient(
+                                    45deg,
+                                    transparent,
+                                    transparent 4px,
+                                    ${darkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(25, 255, 0, 0.03)'} 5px,
+                                    ${darkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(25, 255, 0, 0.03)'} 6px,
+                                    transparent 4px,
+                                    transparent 10px
+                                )`
+                            } : {}}
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                                    <span className='text-sm font-semibold'>Generando horario...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span className='text-sm font-semibold'>Generar Horario</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+
                     <div className="mt-auto p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
                         <div className="flex items-center justify-between mb-4">
                             <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Preferencias</p>
