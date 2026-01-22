@@ -7,6 +7,7 @@ export default function Sidebar() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+    const [generationMode, setGenerationMode] = useState('manual'); // 'manual' o 'automatico'
     const [darkTheme, setDarkTheme] = useState(() => {
         // Inicializar desde localStorage o por defecto true
         const saved = localStorage.getItem('darkTheme');
@@ -170,11 +171,25 @@ export default function Sidebar() {
                 {/* Mode Toggle */}
                 <div className="space-y-4">
                     <p className="text-xs text-start font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-1">Modo de Generación</p>
-                    <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-lg">
-                        <button className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-white dark:bg-zinc-800 shadow-sm rounded-md text-sm font-semibold text-zinc-900 dark:text-white">
+                    <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-1 gap-1">
+                        <button 
+                            onClick={() => setGenerationMode('manual')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none ${
+                                generationMode === 'manual' 
+                                    ? 'bg-primary text-white shadow-sm' 
+                                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:bg-zinc-100/10 dark:hover:text-white'
+                            }`}
+                        >
                             Manual
                         </button>
-                        <button className="flex-1 flex items-center justify-center gap-2 py-2 px-3 text-zinc-500 dark:text-zinc-400 text-sm font-medium hover:text-zinc-900 dark:hover:text-white transition-colors">
+                        <button 
+                            onClick={() => setGenerationMode('automatico')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none ${
+                                generationMode === 'automatico' 
+                                    ? 'bg-primary text-white shadow-sm' 
+                                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:bg-zinc-100/10 dark:hover:text-white'
+                            }`}
+                        >
                             Automático
                         </button>
                     </div>
@@ -220,7 +235,7 @@ export default function Sidebar() {
                             </div>
                             <button 
                                 onClick={resetMateriasSeleccionadas}
-                                className="px-3 py-2 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg text-primary text-xs font-bold focus:outline-none transition-colors"
+                                className="px-3 py-2 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 rounded-lg text-primary text-xs font-bold focus:outline-none transition-colors"
                                 title="Deseleccionar todas"
                             >
                                 RESET
