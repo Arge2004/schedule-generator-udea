@@ -61,3 +61,35 @@ h1 {
     background-color: #f9f9f9;
   }
 }
+
+/* Scrollbar personalizado */
+.scrollbar-custom {
+  scrollbar-width: auto;
+  scrollbar-color: #1392ec #f1f1f1;
+}
+
+.dark .scrollbar-custom {
+  scrollbar-color: #1392ec #27272a;
+}
+
+.scrollbar-custom::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.dark .scrollbar-custom::-webkit-scrollbar-track {
+  background: #27272a;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb {
+  background: #1392ec;
+  border-radius: 4px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb:hover {
+  background: #0f7cd1;
+}

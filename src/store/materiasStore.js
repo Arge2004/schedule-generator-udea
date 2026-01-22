@@ -47,6 +47,11 @@ export const useMateriasStore = create((set) => ({
     return { materiasSeleccionadas: newSeleccionadas };
   }),
 
+  // Resetear todas las materias seleccionadas
+  resetMateriasSeleccionadas: () => set({
+    materiasSeleccionadas: {},
+  }),
+
   // Verificar si una materia está seleccionada
   isMateriaSelected: (codigoMateria) => (state) => {
     return !!state.materiasSeleccionadas[codigoMateria];
