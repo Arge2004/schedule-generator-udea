@@ -12,6 +12,8 @@ export const useMateriasStore = create((set) => ({
   fecha: '',
   isLoaded: false,
   materiasSeleccionadas: {}, // { codigoMateria: true/false }
+  gruposSeleccionados: {}, // { codigoMateria: numeroGrupo }
+  resetKey: 0, // Incrementa cada vez que se hace reset
 
   // Acciones
   setMateriasData: (data) => set({
@@ -48,9 +50,16 @@ export const useMateriasStore = create((set) => ({
   }),
 
   // Resetear todas las materias seleccionadas
-  resetMateriasSeleccionadas: () => set({
+  resetMateriasSeleccionadas: () => set((state) => ({
     materiasSeleccionadas: {},
-  }),
+    gruposSeleccionados: {},
+    resetKey: state.resetKey + 1,
+  })),
+
+  // Seleccionar un grupo específico para una materia
+  selectGrupo: (codigoMateria, numeroGrupo) => set((state) => ({
+    gruposSeleccionados: { ...state.gruposSeleccionados, [codigoMateria]: numeroGrupo }
+  })),
 
   // Verificar si una materia está seleccionada
   isMateriaSelected: (codigoMateria) => (state) => {

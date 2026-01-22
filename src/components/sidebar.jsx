@@ -46,7 +46,7 @@ export default function Sidebar() {
         }
     }, [materiasSeleccionadas]);
 
-    // Filtrar y ordenar materias (seleccionadas primero)
+    // Filtrar y ordenar materias (seleccionadas primero solo en modo automático)
     const materiasFiltradas = useMemo(() => {
         if (!materias) {
             return [];
@@ -63,21 +63,26 @@ export default function Sidebar() {
             );
         }
 
-        // Separar en dos grupos manteniendo el orden original
-        const seleccionadas = [];
-        const noSeleccionadas = [];
-        
-        resultado.forEach(materia => {
-            if (materiasSeleccionadas[materia.codigo]) {
-                seleccionadas.push(materia);
-            } else {
-                noSeleccionadas.push(materia);
-            }
-        });
+        // Solo reordenar si NO está en modo manual
+        if (generationMode !== 'manual') {
+            // Separar en dos grupos manteniendo el orden original
+            const seleccionadas = [];
+            const noSeleccionadas = [];
+            
+            resultado.forEach(materia => {
+                if (materiasSeleccionadas[materia.codigo]) {
+                    seleccionadas.push(materia);
+                } else {
+                    noSeleccionadas.push(materia);
+                }
+            });
 
-        // Concatenar: seleccionadas primero, luego no seleccionadas
-        return [...seleccionadas, ...noSeleccionadas];
-    }, [materias, debouncedSearchTerm, materiasSeleccionadas]);
+            // Concatenar: seleccionadas primero, luego no seleccionadas
+            return [...seleccionadas, ...noSeleccionadas];
+        }
+
+        return resultado;
+    }, [materias, debouncedSearchTerm, materiasSeleccionadas, generationMode]);
 
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
@@ -177,7 +182,7 @@ export default function Sidebar() {
                             className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none ${
                                 generationMode === 'manual' 
                                     ? 'bg-primary text-white shadow-sm' 
-                                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:bg-zinc-100/10 dark:hover:text-white'
+                                    : 'text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 dark:hover:text-white'
                             }`}
                         >
                             Manual
@@ -187,7 +192,7 @@ export default function Sidebar() {
                             className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none ${
                                 generationMode === 'automatico' 
                                     ? 'bg-primary text-white shadow-sm' 
-                                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:bg-zinc-100/10 dark:hover:text-white'
+                                    : 'text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 dark:hover:text-white'
                             }`}
                         >
                             Automático
@@ -235,7 +240,7 @@ export default function Sidebar() {
                             </div>
                             <button 
                                 onClick={resetMateriasSeleccionadas}
-                                className="px-3 py-2 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 rounded-lg text-primary text-xs font-bold focus:outline-none transition-colors"
+                                className="px-3 py-2 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 rounded-lg text-primary text-xs font-bold focus:outline-none"
                                 title="Deseleccionar todas"
                             >
                                 RESET
@@ -259,7 +264,7 @@ export default function Sidebar() {
                             </p>
                         ) : (
                             materiasFiltradas.map(materia => (
-                                <Subject key={materia.codigo} materia={materia}/>
+                                <Subject key={materia.codigo} materia={materia} generationMode={generationMode}/>
                             ))
                         )}
                     </div>
