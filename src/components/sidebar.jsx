@@ -13,6 +13,8 @@ export default function Sidebar() {
         return saved !== null ? JSON.parse(saved) : true;
     });
     const fileInputRef = useRef(null);
+    const scrollContainerRef = useRef(null);
+    const previousScrollPos = useRef(0);
     
     // Usar Zustand store
     const { materias, setMateriasData, materiasSeleccionadas } = useMateriasStore();
@@ -35,6 +37,13 @@ export default function Sidebar() {
 
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    // Guardar y restaurar la posición del scroll cuando cambian las materias seleccionadas
+    useEffect(() => {
+        if (scrollContainerRef.current && previousScrollPos.current > 0) {
+            scrollContainerRef.current.scrollTop = previousScrollPos.current;
+        }
+    }, [materiasSeleccionadas]);
 
     // Filtrar y ordenar materias (seleccionadas primero)
     const materiasFiltradas = useMemo(() => {
@@ -196,7 +205,13 @@ export default function Sidebar() {
                             </button>
                         )}
                     </div>
-                    <div className="space-y-1 flex-1 min-h-0 overflow-y-auto">
+                    <div 
+                        ref={scrollContainerRef}
+                        onScroll={(e) => {
+                            previousScrollPos.current = e.target.scrollTop;
+                        }}
+                        className="space-y-1 flex-1 min-h-0 overflow-y-auto"
+                    >
                         {!materias || materias.length === 0 ? (
                             <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-4">
                                 No hay materias cargadas. Sube un archivo HTML.
