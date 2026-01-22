@@ -83,14 +83,7 @@ export default function Subject({materia, generationMode}) {
             )}
           </div>
         ) : (
-          <label className="flex items-center gap-3 p-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-100/10 cursor-pointer group">
-            <input
-              className="w-5 h-5 rounded border-zinc-300 dark:border-zinc-700 text-primary focus:ring-primary bg-transparent checked:bg-primary checked:border-primary"
-              type="checkbox"
-              checked={isSelected}
-              onChange={handleChange}
-              onFocus={(e) => e.preventDefault()}
-            />
+          <label className="flex items-center gap-3 p-2.5 hover:bg-zinc-50 rounded-lg dark:hover:bg-zinc-100/10 cursor-pointer group">
             <div className="flex flex-col items-start flex-1">
               <span className="text-sm font-semibold text-slate-900 dark:text-zinc-100">
                 {materia?.nombre ? materia.nombre : "Undefined Subject"}
@@ -99,6 +92,13 @@ export default function Subject({materia, generationMode}) {
                 ID: {materia?.codigo ? materia.codigo : "XXXXXX"} • <span className="text-primary">{materia?.grupos ? materia.grupos.length + " Grupos disponibles" : "Sin grupos"}</span>
               </span>
             </div>
+            <input
+              className="w-5 h-5 rounded cursor-pointer border-zinc-300 dark:border-zinc-700 text-primary focus:ring-primary bg-transparent checked:bg-primary checked:border-primary"
+              type="checkbox"
+              checked={isSelected}
+              onChange={handleChange}
+              onFocus={(e) => e.preventDefault()}
+            />
           </label>
         )}
         

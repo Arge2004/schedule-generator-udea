@@ -201,7 +201,7 @@ export default function Sidebar() {
                             <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-1 gap-1">
                                 <button
                                     onClick={() => setGenerationMode('manual')}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none ${generationMode === 'manual'
+                                    className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none ${generationMode === 'manual'
                                             ? 'bg-primary text-white shadow-sm'
                                             : 'text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 dark:hover:text-white'
                                         }`}
@@ -210,7 +210,7 @@ export default function Sidebar() {
                                 </button>
                                 <button
                                     onClick={() => setGenerationMode('automatico')}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none ${generationMode === 'automatico'
+                                    className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none ${generationMode === 'automatico'
                                             ? 'bg-primary text-white shadow-sm'
                                             : 'text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 dark:hover:text-white'
                                         }`}
@@ -252,7 +252,7 @@ export default function Sidebar() {
                                         {searchTerm && (
                                             <button
                                                 onClick={() => setSearchTerm('')}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                                                className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
                                             >
                                                 ✕
                                             </button>
@@ -260,7 +260,7 @@ export default function Sidebar() {
                                     </div>
                                     <button
                                         onClick={resetMateriasSeleccionadas}
-                                        className="px-3 py-2 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 rounded-lg text-primary text-xs font-bold focus:outline-none"
+                                        className="px-3 py-2 cursor-pointer bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 rounded-lg text-primary text-xs font-bold focus:outline-none"
                                         title="Deseleccionar todas"
                                     >
                                         RESET
@@ -296,7 +296,7 @@ export default function Sidebar() {
                         <button
                             onClick={handleGenerate}
                             disabled={isGenerating || Object.keys(materiasSeleccionadas).length === 0}
-                            className={`w-full py-3 ${isGenerating ? 'bg-primary cursor-not-allowed' : 'bg-primary hover:bg-primary/90 disabled:bg-zinc-100 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed'} text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md disabled:shadow-none`}
+                            className={`w-full py-3 ${isGenerating ? 'bg-primary cursor-not-allowed' : 'cursor-pointer bg-primary hover:bg-primary/90 disabled:bg-zinc-100 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed'} text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md disabled:shadow-none`}
                             style={(Object.keys(materiasSeleccionadas).length === 0) ? {
                                 backgroundImage: `repeating-linear-gradient(
                                     45deg,
