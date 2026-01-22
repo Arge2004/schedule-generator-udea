@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import Subject from './subject.jsx';
 import { parseHTMLFile } from '../logic/parser.js';
+import { generarHorariosAutomaticos } from '../logic/generator.js';
 import { useMateriasStore } from '../store/materiasStore.js';
 
 export default function Sidebar() {
@@ -9,6 +10,8 @@ export default function Sidebar() {
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [generationMode, setGenerationMode] = useState('manual'); // 'manual' o 'automatico'
+    const [evitarMananas, setEvitarMananas] = useState(false);
+    const [evitarHuecos, setEvitarHuecos] = useState(false);
     const [darkTheme, setDarkTheme] = useState(() => {
         // Inicializar desde localStorage o por defecto true
         const saved = localStorage.getItem('darkTheme');
@@ -145,10 +148,69 @@ export default function Sidebar() {
 
     const handleGenerate = async () => {
         setIsGenerating(true);
-        // Simular proceso de generación
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setIsGenerating(false);
-        // Aquí irá la lógica de generación de horarios
+        
+        try {
+            // Obtener códigos de materias seleccionadas
+            const codigosSeleccionados = Object.keys(materiasSeleccionadas);
+            
+            console.log('🚀 Generando horarios automáticos...');
+            console.log('📚 Materias seleccionadas:', codigosSeleccionados);
+            console.log('⚙️ Opciones:', { evitarMananas, evitarHuecos });
+            
+            // Generar horarios
+            const horariosGenerados = generarHorariosAutomaticos(
+                materias,
+                codigosSeleccionados,
+                {
+                    evitarMananas,
+                    evitarHuecos
+                }
+            );
+            
+            console.log('\n✅ Horarios generados:', horariosGenerados.length);
+            console.log('\n📊 MEJORES HORARIOS:\n');
+            
+            horariosGenerados.forEach((horario, index) => {
+                console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                console.log(`🏆 HORARIO #${index + 1} - Puntuación: ${horario.puntuacion} pts`);
+                console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                
+                console.log('\n📝 Grupos seleccionados:');
+                horario.grupos.forEach(grupo => {
+                    console.log(`  • ${grupo.nombreMateria} (${grupo.codigoMateria}) - Grupo ${grupo.numeroGrupo}`);
+                    grupo.horarios.forEach(h => {
+                        console.log(`    ${h.dias.join(', ')}: ${h.horaInicio}:00 - ${h.horaFin}:00 ${h.aula ? `[${h.aula}]` : ''}`);
+                    });
+                });
+                
+                console.log('\n📈 Estadísticas:');
+                console.log(`  • Días con clases: ${horario.detalles.diasConClases}`);
+                console.log(`  • Total horas/semana: ${horario.detalles.totalHorasClase}h`);
+                console.log(`  • Clase más temprana: ${horario.detalles.horaMasTempranaGlobal}:00`);
+                console.log(`  • Clase más tarde: ${horario.detalles.horaMasTardeGlobal}:00`);
+                
+                console.log('\n📅 Horario por día:');
+                Object.entries(horario.detalles.horariosPorDia).forEach(([dia, clases]) => {
+                    if (clases.length > 0) {
+                        console.log(`  ${dia}:`);
+                        clases.forEach(clase => {
+                            console.log(`    ${clase.horaInicio}:00-${clase.horaFin}:00 → ${clase.materia} (Grupo ${clase.grupo})`);
+                        });
+                    }
+                });
+            });
+            
+            console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            
+            if (horariosGenerados.length === 0) {
+                console.warn('⚠️ No se pudieron generar horarios válidos. Verifica que las materias seleccionadas tengan grupos compatibles.');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error al generar horarios:', error);
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     return (
@@ -332,15 +394,21 @@ export default function Sidebar() {
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Evitar en las mañanas</span>
-                                <div className="w-8 h-4 bg-zinc-300 dark:bg-zinc-700 rounded-full relative">
-                                    <div className="absolute left-0.5 top-0.5 size-3 bg-white rounded-full"></div>
-                                </div>
+                                <button
+                                    onClick={() => setEvitarMananas(!evitarMananas)}
+                                    className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${evitarMananas ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                                >
+                                    <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${evitarMananas ? 'right-0.5' : 'left-0.5'}`}></div>
+                                </button>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Evitar horarios con huecos extensos</span>
-                                <div className="w-8 h-4 bg-primary rounded-full relative">
-                                    <div className="absolute right-0.5 top-0.5 size-3 bg-white rounded-full"></div>
-                                </div>
+                                <button
+                                    onClick={() => setEvitarHuecos(!evitarHuecos)}
+                                    className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${evitarHuecos ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                                >
+                                    <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${evitarHuecos ? 'right-0.5' : 'left-0.5'}`}></div>
+                                </button>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Tema Oscuro</span>

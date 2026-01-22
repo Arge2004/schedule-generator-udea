@@ -184,3 +184,4 @@ export async function parseHTMLFile(file) {
     reader.readAsText(file, 'windows-1252');
   });
 }
+
