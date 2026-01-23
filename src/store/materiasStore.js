@@ -13,6 +13,8 @@ export const useMateriasStore = create((set) => ({
   isLoaded: false,
   materiasSeleccionadas: {}, // { codigoMateria: true/false }
   gruposSeleccionados: {}, // { codigoMateria: numeroGrupo }
+  horariosGenerados: [], // Array de horarios generados automáticamente
+  horarioActualIndex: 0, // Índice del horario que se está visualizando
   resetKey: 0, // Incrementa cada vez que se hace reset
 
   // Acciones
@@ -70,5 +72,22 @@ export const useMateriasStore = create((set) => ({
   getMateriasSeleccionadas: () => (state) => {
     return Object.keys(state.materiasSeleccionadas);
   },
+
+  // Guardar horarios generados automáticamente
+  setHorariosGenerados: (horarios) => set({
+    horariosGenerados: horarios,
+    horarioActualIndex: 0,
+  }),
+
+  // Cambiar el horario que se está visualizando
+  setHorarioActualIndex: (index) => set({
+    horarioActualIndex: index,
+  }),
+
+  // Limpiar horarios generados
+  clearHorariosGenerados: () => set({
+    horariosGenerados: [],
+    horarioActualIndex: 0,
+  }),
 }))
 

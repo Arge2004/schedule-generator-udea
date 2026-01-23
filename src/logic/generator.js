@@ -60,8 +60,8 @@ function generarCombinaciones(materias) {
     // Probar cada grupo de la materia actual
     const materiaActual = materias[index];
     for (const grupo of materiaActual.grupos) {
-      // Solo considerar grupos con cupos disponibles
-      if (grupo.cupoDisponible > 0) {
+      // Solo considerar grupos con cupos disponibles Y con horarios definidos
+      if (grupo.cupoDisponible > 0 && grupo.horarios && grupo.horarios.length > 0) {
         combinacionActual.push({
           codigoMateria: materiaActual.codigo,
           nombreMateria: materiaActual.nombre,

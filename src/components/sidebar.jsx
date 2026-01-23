@@ -22,7 +22,13 @@ export default function Sidebar() {
     const previousScrollPos = useRef(0);
 
     // Usar Zustand store
-    const { materias, setMateriasData, materiasSeleccionadas, resetMateriasSeleccionadas } = useMateriasStore();
+    const { 
+        materias, 
+        setMateriasData, 
+        materiasSeleccionadas, 
+        resetMateriasSeleccionadas,
+        setHorariosGenerados 
+    } = useMateriasStore();
 
     // Aplicar/remover clase dark del documento
     useEffect(() => {
@@ -204,6 +210,10 @@ export default function Sidebar() {
             
             if (horariosGenerados.length === 0) {
                 console.warn('⚠️ No se pudieron generar horarios válidos. Verifica que las materias seleccionadas tengan grupos compatibles.');
+            } else {
+                // Guardar los horarios generados en el store
+                setHorariosGenerados(horariosGenerados);
+                console.log('✨ Horarios guardados en el store. Mostrando el mejor horario en el grid.');
             }
             
         } catch (error) {
