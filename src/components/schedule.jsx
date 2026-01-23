@@ -256,8 +256,8 @@ export default function Schedule() {
             </div>
 
             {/* Barra de herramientas inferior */}
-            <div className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/50 backdrop-blur-sm px-6 py-3 flex-shrink-0">
-                <div className="flex items-center justify-center">
+            <div className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/50 backdrop-blur-sm px-6 py-3 flex-shrink-0 min-h-[60px]">
+                <div className="flex items-center justify-center h-full">
                     <div className="flex justify-center gap-4">
                         {/* Navegación entre horarios */}
                         {horariosGenerados && horariosGenerados.length > 1 && (
