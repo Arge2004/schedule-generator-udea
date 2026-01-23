@@ -21,7 +21,6 @@ export default function ClassTooltip({ clase, color, position }) {
   // Calcular estilo según el placement
   const getTooltipStyle = () => {
     const baseStyle = {
-      backgroundColor: 'white',
       borderColor: solidColor,
       boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)',
       zIndex: 9999,
@@ -47,7 +46,7 @@ export default function ClassTooltip({ clase, color, position }) {
 
   const tooltipContent = (
     <div 
-      className="fixed rounded-lg shadow-2xl border-2 p-4 min-w-[280px] pointer-events-none transition-all duration-300 ease-out"
+      className="fixed rounded-lg shadow-2xl border-2 p-4 min-w-[280px] pointer-events-none transition-all duration-300 ease-out bg-white dark:bg-zinc-900"
       style={getTooltipStyle()}
     >
       {/* Header */}

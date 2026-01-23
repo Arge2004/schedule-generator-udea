@@ -3,14 +3,14 @@
  * Genera horarios automáticos optimizados basados en preferencias del usuario
  * @param {Array} todasLasMaterias - Array completo de todas las materias disponibles
  * @param {Array} codigosSeleccionados - Array de códigos de materias seleccionadas
- * @param {Object} opciones - Opciones de filtrado { evitarMananas: boolean, evitarHuecos: boolean }
+ * @param {Object} opciones - Opciones de filtrado { horaMinima: number (6-22), evitarHuecos: boolean }
  * @returns {Array} Array de los mejores horarios (máximo 5), cada uno con sus grupos y puntuación
  */
 export function generarHorariosAutomaticos(todasLasMaterias, codigosSeleccionados, opciones = {}) {
-  const { evitarMananas = false, evitarHuecos = false } = opciones;
+  const { horaMinima = 6, evitarHuecos = false } = opciones;
 
   // Filtrar solo las materias seleccionadas
-  const materiasSeleccionadas = todasLasMaterias.filter(m => 
+  let materiasSeleccionadas = todasLasMaterias.filter(m => 
     codigosSeleccionados.includes(m.codigo)
   );
 
@@ -18,13 +18,23 @@ export function generarHorariosAutomaticos(todasLasMaterias, codigosSeleccionado
     return [];
   }
 
-  // Generar todas las combinaciones posibles
-  const combinaciones = generarCombinaciones(materiasSeleccionadas);
-  
-  // Filtrar combinaciones válidas (sin conflictos de horario)
-  const combinacionesValidas = combinaciones.filter(combinacion => 
-    !tieneConflictos(combinacion)
-  );
+  // Filtrar grupos que tengan clases antes de la hora mínima (optimización temprana)
+  if (horaMinima > 6) {
+    materiasSeleccionadas = materiasSeleccionadas.map(materia => ({
+      ...materia,
+      grupos: materia.grupos.filter(grupo => {
+        // Verificar si todos los horarios del grupo empiezan después de la hora mínima
+        return grupo.horarios.every(horario => horario.horaInicio >= horaMinima);
+      })
+    })).filter(materia => materia.grupos.length > 0);
+  }
+
+  if (materiasSeleccionadas.length === 0) {
+    return []; // No hay grupos disponibles con la hora mínima especificada
+  }
+
+  // Generar combinaciones válidas con poda (backtracking inteligente)
+  const combinacionesValidas = generarCombinacionesConPoda(materiasSeleccionadas, 500);
 
   if (combinacionesValidas.length === 0) {
     return [];
@@ -33,7 +43,7 @@ export function generarHorariosAutomaticos(todasLasMaterias, codigosSeleccionado
   // Calcular puntuación para cada combinación válida
   const combinacionesConPuntuacion = combinacionesValidas.map(combinacion => ({
     grupos: combinacion,
-    puntuacion: calcularPuntuacion(combinacion, evitarMananas, evitarHuecos),
+    puntuacion: calcularPuntuacion(combinacion, horaMinima, evitarHuecos),
     detalles: obtenerDetallesCombinacion(combinacion)
   }));
 
@@ -44,13 +54,20 @@ export function generarHorariosAutomaticos(todasLasMaterias, codigosSeleccionado
 }
 
 /**
- * Genera todas las combinaciones posibles de grupos para las materias seleccionadas
- * Usa backtracking para generar el producto cartesiano de todos los grupos
+ * Genera combinaciones válidas con poda de backtracking
+ * Solo genera combinaciones SIN conflictos, descartando ramas inválidas inmediatamente
+ * @param {Array} materias - Materias seleccionadas
+ * @param {number} maxCombinaciones - Número máximo de combinaciones válidas a generar
  */
-function generarCombinaciones(materias) {
+function generarCombinacionesConPoda(materias, maxCombinaciones = 500) {
   const combinaciones = [];
   
   function backtrack(index, combinacionActual) {
+    // Límite de combinaciones alcanzado
+    if (combinaciones.length >= maxCombinaciones) {
+      return;
+    }
+
     // Caso base: hemos seleccionado un grupo de cada materia
     if (index === materias.length) {
       combinaciones.push([...combinacionActual]);
@@ -62,18 +79,22 @@ function generarCombinaciones(materias) {
     for (const grupo of materiaActual.grupos) {
       // Solo considerar grupos con cupos disponibles Y con horarios definidos
       if (grupo.cupoDisponible > 0 && grupo.horarios && grupo.horarios.length > 0) {
-        combinacionActual.push({
+        const nuevoGrupo = {
           codigoMateria: materiaActual.codigo,
           nombreMateria: materiaActual.nombre,
           numeroGrupo: grupo.numero,
           horarios: grupo.horarios,
           profesor: grupo.profesor,
           cupoDisponible: grupo.cupoDisponible
-        });
+        };
         
-        backtrack(index + 1, combinacionActual);
-        
-        combinacionActual.pop();
+        // PODA: Verificar conflictos ANTES de continuar el backtracking
+        if (!tieneConflictoConCombinacionActual(nuevoGrupo, combinacionActual)) {
+          combinacionActual.push(nuevoGrupo);
+          backtrack(index + 1, combinacionActual);
+          combinacionActual.pop();
+        }
+        // Si hay conflicto, esta rama se descarta completamente (poda)
       }
     }
   }
@@ -83,58 +104,58 @@ function generarCombinaciones(materias) {
 }
 
 /**
- * Verifica si una combinación de grupos tiene conflictos de horario (solapamientos)
+ * Verifica si un nuevo grupo tiene conflictos con la combinación actual
+ * Optimizado para detección temprana (early exit)
  */
-function tieneConflictos(combinacion) {
-  // Comparar cada par de grupos en la combinación
-  for (let i = 0; i < combinacion.length; i++) {
-    for (let j = i + 1; j < combinacion.length; j++) {
-      const grupo1 = combinacion[i];
-      const grupo2 = combinacion[j];
-
-      // Verificar cada horario del grupo1 contra cada horario del grupo2
-      for (const h1 of grupo1.horarios) {
-        for (const h2 of grupo2.horarios) {
-          // Verificar si hay días en común
-          const diasComunes = h1.dias.some(dia => h2.dias.includes(dia));
-          
-          if (diasComunes) {
-            // Verificar si hay solapamiento de horas
-            const solapa = !(h1.horaFin <= h2.horaInicio || h2.horaFin <= h1.horaInicio);
-            
-            if (solapa) {
-              return true; // Hay conflicto
-            }
+function tieneConflictoConCombinacionActual(nuevoGrupo, combinacionActual) {
+  for (const grupoExistente of combinacionActual) {
+    for (const h1 of nuevoGrupo.horarios) {
+      const diasH1Set = new Set(h1.dias);
+      
+      for (const h2 of grupoExistente.horarios) {
+        // Verificar días en común
+        const hayDiasComunes = h2.dias.some(dia => diasH1Set.has(dia));
+        
+        if (hayDiasComunes) {
+          // Verificar solapamiento de horas
+          if (!(h1.horaFin <= h2.horaInicio || h2.horaFin <= h1.horaInicio)) {
+            return true; // Conflicto encontrado
           }
         }
       }
     }
   }
-  
-  return false; // No hay conflictos
+  return false;
 }
 
 /**
  * Calcula la puntuación de una combinación basada en las preferencias
  * Mayor puntuación = mejor horario
  */
-function calcularPuntuacion(combinacion, evitarMananas, evitarHuecos) {
+function calcularPuntuacion(combinacion, horaMinima, evitarHuecos) {
   let puntuacion = 1000; // Puntuación base
 
   // Obtener todos los horarios de la combinación organizados por día
   const horariosPorDia = organizarHorariosPorDia(combinacion);
 
-  // PENALIZACIÓN: Clases en la mañana (antes de las 10:00)
-  if (evitarMananas) {
-    let clasesEnManana = 0;
-    combinacion.forEach(grupo => {
-      grupo.horarios.forEach(horario => {
-        if (horario.horaInicio < 10) {
-          clasesEnManana += horario.dias.length; // Contar cada día
-        }
-      });
+  // BONIFICACIÓN: Clases que empiezan más tarde son mejores (respecto a horaMinima)
+  // Ya fueron filtradas las que empiezan antes de horaMinima, pero bonificamos las tardías
+  let horaPromedioInicio = 0;
+  let totalClases = 0;
+  combinacion.forEach(grupo => {
+    grupo.horarios.forEach(horario => {
+      horaPromedioInicio += horario.horaInicio * horario.dias.length;
+      totalClases += horario.dias.length;
     });
-    puntuacion -= clasesEnManana * 30; // Penalización de 30 puntos por cada clase en la mañana
+  });
+  if (totalClases > 0) {
+    horaPromedioInicio /= totalClases;
+    // Bonificar horarios que empiecen más tarde (después de las 8 AM)
+    if (horaPromedioInicio >= 10) {
+      puntuacion += 40; // Bonus para horarios que empiezan después de las 10 AM
+    } else if (horaPromedioInicio >= 8) {
+      puntuacion += 20; // Bonus menor para horarios que empiezan después de las 8 AM
+    }
   }
 
   // PENALIZACIÓN: Huecos extensos entre clases (>2 horas)
@@ -144,7 +165,7 @@ function calcularPuntuacion(combinacion, evitarMananas, evitarHuecos) {
     Object.values(horariosPorDia).forEach(horariosDelDia => {
       if (horariosDelDia.length > 1) {
         // Ordenar por hora de inicio
-        horariosDelDia.sort((a, b) => a.horaInicio - a.horaInicio);
+        horariosDelDia.sort((a, b) => a.horaInicio - b.horaInicio);
         
         // Calcular huecos entre clases consecutivas
         for (let i = 0; i < horariosDelDia.length - 1; i++) {
