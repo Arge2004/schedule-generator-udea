@@ -55,6 +55,16 @@ export function generarHorariosAutomaticos(todasLasMaterias, codigosSeleccionado
 }
 
 /**
+ * Genera un identificador único para una combinación de grupos
+ * Esto permite detectar combinaciones duplicadas
+ */
+function generarIdCombinacion(combinacion) {
+  // Ordenar por código de materia para garantizar consistencia
+  const sorted = [...combinacion].sort((a, b) => a.codigoMateria.localeCompare(b.codigoMateria));
+  return sorted.map(g => `${g.codigoMateria}-${g.numeroGrupo}`).join('|');
+}
+
+/**
  * Genera combinaciones válidas con poda de backtracking
  * Solo genera combinaciones SIN conflictos, descartando ramas inválidas inmediatamente
  * @param {Array} materias - Materias seleccionadas
@@ -63,6 +73,7 @@ export function generarHorariosAutomaticos(todasLasMaterias, codigosSeleccionado
  */
 function generarCombinacionesConPoda(materias, maxCombinaciones = 10000, maxTimeMs = 5000) {
   const combinaciones = [];
+  const combinacionesVistas = new Set(); // Para detectar duplicados
   const startTime = Date.now();
   
   function backtrack(index, combinacionActual) {
@@ -73,7 +84,12 @@ function generarCombinacionesConPoda(materias, maxCombinaciones = 10000, maxTime
 
     // Caso base: hemos seleccionado un grupo de cada materia
     if (index === materias.length) {
-      combinaciones.push([...combinacionActual]);
+      // Verificar si esta combinación ya fue generada
+      const idCombinacion = generarIdCombinacion(combinacionActual);
+      if (!combinacionesVistas.has(idCombinacion)) {
+        combinacionesVistas.add(idCombinacion);
+        combinaciones.push([...combinacionActual]);
+      }
       return;
     }
 

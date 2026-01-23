@@ -441,21 +441,6 @@ export default function Sidebar() {
                             </div>
                         </div>
                     )}
-
-                    {/* Tema Oscuro - Siempre visible */}
-                    <div className="mt-auto p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Tema Oscuro</span>
-                                <button
-                                    onClick={() => setDarkTheme(!darkTheme)}
-                                    className={`w-8 h-4 outline-none focus:border-blue-500 rounded-full relative cursor-pointer transition-colors ${darkTheme ? 'bg-primary' : 'bg-zinc-300'}`}
-                                >
-                                    <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${darkTheme ? 'right-0.5' : 'left-0.5'}`}></div>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
                 </>)}
         </aside>
     )

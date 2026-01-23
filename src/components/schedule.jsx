@@ -8,36 +8,21 @@ export default function Schedule() {
     const horas = Array.from({ length: 16 }, (_, i) => i + 6); // 6 AM a 10 PM (22:00)
 
     const { horariosGenerados, horarioActualIndex, gruposSeleccionados, materias } = useMateriasStore();
-    const [isGenerating, setIsGenerating] = useState(false);
+    const [darkTheme, setDarkTheme] = useState(() => {
+        const saved = localStorage.getItem('darkTheme');
+        return saved !== null ? JSON.parse(saved) : true;
+    });
 
-    // Detectar cuando se limpian los horarios para mostrar loading
+    // Aplicar/remover clase dark del documento
     useEffect(() => {
-        if (horariosGenerados.length === 0 && gruposSeleccionados && Object.keys(gruposSeleccionados).length > 0) {
-            setIsGenerating(true);
+        if (darkTheme) {
+            document.querySelector('html').classList.add('dark');
         } else {
-            setIsGenerating(false);
+            document.querySelector('html').classList.remove('dark');
         }
-    }, [horariosGenerados, gruposSeleccionados]);
+        localStorage.setItem('darkTheme', JSON.stringify(darkTheme));
+    }, [darkTheme]);
 
-    // Escuchar cambios en horariosGenerados para detectar inicio/fin de generación
-    useEffect(() => {
-        const unsubscribe = useMateriasStore.subscribe(
-            (state) => {
-                // Si hay horarios, significa que terminó de generar
-                if (state.horariosGenerados.length > 0) {
-                    setIsGenerating(false);
-                }
-            }
-        );
-        return unsubscribe;
-    }, []);
-
-    // Detectar cuando empieza la generación (cuando se borran los horarios)
-    useEffect(() => {
-        if (horariosGenerados.length === 0) {
-            setIsGenerating(true);
-        }
-    }, [horariosGenerados.length]);    
     // Estado global del tooltip
     const [tooltipData, setTooltipData] = useState(null);
     const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
@@ -174,24 +159,10 @@ export default function Schedule() {
     };
 
     return (
-        <div className="flex-1 max-h-[calc(100vh-3rem)] bg-white dark:bg-background-dark flex flex-col overflow-hidden relative">
-            {/* Loading overlay */}
-            {isGenerating && (
-                <div className="absolute inset-0 bg-white/80 dark:bg-background-dark/80 backdrop-blur-sm z-50 flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="relative">
-                            <div className="animate-spin rounded-full h-16 w-16 border-4 border-zinc-200 dark:border-zinc-800"></div>
-                            <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary border-t-transparent absolute inset-0"></div>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-lg font-bold text-zinc-900 dark:text-white">Generando horarios</p>
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400">Analizando combinaciones...</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Header con los días */}
+        <div className="flex-1 flex flex-col bg-white dark:bg-background-dark overflow-hidden">
+            {/* Área del Schedule (ocupa el espacio disponible) */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Header con los días */}
             <div className="grid grid-cols-[80px_repeat(7,minmax(140px,1fr))] bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-800 flex-shrink-0">
                 {/* Celda vacía en la esquina */}
                 <div className="border-r border-zinc-200 dark:border-zinc-800 py-4"></div>
@@ -282,43 +253,68 @@ export default function Schedule() {
                     position={tooltipPosition}
                 />
             )}
+            </div>
 
-            {/* Navegación entre horarios generados */}
-            {horariosGenerados && horariosGenerados.length > 1 && (
-                <div className="absolute bottom-6 right-6 flex items-center gap-3 bg-white dark:bg-zinc-900 rounded-full shadow-2xl border border-zinc-200 dark:border-zinc-800 px-4 py-3">
-                    <button
-                        onClick={() => {
-                            const newIndex = horarioActualIndex > 0 ? horarioActualIndex - 1 : horariosGenerados.length - 1;
-                            useMateriasStore.getState().setHorarioActualIndex(newIndex);
-                        }}
-                        className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors cursor-pointer"
-                        title="Horario anterior"
-                    >
-                        <svg className="w-5 h-5 text-zinc-700 dark:text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                    </button>
-                    
-                    <div className="flex flex-col items-center px-2">
-                        <span className="text-xs font-bold text-primary">
-                            Horario {horarioActualIndex + 1} / {horariosGenerados.length}
-                        </span>
+            {/* Barra de herramientas inferior */}
+            <div className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/50 backdrop-blur-sm px-6 py-3 flex-shrink-0">
+                <div className="flex items-center justify-center">
+                    <div className="flex justify-center gap-4">
+                        {/* Navegación entre horarios */}
+                        {horariosGenerados && horariosGenerados.length > 1 && (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => {
+                                        const newIndex = horarioActualIndex > 0 ? horarioActualIndex - 1 : horariosGenerados.length - 1;
+                                        useMateriasStore.getState().setHorarioActualIndex(newIndex);
+                                    }}
+                                    className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer group"
+                                    title="Horario anterior"
+                                >
+                                    <svg className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                </button>
+                                
+                                <div className="px-3 py-1 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                                    <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                        {horarioActualIndex + 1} / {horariosGenerados.length}
+                                    </span>
+                                </div>
+                                
+                                <button
+                                    onClick={() => {
+                                        const newIndex = horarioActualIndex < horariosGenerados.length - 1 ? horarioActualIndex + 1 : 0;
+                                        useMateriasStore.getState().setHorarioActualIndex(newIndex);
+                                    }}
+                                    className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer group"
+                                    title="Horario siguiente"
+                                >
+                                    <svg className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Botón de tema oscuro */}
+                        <button
+                            onClick={() => setDarkTheme(!darkTheme)}
+                            className="p-2 absolute top-4 right-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer group"
+                            title={darkTheme ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+                        >
+                            {darkTheme ? (
+                                <svg className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-amber-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                            ) : (
+                                <svg className="w-5 h-5 text-zinc-600 group-hover:text-indigo-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                </svg>
+                            )}
+                        </button>
                     </div>
-                    
-                    <button
-                        onClick={() => {
-                            const newIndex = horarioActualIndex < horariosGenerados.length - 1 ? horarioActualIndex + 1 : 0;
-                            useMateriasStore.getState().setHorarioActualIndex(newIndex);
-                        }}
-                        className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors cursor-pointer"
-                        title="Horario siguiente"
-                    >
-                        <svg className="w-5 h-5 text-zinc-700 dark:text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                    </button>
                 </div>
-            )}
+            </div>
         </div>
     );
 }
