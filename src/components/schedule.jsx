@@ -71,6 +71,7 @@ export default function Schedule() {
                     nombreMateria: g.nombreMateria,
                     numeroGrupo: g.numeroGrupo,
                     horarios: g.horarios,
+                    profesor: g.profesor,
                     color: colores[idx % colores.length],
                 }));
             }
@@ -88,6 +89,7 @@ export default function Schedule() {
                                 nombreMateria: materia.nombre,
                                 numeroGrupo: grupo.numero,
                                 horarios: grupo.horarios,
+                                profesor: grupo.profesor,
                                 color: colores[colorIndex % colores.length],
                             });
                             colorIndex++;
@@ -107,6 +109,7 @@ export default function Schedule() {
                             materia: grupo.nombreMateria,
                             grupo: grupo.numeroGrupo,
                             aula: horario.aula,
+                            profesor: grupo.profesor,
                             color: grupo.color,
                             horaInicio: horario.horaInicio,
                             horaFin: horario.horaFin,
