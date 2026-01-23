@@ -16,7 +16,7 @@ export default function ParallaxBackground() {
         { x: 'left-100 ml-56', bottom: 'bottom-80', scale: 3.9, depth: 40 },
 
         // Auditorio
-        { x: 'right-12', bottom: 'bottom-75', scale: 2.3, depth: 22, opacity: 0.7 },
+        { x: 'right-12', bottom: 'bottom-80', scale: 2.7, depth: 22, opacity: 0.7 },
         { x: 'right-10', bottom: 'bottom-68', scale: 1.9, depth: 24 },
 
         // Relleno natural
@@ -34,8 +34,8 @@ export default function ParallaxBackground() {
     const trees = [
         { left: '25%', bottom: 'bottom-60', width: 300, speed: 15, scale: 1.2, opacity: 0.8 },
         { left: '20%', bottom: 'bottom-45', width: 300, speed: 20, scale: 0.8, opacity: 0.8 },
-        { left: '80%', bottom: 'bottom-45', width: 300, speed: 15, scale: 0.8, opacity: 0.8 },
-        { left: '78%', bottom: 'bottom-60', width: 300, speed: 30, scale: 1.2, opacity: 0.8, zIndex: 4 },
+        { left: '80%', bottom: 'bottom-50', width: 300, speed: 15, scale: 0.8, opacity: 0.8 },
+        { left: '80%', bottom: 'bottom-57', width: 200, speed: 30, scale: 1.2, opacity: 0.8, zIndex: 4 },
         { left: '60%', bottom: 'bottom-60', width: 300, speed: 20, scale: 1, opacity: 0.9 },
         { left: '50%', bottom: 'bottom-55', width: 300, speed: 20, scale: 0.8, opacity: 0.6 },
     ];
@@ -73,7 +73,7 @@ export default function ParallaxBackground() {
             const vy = Math.abs(y - lastY) / dt * 1000;
             
             setMousePosition({ x, y });
-            setMouseVelocity({ x: Math.min(vx, 10), y: Math.min(vy, 10) });
+            setMouseVelocity({ x: Math.min(vx, 5), y: Math.min(vy, 5) });
             
             lastX = x;
             lastY = y;
@@ -269,8 +269,7 @@ export default function ParallaxBackground() {
                 className="absolute inset-0 transition-transform duration-700 ease-out"
                 style={{
                     transform: `translate(${mousePosition.x * 8 + Math.sin(time) * 4}px, ${mousePosition.y * 8 + Math.cos(time * 0.8) * 4}px) scale(${1.2 + Math.sin(time * 0.5) * 0.04})`,
-                    filter: `blur(${2 + (mouseVelocity.x + mouseVelocity.y) * 0.1}px)`,
-                    transition: 'filter 0.15s ease-out',
+                    filter: `blur(2px)`,
                 }}
             >
                 <img
@@ -292,8 +291,7 @@ export default function ParallaxBackground() {
                             top: cloud.top,
                             transform: `translateX(${mousePosition.x * cloud.speed + Math.sin(time + i) * 30}px) translateY(${Math.cos(time * 0.5 + i) * 20}px) rotate(${cloud.rotation + Math.sin(time + i) * 4}deg) scale(${1 + Math.sin(time * 0.3 + i) * 0.1})`,
                             opacity: cloud.opacity,
-                            filter: `blur(${2.5 + (mouseVelocity.x + mouseVelocity.y) * 0.15 + Math.abs(Math.sin(time + i)) * 0.5}px)`,
-                            transition: 'filter 0.2s ease-out',
+                            filter: `blur(${2.5 + Math.abs(Math.sin(time + i)) * 0.5}px)`,
                         }}
                     >
                         <img
@@ -314,8 +312,7 @@ export default function ParallaxBackground() {
                 className="absolute -bottom-0 -left-10 -right-10 h-3/4 transition-transform duration-500 ease-out z-[100]"
                 style={{
                     transform: `translate(${mousePosition.x * 25 + Math.sin(time * 0.5) * 10}px, ${mousePosition.y * 15 + Math.cos(time * 0.4) * 6}px) scale(${1 + Math.sin(time * 0.3) * 0.04})`,
-                    filter: `blur(${1.5 + (mouseVelocity.x + mouseVelocity.y) * 0.08}px)`,
-                    transition: 'filter 0.2s ease-out',
+                    filter: `blur(1.5px)`,
                 }}
             >
                 <img
@@ -330,8 +327,7 @@ export default function ParallaxBackground() {
                 className="absolute bottom-50 left-50 transition-transform duration-400 ease-out z-[3]"
                 style={{
                     transform: `translate(${mousePosition.x * 40 + Math.sin(time * 0.6) * 8}px, ${mousePosition.y * 30 + Math.sin(time * 0.6) * 6}px) scale(${2 + Math.sin(time * 0.4) * 0.06}) rotate(${Math.sin(time * 0.3) * 1}deg)`,
-                    filter: `blur(${mousePosition.x < -0.2 ? 0.3 + (mouseVelocity.x + mouseVelocity.y) * 0.03 : 0.8 + Math.abs(mousePosition.x + 0.5) * 0.5}px)`,
-                    transition: 'filter 0.25s ease-out',
+                    filter: `blur(${mousePosition.x < -0.2 ? 0.3 : 1}px)`,
                 }}
             >
                 <img
@@ -346,8 +342,7 @@ export default function ParallaxBackground() {
                 className="absolute bottom-45 -right-20 transition-transform duration-400 ease-out z-[3]"
                 style={{
                     transform: `translate(${mousePosition.x * 40 + Math.cos(time * 0.5) * 8}px, ${mousePosition.y * 30 + Math.cos(time * 0.5) * 6}px) scale(${0.8 + Math.cos(time * 0.45) * 0.05}) rotate(${Math.cos(time * 0.3) * 1}deg)`,
-                    filter: `blur(${mousePosition.x > 0.2 ? 0.3 + (mouseVelocity.x + mouseVelocity.y) * 0.03 : 0.8 + Math.abs(mousePosition.x - 0.5) * 0.5}px)`,
-                    transition: 'filter 0.25s ease-out',
+                    filter: `blur(${mousePosition.x > 0.2 ? 0.3 : 1}px)`,
                 }}
             >
                 <img
@@ -362,8 +357,7 @@ export default function ParallaxBackground() {
                 className="absolute bottom-70 left-1/2 transition-transform duration-300 ease-out z-10"
                 style={{
                     transform: `translate(calc(-50% + ${mousePosition.x * 55 + Math.sin(time * 0.8) * 15}px), ${mousePosition.y * 45 + Math.cos(time * 0.7) * 10}px) scale(${2.2 + Math.sin(time * 0.5) * 0.08})`,
-                    filter: `blur(${Math.abs(mousePosition.x) < 0.3 ? 0.1 + (mouseVelocity.x + mouseVelocity.y) * 0.02 : 0.4 + Math.abs(mousePosition.x) * 0.4}px)`,
-                    transition: 'filter 0.25s ease-out',
+                    filter: `blur(${Math.abs(mousePosition.x) < 0.3 ? 0.1 : 0.5}px)`,
                 }}
             >
                 <img
@@ -384,7 +378,7 @@ export default function ParallaxBackground() {
                                 translate(${mousePosition.x * bush.depth * 1.5}px, ${mousePosition.y * (bush.depth - 4) * 1.3}px)
                                 scale(${bush.scale})
                             `,
-                            filter: `blur(${0.5 + (mouseVelocity.x + mouseVelocity.y) * 0.12}px)`,
+                            filter: `blur(0.5px)`,
                         }}
                     >
                         <img
@@ -423,7 +417,7 @@ export default function ParallaxBackground() {
                                 translate(${mousePosition.x * bush.depth * 1.8}px, ${mousePosition.y * (bush.depth - 4) * 1.5}px)
                                 scale(${bush.scale})
                             `,
-                            filter: `blur(${(mouseVelocity.x + mouseVelocity.y) * 0.05}px)`,
+                            filter: `blur(0px)`,
                             opacity: bush.opacity || 1,
                         }}
                     >
@@ -445,7 +439,7 @@ export default function ParallaxBackground() {
                         transform: `translateX(${mousePosition.x * tree.speed * 2 + Math.sin(time * 0.4 + i * 0.7) * 18}px) translateY(${Math.cos(time * 0.3 + i * 0.5) * 10}px) scale(${tree.scale + Math.sin(time * 0.35 + i) * 0.08}) rotate(${Math.sin(time * 0.25 + i) * 3}deg)`,
                         opacity: tree.opacity,
                         zIndex: tree.zIndex || 1,
-                        filter: `blur(${tree.opacity < 0.85 ? 1 : 0.5 + (mouseVelocity.x + mouseVelocity.y) * 0.1}px)`,
+                        filter: `blur(${tree.opacity < 0.85 ? 1 : 0.5}px)`,
                     }}
                 >
                     <img
@@ -465,7 +459,7 @@ export default function ParallaxBackground() {
                 style={{
                     transform: `translate(calc(-50% + ${mousePosition.x * 100 + Math.sin(time * 0.9) * 25}px), ${mousePosition.y * 80 + Math.cos(time * 0.8) * 18}px) scale(${0.8 + Math.sin(time * 0.6) * 0.15}) rotate(${Math.sin(time * 0.4) * 5}deg)`,
                     opacity: 0.8,
-                    filter: `blur(${(mouseVelocity.x + mouseVelocity.y) * 0.03}px)`,
+                    filter: `blur(0px)`,
                 }}
             >
                 <img
