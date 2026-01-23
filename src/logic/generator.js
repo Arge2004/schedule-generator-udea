@@ -34,7 +34,8 @@ export function generarHorariosAutomaticos(todasLasMaterias, codigosSeleccionado
   }
 
   // Generar combinaciones válidas con poda (backtracking inteligente)
-  const combinacionesValidas = generarCombinacionesConPoda(materiasSeleccionadas, 500);
+  // Límite: 10,000 combinaciones O 5 segundos (lo que ocurra primero)
+  const combinacionesValidas = generarCombinacionesConPoda(materiasSeleccionadas, 10000, 5000);
 
   if (combinacionesValidas.length === 0) {
     return [];
@@ -47,10 +48,10 @@ export function generarHorariosAutomaticos(todasLasMaterias, codigosSeleccionado
     detalles: obtenerDetallesCombinacion(combinacion)
   }));
 
-  // Ordenar por puntuación (mayor es mejor) y retornar top 5
+  // Ordenar por puntuación (mayor es mejor) y retornar top 10
   combinacionesConPuntuacion.sort((a, b) => b.puntuacion - a.puntuacion);
   
-  return combinacionesConPuntuacion.slice(0, 5);
+  return combinacionesConPuntuacion.slice(0, 10);
 }
 
 /**
@@ -58,13 +59,15 @@ export function generarHorariosAutomaticos(todasLasMaterias, codigosSeleccionado
  * Solo genera combinaciones SIN conflictos, descartando ramas inválidas inmediatamente
  * @param {Array} materias - Materias seleccionadas
  * @param {number} maxCombinaciones - Número máximo de combinaciones válidas a generar
+ * @param {number} maxTimeMs - Tiempo máximo en milisegundos para generar
  */
-function generarCombinacionesConPoda(materias, maxCombinaciones = 500) {
+function generarCombinacionesConPoda(materias, maxCombinaciones = 10000, maxTimeMs = 5000) {
   const combinaciones = [];
+  const startTime = Date.now();
   
   function backtrack(index, combinacionActual) {
-    // Límite de combinaciones alcanzado
-    if (combinaciones.length >= maxCombinaciones) {
+    // Límite de combinaciones alcanzado O tiempo excedido
+    if (combinaciones.length >= maxCombinaciones || Date.now() - startTime > maxTimeMs) {
       return;
     }
 

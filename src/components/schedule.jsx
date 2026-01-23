@@ -1,14 +1,43 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import ClassBlock from './ClassBlock';
 import ClassTooltip from './ClassTooltip';
 import { useMateriasStore } from '../store/materiasStore';
 
 export default function Schedule() {
     const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-    const horas = Array.from({ length: 17 }, (_, i) => i + 6); // 6 AM a 10 PM (22:00)
+    const horas = Array.from({ length: 16 }, (_, i) => i + 6); // 6 AM a 10 PM (22:00)
 
     const { horariosGenerados, horarioActualIndex, gruposSeleccionados, materias } = useMateriasStore();
-    
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    // Detectar cuando se limpian los horarios para mostrar loading
+    useEffect(() => {
+        if (horariosGenerados.length === 0 && gruposSeleccionados && Object.keys(gruposSeleccionados).length > 0) {
+            setIsGenerating(true);
+        } else {
+            setIsGenerating(false);
+        }
+    }, [horariosGenerados, gruposSeleccionados]);
+
+    // Escuchar cambios en horariosGenerados para detectar inicio/fin de generación
+    useEffect(() => {
+        const unsubscribe = useMateriasStore.subscribe(
+            (state) => {
+                // Si hay horarios, significa que terminó de generar
+                if (state.horariosGenerados.length > 0) {
+                    setIsGenerating(false);
+                }
+            }
+        );
+        return unsubscribe;
+    }, []);
+
+    // Detectar cuando empieza la generación (cuando se borran los horarios)
+    useEffect(() => {
+        if (horariosGenerados.length === 0) {
+            setIsGenerating(true);
+        }
+    }, [horariosGenerados.length]);    
     // Estado global del tooltip
     const [tooltipData, setTooltipData] = useState(null);
     const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
@@ -145,7 +174,23 @@ export default function Schedule() {
     };
 
     return (
-        <div className="flex-1 h-full bg-white dark:bg-background-dark flex flex-col overflow-hidden">
+        <div className="flex-1 max-h-[calc(100vh-3rem)] bg-white dark:bg-background-dark flex flex-col overflow-hidden relative">
+            {/* Loading overlay */}
+            {isGenerating && (
+                <div className="absolute inset-0 bg-white/80 dark:bg-background-dark/80 backdrop-blur-sm z-50 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="relative">
+                            <div className="animate-spin rounded-full h-16 w-16 border-4 border-zinc-200 dark:border-zinc-800"></div>
+                            <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary border-t-transparent absolute inset-0"></div>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-lg font-bold text-zinc-900 dark:text-white">Generando horarios</p>
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">Analizando combinaciones...</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header con los días */}
             <div className="grid grid-cols-[80px_repeat(7,minmax(140px,1fr))] bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-800 flex-shrink-0">
                 {/* Celda vacía en la esquina */}
@@ -236,6 +281,43 @@ export default function Schedule() {
                     color={tooltipData.color} 
                     position={tooltipPosition}
                 />
+            )}
+
+            {/* Navegación entre horarios generados */}
+            {horariosGenerados && horariosGenerados.length > 1 && (
+                <div className="absolute bottom-6 right-6 flex items-center gap-3 bg-white dark:bg-zinc-900 rounded-full shadow-2xl border border-zinc-200 dark:border-zinc-800 px-4 py-3">
+                    <button
+                        onClick={() => {
+                            const newIndex = horarioActualIndex > 0 ? horarioActualIndex - 1 : horariosGenerados.length - 1;
+                            useMateriasStore.getState().setHorarioActualIndex(newIndex);
+                        }}
+                        className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors cursor-pointer"
+                        title="Horario anterior"
+                    >
+                        <svg className="w-5 h-5 text-zinc-700 dark:text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    
+                    <div className="flex flex-col items-center px-2">
+                        <span className="text-xs font-bold text-primary">
+                            Horario {horarioActualIndex + 1} / {horariosGenerados.length}
+                        </span>
+                    </div>
+                    
+                    <button
+                        onClick={() => {
+                            const newIndex = horarioActualIndex < horariosGenerados.length - 1 ? horarioActualIndex + 1 : 0;
+                            useMateriasStore.getState().setHorarioActualIndex(newIndex);
+                        }}
+                        className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors cursor-pointer"
+                        title="Horario siguiente"
+                    >
+                        <svg className="w-5 h-5 text-zinc-700 dark:text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
             )}
         </div>
     );
