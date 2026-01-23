@@ -27,7 +27,8 @@ export default function Sidebar() {
         setMateriasData, 
         materiasSeleccionadas, 
         resetMateriasSeleccionadas,
-        setHorariosGenerados 
+        setHorariosGenerados,
+        clearHorariosGenerados
     } = useMateriasStore();
 
     // Aplicar/remover clase dark del documento
@@ -331,7 +332,10 @@ export default function Sidebar() {
                                         )}
                                     </div>
                                     <button
-                                        onClick={resetMateriasSeleccionadas}
+                                        onClick={() => {
+                                            resetMateriasSeleccionadas();
+                                            clearHorariosGenerados();
+                                        }}
                                         className="px-3 py-2 cursor-pointer bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 rounded-lg text-primary text-xs font-bold focus:outline-none"
                                         title="Deseleccionar todas"
                                     >
