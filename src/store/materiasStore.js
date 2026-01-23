@@ -16,6 +16,15 @@ export const useMateriasStore = create((set) => ({
   horariosGenerados: [], // Array de horarios generados automáticamente
   horarioActualIndex: 0, // Índice del horario que se está visualizando
   resetKey: 0, // Incrementa cada vez que se hace reset
+  
+  // Estados de drag and drop
+  draggingMateria: null, // { codigo, nombre, grupos } - Materia que se está arrastrando
+  hoveredScheduleCell: null, // { diaIndex, horaIndex } - Celda sobre la que se está hovering
+  availableHorarios: [], // Array de horarios disponibles de la materia siendo arrastrada
+  showGrupoSelector: false, // Mostrar modal de selección de grupos
+  gruposConflicto: [], // Grupos que tienen el mismo horario al soltar
+  previewGrupo: null, // Preview del grupo al hacer hover { codigo, numeroGrupo, horarios, color }
+  pendingModal: false, // Flag para indicar que hay un modal pendiente
 
   // Acciones
   setMateriasData: (data) => set({
@@ -89,5 +98,52 @@ export const useMateriasStore = create((set) => ({
     horariosGenerados: [],
     horarioActualIndex: 0,
   }),
+
+  // Acciones de drag and drop
+  setDraggingMateria: (materia) => set({
+    draggingMateria: materia,
+    availableHorarios: materia ? [] : [],
+  }),
+
+  setHoveredScheduleCell: (cell) => set({
+    hoveredScheduleCell: cell,
+  }),
+
+  setAvailableHorarios: (horarios) => set({
+    availableHorarios: horarios,
+  }),
+
+  setShowGrupoSelector: (show, grupos = []) => {
+    console.log('setShowGrupoSelector llamado:', { show, grupos });
+    set({
+      showGrupoSelector: show,
+      gruposConflicto: grupos,
+      pendingModal: show && grupos.length > 0, // Setear flag si vamos a mostrar modal
+    });
+  },
+
+  setPreviewGrupo: (preview) => set({
+    previewGrupo: preview,
+  }),
+
+  clearDragState: () => set((state) => {
+    // Si hay un modal pendiente, NO limpiar nada todavía
+    if (state.pendingModal) {
+      console.log('clearDragState: Modal pendiente, no limpiando nada');
+      return state; // No cambiar el estado
+    }
+    
+    console.log('clearDragState: Limpiando todo');
+    return {
+      draggingMateria: null,
+      hoveredScheduleCell: null,
+      availableHorarios: [],
+      previewGrupo: null,
+      showGrupoSelector: false,
+      gruposConflicto: [],
+      pendingModal: false,
+    };
+  }),
 }))
+
 

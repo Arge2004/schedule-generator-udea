@@ -10,6 +10,7 @@ export default function Sidebar() {
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [generationMode, setGenerationMode] = useState('manual'); // 'manual' o 'automatico'
+    const [dragEnabled, setDragEnabled] = useState(false); // Habilitar/deshabilitar drag and drop
     const [horaMinima, setHoraMinima] = useState(6); // Hora mínima para las clases (6-22)
     const [evitarHuecos, setEvitarHuecos] = useState(false);
     const [darkTheme, setDarkTheme] = useState(() => {
@@ -360,7 +361,7 @@ export default function Sidebar() {
                                     </p>
                                 ) : (
                                     materiasFiltradas.map(materia => (
-                                        <Subject key={materia.codigo} materia={materia} generationMode={generationMode} />
+                                        <Subject key={materia.codigo} materia={materia} generationMode={generationMode} dragEnabled={dragEnabled} />
                                     ))
                                 )}
                             </div>
@@ -440,6 +441,28 @@ export default function Sidebar() {
                                         className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${evitarHuecos ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
                                     >
                                         <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${evitarHuecos ? 'right-0.5' : 'left-0.5'}`}></div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Preferencias de Generación Automática */}
+                    {generationMode === 'manual' && (
+                        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
+                            <div className="flex items-center justify-between mb-4">
+                                <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Preferencias</p>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Permitir arrastrar materias al horario</span>
+                                    <button
+                                        onClick={() => {
+                                            setDragEnabled(!dragEnabled)
+                                        }}
+                                        className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${dragEnabled ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                                    >
+                                        <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${dragEnabled ? 'right-0.5' : 'left-0.5'}`}></div>
                                     </button>
                                 </div>
                             </div>

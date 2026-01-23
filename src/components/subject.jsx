@@ -2,8 +2,16 @@ import React, { useState, useEffect } from "react";
 import { useMateriasStore } from "../store/materiasStore";
 
 //nombre,codigo,grupos
-export default function Subject({materia, generationMode}) {
-  const { materiasSeleccionadas, toggleMateriaSelected, gruposSeleccionados, selectGrupo, resetKey } = useMateriasStore();
+export default function Subject({materia, generationMode, dragEnabled = true}) {
+  const { 
+    materiasSeleccionadas, 
+    toggleMateriaSelected, 
+    gruposSeleccionados, 
+    selectGrupo, 
+    resetKey,
+    setDraggingMateria,
+    clearDragState
+  } = useMateriasStore();
   const isSelected = !!materiasSeleccionadas[materia?.codigo];
   const [isExpanded, setIsExpanded] = useState(false);
   const grupoSeleccionado = gruposSeleccionados[materia?.codigo];
@@ -39,6 +47,12 @@ export default function Subject({materia, generationMode}) {
     setIsExpanded(false);
   }, [resetKey]);
 
+  useEffect(() => {
+    if (dragEnabled){
+      setIsExpanded(false);
+    }
+  }, [dragEnabled]);
+
   const handleItemClick = () => {
     if (generationMode === 'manual') {
       // En modo manual, solo expandir/contraer, NO seleccionar
@@ -51,6 +65,48 @@ export default function Subject({materia, generationMode}) {
     setIsExpanded(!isExpanded);
   };
 
+  // Handlers para drag and drop (solo en modo manual)
+  const handleDragStart = (e) => {
+    if (generationMode !== 'manual' || !materia?.grupos || materia.grupos.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    
+    console.log('Drag start:', materia.nombre);
+    
+    // Guardar datos de la materia en el store
+    setDraggingMateria({
+      codigo: materia.codigo,
+      nombre: materia.nombre,
+      grupos: materia.grupos,
+    });
+    
+    // Configurar el efecto visual del drag
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', materia.codigo);
+  };
+
+  const handleDragEnd = () => {
+    console.log('Drag end - Verificando estado...');
+    // Limpiar después de un delay MÁS LARGO para que el drop tenga tiempo de procesar
+    setTimeout(() => {
+      const state = useMateriasStore.getState();
+      console.log('Drag end - Estado verificado:', {
+        pendingModal: state.pendingModal,
+        showGrupoSelector: state.showGrupoSelector,
+        draggingMateria: !!state.draggingMateria
+      });
+      
+      // Si no hay modal activo y aún hay draggingMateria, es porque no hubo drop válido
+      if (!state.pendingModal && !state.showGrupoSelector && state.draggingMateria) {
+        console.log('Drag end: Limpiando por timeout (no hubo drop válido)');
+        clearDragState();
+      } else {
+        console.log('Drag end: NO limpiando - hay modal activo o ya se limpió');
+      }
+    }, 200); // Aumentado a 200ms para dar más tiempo
+  };
+
   return (
     <div className="space-y-2">
       <div className={`rounded-lg transition-all border-2 flex flex-col gap-2 ${
@@ -60,8 +116,13 @@ export default function Subject({materia, generationMode}) {
       }`}>
         {generationMode === 'manual' ? (
           <div 
-            onClick={handleItemClick}
-            className="flex items-center gap-3 p-2.5 hover:bg-zinc-200 rounded dark:hover:bg-zinc-100/10 cursor-pointer group"
+            draggable={dragEnabled && materia?.grupos && materia.grupos.length > 0}
+            onDragStart={dragEnabled ? handleDragStart : undefined}
+            onDragEnd={dragEnabled ? handleDragEnd : undefined}
+            onClick={!dragEnabled ? handleItemClick : undefined}
+            className={`flex items-center gap-3 p-2.5 hover:bg-zinc-200 rounded dark:hover:bg-zinc-100/10 group ${
+              dragEnabled && materia?.grupos && materia.grupos.length > 0 ? 'cursor-move' : 'cursor-pointer'
+            }`}
           >
             <div className="flex flex-col items-start flex-1">
               <span className="text-sm font-semibold text-slate-900 dark:text-zinc-100">
@@ -71,7 +132,7 @@ export default function Subject({materia, generationMode}) {
                 ID: {materia?.codigo ? materia.codigo : "XXXXXX"} • <span className="text-primary">{materia?.grupos ? materia.grupos.length + " Grupos disponibles" : "Sin grupos"}</span>
               </span>
             </div>
-            {materia?.grupos && (
+            {materia?.grupos && !dragEnabled && (
               <svg 
                 className={`w-5 h-5 text-zinc-500 dark:text-zinc-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
                 fill="none" 

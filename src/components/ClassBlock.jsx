@@ -1,11 +1,12 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 
 /**
  * Componente que representa una clase/materia dentro de una celda del grid
  * Se expande verticalmente según la duración de la clase
  */
 export default function ClassBlock({ clase, onHover, onLeave }) {
-  const { materia, grupo, horaInicio, horaFin, aula, color, duracion } = clase;
+  const { materia, grupo, horaInicio, horaFin, aula, color, duracion, isPreview } = clase;
   const blockRef = React.useRef(null);
 
   const handleMouseEnter = () => {
@@ -21,9 +22,26 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
   };
 
   return (
-    <div
+    <motion.div
       ref={blockRef}
-      className="absolute inset-1 rounded-lg border-2 border-l-[6px] flex flex-col justify-center p-2.5 overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 hover:z-20 cursor-pointer"
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ 
+        opacity: isPreview ? 0.7 : 1, 
+        scale: 1,
+      }}
+      exit={{ opacity: 0, scale: 0.8 }}
+      transition={{ 
+        duration: 0.3,
+        ease: "easeOut"
+      }}
+      whileHover={{ 
+        scale: 1.02, 
+        y: -2,
+        transition: { duration: 0.2 }
+      }}
+      className={`absolute inset-1 rounded-lg border-2 border-l-[6px] flex flex-col justify-center p-2.5 overflow-hidden hover:shadow-lg hover:z-20 cursor-pointer ${
+        isPreview ? 'border-dashed' : ''
+      }`}
       style={{
         backgroundColor: color ? `${color}15` : '#3b82f615',
         borderColor: color || '#3b82f6',
@@ -33,6 +51,11 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
       onMouseLeave={onLeave}
     >
       <div className="flex-shrink-0">
+        {isPreview && (
+          <span className="text-[9px] font-bold text-white bg-black/40 px-1.5 py-0.5 rounded mb-1 inline-block">
+            PREVIEW
+          </span>
+        )}
         <p 
           className="font-bold text-xs leading-tight mb-0.5 line-clamp-2"
           style={{ color: color || '#3b82f6' }}
@@ -65,6 +88,6 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
           </span>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
