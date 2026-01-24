@@ -26,6 +26,11 @@ export default function Schedule() {
         clearDragState,
         setNotifier,
     } = useMateriasStore();
+
+    // Estado local para hover durante drag
+    const [hoveredCell, setHoveredCell] = useState(null); // { diaIndex, horaIndex }
+    const [hoveredValidKeys, setHoveredValidKeys] = useState(new Set());
+    const [hoveredValidGroupNumbers, setHoveredValidGroupNumbers] = useState(new Set());
     const [darkTheme, setDarkTheme] = useState(() => {
         const saved = localStorage.getItem('darkTheme');
         return saved !== null ? JSON.parse(saved) : true;
@@ -222,6 +227,46 @@ export default function Schedule() {
         return ocupadas;
     }, [clasesParaRenderizar]);
 
+    // Mapa por código de materia (más fiable) y helper para obtener código desde un valor (código o nombre)
+    const celdasMateria = useMemo(() => {
+        const map = new Map();
+        // Helper para normalizar nombres (quita mayúsculas y diacríticos básicos)
+        const normalize = (s = '') => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').trim();
+        clasesParaRenderizar.forEach(clase => {
+            if (!clase.isPreview) {
+                // Intentar usar el codigo si existe, si no buscar por nombre en materias
+                let codigo = clase.codigoMateria;
+                if (!codigo && materias && Array.isArray(materias)) {
+                    const buscado = materias.find(m => normalize(m.nombre) === normalize(clase.materia) || m.codigo === clase.codigoMateria);
+                    if (buscado) codigo = buscado.codigo;
+                }
+                if (codigo) {
+                    for (let i = 0; i < clase.duracion; i++) {
+                        const key = `${clase.diaIndex}-${clase.horaIndex + i}`;
+                        map.set(key, codigo);
+                    }
+                } else {
+                    // Si aún no tenemos codigo, marcar con el nombre para no perder información
+                    for (let i = 0; i < clase.duracion; i++) {
+                        const key = `${clase.diaIndex}-${clase.horaIndex + i}`;
+                        map.set(key, clase.materia);
+                    }
+                }
+            }
+        });
+        return map;
+    }, [clasesParaRenderizar, materias]);
+
+    const getCodigoFromValor = (valor) => {
+        if (!valor) return undefined;
+        // Si ya parece un código existente, devolverlo
+        if (materias && materias.find(m => m.codigo === valor)) return valor;
+        // Intentar normalizar y buscar por nombre
+        const normalize = (s = '') => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').trim();
+        const found = materias && materias.find(m => normalize(m.nombre) === normalize(String(valor)));
+        return found ? found.codigo : undefined;
+    };
+
     const formatHora = (hora) => {
         const ampm = hora < 12 ? 'AM' : 'PM';
         const hora12 = hora > 12 ? hora - 12 : hora === 0 ? 12 : hora;
@@ -232,6 +277,95 @@ export default function Schedule() {
     const handleDragOver = (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
+
+        if (!draggingMateria) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const leftDays = rect.left + 80; // primera columna fija 80px
+        const widthDays = rect.width - 80;
+        const cellWidth = widthDays / 7;
+        const cellHeight = rect.height / horas.length;
+        const x = e.clientX - leftDays;
+        const y = e.clientY - rect.top;
+        const diaIndex = Math.floor(x / cellWidth);
+        const horaIndex = Math.floor(y / cellHeight);
+
+        if (isNaN(diaIndex) || isNaN(horaIndex) || diaIndex < 0 || diaIndex > 6 || horaIndex < 0 || horaIndex >= horas.length) {
+            // Fuera del área de días, no cambiar
+            return;
+        }
+
+        // Guardar celda hover para que el overlay pueda marcar o ocultar bloques que no sean válidos en esta celda
+        setHoveredCell({ diaIndex, horaIndex });
+
+        // Calcular qué horarios (de los availableHorarios) serían válidos para esta celda sin modificar la lista global
+        const validHorarios = [];
+        draggingMateria.grupos.forEach(grupo => {
+            grupo.horarios.forEach(horario => {
+                // Debe aplicar al día y a la hora bajo cursor
+                if (!horario.dias.includes(dias[diaIndex])) return;
+                if (!(horario.horaInicio <= horas[horaIndex] && horario.horaFin > horas[horaIndex])) return;
+
+                // Verificar conflicto en todas las celdas que ocupa el horario
+                let tieneConflicto = false;
+                horario.dias.forEach(diaHorario => {
+                    const diaIdx = dias.indexOf(diaHorario);
+                    if (diaIdx === -1) return;
+                    const horaInicioIdx = horas.indexOf(horario.horaInicio);
+                    const duracion = horario.horaFin - horario.horaInicio;
+                    for (let i = 0; i < duracion; i++) {
+                        const celdaKey = `${diaIdx}-${horaInicioIdx + i}`;
+                        const materiaEnCeldaValor = celdasMateria.get(celdaKey);
+                        const materiaEnCeldaCodigo = getCodigoFromValor(materiaEnCeldaValor);
+                        if (materiaEnCeldaCodigo && materiaEnCeldaCodigo !== draggingMateria.codigo) {
+                            tieneConflicto = true;
+                            break;
+                        }
+                    }
+                });
+
+                if (!tieneConflicto) {
+                    validHorarios.push({ ...horario, numeroGrupo: grupo.numero });
+                }
+            });
+        });
+
+        // Generar set de keys válidas para esta celda (para chequear bloques)
+        const validKeys = new Set();
+        const validGroupNums = new Set();
+        validHorarios.forEach(h => {
+            const horaInicioIdx = horas.indexOf(h.horaInicio);
+            const duracion = h.horaFin - h.horaInicio;
+            validGroupNums.add(h.numeroGrupo);
+            h.dias.forEach(d => {
+                const diaIdx = dias.indexOf(d);
+                for (let i = 0; i < duracion; i++) {
+                    validKeys.add(`${diaIdx}-${horaInicioIdx + i}`);
+                }
+            });
+        });
+        setHoveredValidKeys(validKeys);
+        setHoveredValidGroupNumbers(validGroupNums);
+    };
+
+    // Helper: verifica si un grupo TIENE conflicto con el schedule actual (celdasMateria)
+    const groupHasConflict = (grupo) => {
+        for (const horario of grupo.horarios) {
+            for (const dia of horario.dias) {
+                const diaIndex = dias.indexOf(dia);
+                if (diaIndex === -1) continue;
+                const horaInicioIndex = horas.indexOf(horario.horaInicio);
+                const duracion = horario.horaFin - horario.horaInicio;
+                for (let i = 0; i < duracion; i++) {
+                    const celdaKey = `${diaIndex}-${horaInicioIndex + i}`;
+                    const materiaEnCeldaValor = celdasMateria.get(celdaKey);
+                    const materiaEnCeldaCodigo = getCodigoFromValor(materiaEnCeldaValor);
+                    if (materiaEnCeldaCodigo && materiaEnCeldaCodigo !== draggingMateria.codigo) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     };
 
     const handleDragEnter = (e) => {
@@ -241,38 +375,20 @@ export default function Schedule() {
         if (draggingMateria && availableHorarios.length === 0) {
             const todosLosHorarios = [];
             draggingMateria.grupos.forEach(grupo => {
+                // Si el grupo tiene conflicto en alguna de sus clases, NO mostrar NINGUNA de sus clases
+                if (groupHasConflict(grupo)) {
+                    console.debug('[DRAG ENTER] Grupo descartado por conflicto global', { codigo: draggingMateria.codigo, grupo: grupo.numero });
+                    return;
+                }
+                // Agregar todos los horarios del grupo (porque el grupo es globalmente válido)
                 grupo.horarios.forEach(horario => {
-                    // Verificar si este horario se sobrepone con alguna celda ocupada
-                    let tieneConflicto = false;
-
-                    horario.dias.forEach(dia => {
-                        const diaIndex = dias.indexOf(dia);
-                        if (diaIndex !== -1) {
-                            const horaInicioIndex = horas.indexOf(horario.horaInicio);
-                            const duracion = horario.horaFin - horario.horaInicio;
-
-                            // Verificar cada celda que ocuparía este horario
-                            for (let i = 0; i < duracion; i++) {
-                                const celdaKey = `${diaIndex}-${horaInicioIndex + i}`;
-                                const materiaEnCelda = celdasOcupadas.get(celdaKey);
-                                // Solo es conflicto si hay otra materia diferente
-                                if (materiaEnCelda && materiaEnCelda !== draggingMateria.nombre) {
-                                    tieneConflicto = true;
-                                    break;
-                                }
-                            }
-                        }
+                    todosLosHorarios.push({
+                        ...horario,
+                        numeroGrupo: grupo.numero,
                     });
-
-                    // Solo agregar horarios sin conflictos
-                    if (!tieneConflicto) {
-                        todosLosHorarios.push({
-                            ...horario,
-                            numeroGrupo: grupo.numero,
-                        });
-                    }
                 });
             });
+            console.debug('[DRAG ENTER] availableHorarios for', draggingMateria?.codigo, todosLosHorarios.map(h => ({dias: h.dias, horaInicio: h.horaInicio, horaFin: h.horaFin, numeroGrupo: h.numeroGrupo}))); 
             setAvailableHorarios(todosLosHorarios);
         }
     };
@@ -290,6 +406,8 @@ export default function Schedule() {
 
         // Buscar los grupos que tienen clases en esta celda específica Y que no causan conflictos
         const gruposEnEstaCelda = draggingMateria.grupos.filter(grupo => {
+            // Excluir grupos que ya tienen conflicto global
+            if (groupHasConflict(grupo)) return false;
             return grupo.horarios.some(horario => {
                 // Verificar que el horario aplica a esta celda
                 if (!horario.dias.includes(dia) || horario.horaInicio > hora || horario.horaFin <= hora) {
@@ -306,9 +424,10 @@ export default function Schedule() {
 
                         for (let i = 0; i < duracion; i++) {
                             const celdaKey = `${diaIdx}-${horaInicioIdx + i}`;
-                            const materiaEnCelda = celdasOcupadas.get(celdaKey);
-                            // Solo es conflicto si hay otra materia diferente
-                            if (materiaEnCelda && materiaEnCelda !== draggingMateria.nombre) {
+                            const materiaEnCeldaValor = celdasMateria.get(celdaKey);
+                            const materiaEnCeldaCodigo = getCodigoFromValor(materiaEnCeldaValor);
+                            // Solo es conflicto si hay otra materia diferente (por código)
+                            if (materiaEnCeldaCodigo && materiaEnCeldaCodigo !== draggingMateria.codigo) {
                                 tieneConflicto = true;
                                 break;
                             }
@@ -340,8 +459,9 @@ export default function Schedule() {
 
                                 for (let i = 0; i < duracion; i++) {
                                     const celdaKey = `${diaIdx}-${horaInicioIdx + i}`;
-                                    const materiaEnCelda = celdasOcupadas.get(celdaKey);
-                                    if (materiaEnCelda && materiaEnCelda !== draggingMateria.nombre) {
+                                    const materiaEnCeldaValor = celdasMateria.get(celdaKey);
+                                    const materiaEnCeldaCodigo = getCodigoFromValor(materiaEnCeldaValor);
+                                    if (materiaEnCeldaCodigo && materiaEnCeldaCodigo !== draggingMateria.codigo) {
                                         hayConflictos = true;
                                         break;
                                     }
@@ -352,6 +472,8 @@ export default function Schedule() {
                 });
             });
 
+            console.log('[DROP] resultado validación:', { algunGrupoTieneHorarioAqui, hayConflictos, dia, hora, draggingMateriaCodigo: draggingMateria?.codigo });
+
             if (algunGrupoTieneHorarioAqui && hayConflictos) {
                 showToastMessage('⚠️ No se puede colocar: hay un conflicto con otra materia');
             } else if (!algunGrupoTieneHorarioAqui) {
@@ -361,6 +483,9 @@ export default function Schedule() {
             }
 
             clearDragState();
+            setHoveredCell(null);
+            setHoveredValidKeys(new Set());
+            setHoveredValidGroupNumbers(new Set());
             return;
         }
 
@@ -381,6 +506,8 @@ export default function Schedule() {
             }
 
             clearDragState();
+            setHoveredCell(null);
+            setHoveredValidKeys(new Set());
         }
     };
 
@@ -390,22 +517,9 @@ export default function Schedule() {
             return;
         }
         setAvailableHorarios([]);
+        setHoveredCell(null);
+        setHoveredValidKeys(new Set());
     };
-
-        // Exponer celdas ocupadas (por nombre y por código) y showToastMessage globalmente para validaciones externas
-    // Construir celdasMateria (mapa de celdas ocupadas por código de materia)
-    const celdasMateria = useMemo(() => {
-        const map = new Map();
-        clasesParaRenderizar.forEach(clase => {
-            if (!clase.isPreview && clase.codigoMateria) {
-                for (let i = 0; i < clase.duracion; i++) {
-                    const key = `${clase.diaIndex}-${clase.horaIndex + i}`;
-                    map.set(key, clase.codigoMateria);
-                }
-            }
-        });
-        return map;
-    }, [clasesParaRenderizar]);
 
     return (
         <ScheduleProvider celdasMateria={celdasMateria} showToastMessage={showToastMessage}>
@@ -513,7 +627,10 @@ export default function Schedule() {
                                 horas={horas}
                                 onBlockDrop={handleDrop}
                                 showToastMessage={showToastMessage}
-                                celdasOcupadas={celdasOcupadas}
+                                celdasMateria={celdasMateria}
+                                hoveredCell={hoveredCell}
+                                hoveredValidKeys={hoveredValidKeys}
+                                hoveredValidGroupNumbers={hoveredValidGroupNumbers}
                             />
                         )}
                     </div>
