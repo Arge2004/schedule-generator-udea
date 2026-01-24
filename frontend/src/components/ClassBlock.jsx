@@ -38,7 +38,7 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
         y: -2,
         transition: { duration: 0.15 }
       }}
-      className={`absolute inset-1 rounded-lg border-2 border-l-[6px] flex flex-col justify-center p-2.5 overflow-hidden hover:shadow-lg hover:z-20 cursor-pointer ${
+      className={`absolute select-none inset-1 rounded-lg border-2 border-l-[6px] flex flex-col justify-center p-2.5 overflow-hidden hover:shadow-lg hover:z-20 cursor-pointer ${
         isPreview ? 'border-dashed' : ''
       }`}
       style={{
