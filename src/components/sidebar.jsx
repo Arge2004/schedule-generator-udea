@@ -3,6 +3,7 @@ import Subject from './subject.jsx';
 import { parseHTMLFile } from '../logic/parser.js';
 import { generarHorariosAutomaticos } from '../logic/generator.js';
 import { useMateriasStore } from '../store/materiasStore.js';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Sidebar() {
     const [isLoading, setIsLoading] = useState(false);
@@ -226,74 +227,98 @@ export default function Sidebar() {
     };
 
     return (
-        <aside className="w-80 h-full border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col overflow-y-auto">
-            {!materias || materias.length === 0 ?
-                (
-                    <div
-                        onClick={handleUploadClick}
-                        onDragOver={handleDragOver}
-                        onDrop={handleDrop}
-                        className={`group h-full relative flex flex-col items-center justify-center p-6 border-2 border-dashed border-zinc-200 dark:border-zinc-800 hover:border-primary/50 dark:hover:border-primary/50 transition-all cursor-pointer ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
-                        style={{
-                            backgroundImage: `repeating-linear-gradient(
-                                45deg,
-                                transparent,
-                                transparent 2px,
-                                ${darkTheme ? 'rgba(4, 0, 255, 0.07)' : 'rgba(0, 132, 255, 0.07)'} 5px,
-                                ${darkTheme ? 'rgba(4, 0, 255, 0.07)' : 'rgba(0, 132, 255, 0.07)'} 6px,
-                                transparent 4px,
-                                transparent 10px
-                            )`
-                        }}
-                    >
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".html"
-                            onChange={handleFileUpload}
-                            className="hidden"
-                        />
-                        {isLoading ? (
-                            <>
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
-                                <p className="text-xs font-medium text-center text-zinc-700 dark:text-zinc-300">Procesando archivo...</p>
-                            </>
-                        ) : (
-                            <>
-                                <span className="material-symbols-outlined text-zinc-400 group-hover:text-primary transition-colors text-xl mb-2">Subir Archivo</span>
-                                <p className="text-sm font-medium text-center text-zinc-700 dark:text-zinc-300">Importar archivo HTML</p>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center mt-1">Arrastrar el archivo o clickear para buscarlo</p>
-                            </>
-                        )}
-                    </div>
-                ) :
-                (<>
+        <motion.aside
+            className="w-80 h-full border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col overflow-y-auto"
+            initial={{ x: -80, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -80, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 120, damping: 16 }}
+        >
+            {!materias || materias.length === 0 ? (
+                <div
+                    onClick={handleUploadClick}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    className={`group h-full relative flex flex-col items-center justify-center p-6 border-2 border-dashed border-zinc-200 dark:border-zinc-800 hover:border-primary/50 dark:hover:border-primary/50 transition-all cursor-pointer ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+                    style={{
+                        backgroundImage: `repeating-linear-gradient(
+                            45deg,
+                            transparent,
+                            transparent 2px,
+                            ${darkTheme ? 'rgba(4, 0, 255, 0.07)' : 'rgba(0, 132, 255, 0.07)'} 5px,
+                            ${darkTheme ? 'rgba(4, 0, 255, 0.07)' : 'rgba(0, 132, 255, 0.07)'} 6px,
+                            transparent 4px,
+                            transparent 10px
+                        )`
+                    }}
+                >
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".html"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                    />
+                    {isLoading ? (
+                        <>
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                            <p className="text-xs font-medium text-center text-zinc-700 dark:text-zinc-300">Procesando archivo...</p>
+                        </>
+                    ) : (
+                        <>
+                            <span className="material-symbols-outlined text-zinc-400 group-hover:text-primary transition-colors text-xl mb-2">Subir Archivo</span>
+                            <p className="text-sm font-medium text-center text-zinc-700 dark:text-zinc-300">Importar archivo HTML</p>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center mt-1">Arrastrar el archivo o clickear para buscarlo</p>
+                        </>
+                    )}
+                </div>
+            ) : (
+                <>
                     <div className="p-4 space-y-6 flex flex-col flex-1 min-h-0">
                         {/* Mode Toggle */}
                         <div className="space-y-4">
                             <p className="text-xs text-start font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-1">Modo de Generación</p>
-                            <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-1 gap-1">
-                                <button
+                            <div className="relative flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-1 gap-1 overflow-hidden">
+                                {/* Fondo animado */}
+                                <motion.div
+                                    layout
+                                    initial={false}
+                                    animate={{
+                                        x: generationMode === 'manual' ? 0 : '100%',
+                                    }}
+                                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                                    className="absolute top-0 left-0 w-1/2 h-full rounded-md bg-primary z-0 shadow-md"
+                                    style={{
+                                        // El fondo cubre el botón activo
+                                        width: '50%',
+                                    }}
+                                />
+                                <motion.button
                                     onClick={() => setGenerationMode('manual')}
-                                    className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none ${generationMode === 'manual'
-                                            ? 'bg-primary text-white shadow-sm'
+                                    whileTap={{ scale: 0.95 }}
+                                    whileHover={{ scale: 1.04 }}
+                                    className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none relative z-10 ${generationMode === 'manual'
+                                            ? 'text-white'
                                             : 'text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 dark:hover:text-white'
                                         }`}
+                                    transition={{ type: 'spring', stiffness: 180, damping: 12 }}
                                 >
                                     Manual
-                                </button>
-                                <button
+                                </motion.button>
+                                <motion.button
                                     onClick={() => setGenerationMode('automatico')}
-                                    className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none ${generationMode === 'automatico'
-                                            ? 'bg-primary text-white shadow-sm'
+                                    whileTap={{ scale: 0.95 }}
+                                    whileHover={{ scale: 1.04 }}
+                                    className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none relative z-10 ${generationMode === 'automatico'
+                                            ? 'text-white'
                                             : 'text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 dark:hover:text-white'
                                         }`}
+                                    transition={{ type: 'spring', stiffness: 180, damping: 12 }}
                                 >
                                     Automático
-                                </button>
+                                </motion.button>
                             </div>
                         </div>
-
                         {/* Subject Search */}
                         <div className="space-y-4 flex flex-col flex-1 min-h-0">
                             <div className="space-y-2">
@@ -351,47 +376,73 @@ export default function Sidebar() {
                                 }}
                                 className="space-y-1 flex-1 min-h-0 overflow-y-auto scrollbar-custom"
                             >
-                                {!materias || materias.length === 0 ? (
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-4">
-                                        No hay materias cargadas. Sube un archivo HTML.
-                                    </p>
-                                ) : materiasFiltradas.length === 0 ? (
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-4">
-                                        No se encontraron materias con "{debouncedSearchTerm}"
-                                    </p>
-                                ) : (
-                                    materiasFiltradas.map(materia => (
-                                        <Subject key={materia.codigo} materia={materia} generationMode={generationMode} dragEnabled={dragEnabled} />
-                                    ))
-                                )}
+                                <AnimatePresence>
+                                    {!materias || materias.length === 0 ? (
+                                        <motion.p
+                                            className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-4"
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: 10 }}
+                                            transition={{ duration: 0.3 }}
+                                        >
+                                            No hay materias cargadas. Sube un archivo HTML.
+                                        </motion.p>
+                                    ) : materiasFiltradas.length === 0 ? (
+                                        <motion.p
+                                            className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-4"
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: 10 }}
+                                            transition={{ duration: 0.3 }}
+                                        >
+                                            No se encontraron materias con "{debouncedSearchTerm}"
+                                        </motion.p>
+                                    ) : (
+                                        materiasFiltradas.map(materia => (
+                                            <motion.div
+                                                key={materia.codigo}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: 10 }}
+                                                transition={{ duration: 0.25 }}
+                                            >
+                                                <Subject materia={materia} generationMode={generationMode} dragEnabled={dragEnabled} />
+                                            </motion.div>
+                                        ))
+                                    )}
+                                </AnimatePresence>
                             </div>
                         </div>
                     </div>
-                    
                     {/* Botón Generar Horario - Solo en modo automático */}
                     {generationMode === 'automatico' && (
                         <div className="px-4 pb-4">
-                            <button
+                            <motion.button
                                 onClick={handleGenerate}
                                 disabled={isGenerating || Object.keys(materiasSeleccionadas).length === 0}
-                                className={`w-full py-3 ${isGenerating ? 'bg-primary cursor-not-allowed' : 'cursor-pointer bg-primary hover:bg-primary/90 disabled:bg-zinc-100 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed'} text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md disabled:shadow-none`}
+                                whileTap={{ scale: 0.97 }}
+                                whileHover={{ scale: 1.03 }}
+                                className={`w-full py-3 ${isGenerating ? 'bg-[#1392ec] cursor-not-allowed' : 'cursor-pointer bg-[#1392ec] hover:bg-[#1392ec]/90 disabled:bg-zinc-100 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed'} text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md disabled:shadow-none`}
                                 style={(Object.keys(materiasSeleccionadas).length === 0) ? {
                                     backgroundImage: `repeating-linear-gradient(
                                         45deg,
                                         transparent,
                                         transparent 4px,
-                                        ${darkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(25, 255, 0, 0.03)'} 5px,
-                                        ${darkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(25, 255, 0, 0.03)'} 6px,
+                                        ${darkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(19, 146, 236, 0.03)'} 5px,
+                                        ${darkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(19, 146, 236, 0.03)'} 6px,
                                         transparent 4px,
                                         transparent 10px
                                     )`
                                 } : {}}
+                                transition={{ type: 'spring', stiffness: 180, damping: 12 }}
                             >
                                 {isGenerating ? (
-                                    <>
-                                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                                        <span className='text-sm font-semibold'>Generando horario...</span>
-                                    </>
+                                    <motion.div
+                                        className="rounded-full h-5 w-5 border-2 border-white border-t-transparent"
+                                        animate={{ rotate: 360 }}
+                                        transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
+                                        style={{ display: 'inline-block' }}
+                                    />
                                 ) : (
                                     <>
                                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -400,13 +451,19 @@ export default function Sidebar() {
                                         <span className='text-sm font-semibold'>Generar Horario</span>
                                     </>
                                 )}
-                            </button>
+                            </motion.button>
                         </div>
                     )}
-
                     {/* Preferencias de Generación Automática */}
+                    <AnimatePresence>
                     {generationMode === 'automatico' && (
-                        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
+                        <motion.div
+                            className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            transition={{ duration: 0.3 }}
+                        >
                             <div className="flex items-center justify-between mb-4">
                                 <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Preferencias</p>
                             </div>
@@ -444,12 +501,16 @@ export default function Sidebar() {
                                     </button>
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
                     )}
-
-                    {/* Preferencias de Generación Automática */}
                     {generationMode === 'manual' && (
-                        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
+                        <motion.div
+                            className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            transition={{ duration: 0.3 }}
+                        >
                             <div className="flex items-center justify-between mb-4">
                                 <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Preferencias</p>
                             </div>
@@ -466,9 +527,11 @@ export default function Sidebar() {
                                     </button>
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
                     )}
-                </>)}
-        </aside>
+                    </AnimatePresence>
+                </>
+            )}
+        </motion.aside>
     )
 }
