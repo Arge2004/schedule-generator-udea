@@ -1,0 +1,135 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { scrapeHorarios, getFacultades, getProgramas } from './scraper.js';
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Middlewares
+app.use(cors());
+app.use(express.json());
+
+// Logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV 
+  });
+});
+
+/**
+ * GET /api/facultades
+ * Obtiene la lista de facultades disponibles
+ */
+app.get('/api/facultades', async (req, res) => {
+  try {
+    console.log('Obteniendo lista de facultades...');
+    const facultades = await getFacultades();
+    res.json({ success: true, data: facultades });
+  } catch (error) {
+    console.error('Error en /api/facultades:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * GET /api/programas/:facultad
+ * Obtiene la lista de programas para una facultad específica
+ */
+app.get('/api/programas/:facultad', async (req, res) => {
+  try {
+    const { facultad } = req.params;
+    console.log(`Obteniendo programas para facultad: ${facultad}`);
+    
+    if (!facultad) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Facultad es requerida' 
+      });
+    }
+
+    const programas = await getProgramas(facultad);
+    res.json({ success: true, data: programas });
+  } catch (error) {
+    console.error('Error en /api/programas:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * POST /api/scrape-horarios
+ * Realiza el scraping de horarios
+ * Body: { facultad: string, programa: string }
+ */
+app.post('/api/scrape-horarios', async (req, res) => {
+  try {
+    const { facultad, programa } = req.body;
+
+    console.log(`Iniciando scraping - Facultad: ${facultad}, Programa: ${programa}`);
+
+    if (!facultad || !programa) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Facultad y programa son requeridos' 
+      });
+    }
+
+    const html = await scrapeHorarios(facultad, programa);
+
+    res.json({ 
+      success: true, 
+      data: { html },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Error en /api/scrape-horarios:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ 
+    success: false, 
+    error: 'Ruta no encontrada' 
+  });
+});
+
+// Error handler
+app.use((error, req, res, next) => {
+  console.error('Error no manejado:', error);
+  res.status(500).json({ 
+    success: false, 
+    error: 'Error interno del servidor' 
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`\n🚀 Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`\nEndpoints disponibles:`);
+  console.log(`  GET  /api/health`);
+  console.log(`  GET  /api/facultades`);
+  console.log(`  GET  /api/programas/:facultad`);
+  console.log(`  POST /api/scrape-horarios\n`);
+});

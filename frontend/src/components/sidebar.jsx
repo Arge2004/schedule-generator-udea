@@ -4,10 +4,16 @@ import { parseHTMLFile } from '../logic/parser.js';
 import { generarHorariosAutomaticos } from '../logic/generator.js';
 import { useMateriasStore } from '../store/materiasStore.js';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getFacultades, getProgramas, scrapeHorarios } from '../services/api.js';
 
 export default function Sidebar() {
     const [isLoading, setIsLoading] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isScraping, setIsScraping] = useState(false);
+    const [facultades, setFacultades] = useState([]);
+    const [programas, setProgramas] = useState([]);
+    const [selectedFacultad, setSelectedFacultad] = useState('');
+    const [selectedPrograma, setSelectedPrograma] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [generationMode, setGenerationMode] = useState('manual'); // 'manual' o 'automatico'
@@ -155,6 +161,74 @@ export default function Sidebar() {
         }
     };
 
+    // Cargar facultades al montar el componente
+    useEffect(() => {
+        const loadFacultades = async () => {
+            try {
+                const data = await getFacultades();
+                setFacultades(data);
+            } catch (error) {
+                console.error('Error cargando facultades:', error);
+            }
+        };
+        loadFacultades();
+    }, []);
+
+    // Cargar programas cuando cambia la facultad
+    useEffect(() => {
+        const loadProgramas = async () => {
+            if (!selectedFacultad) {
+                setProgramas([]);
+                setSelectedPrograma('');
+                return;
+            }
+
+            try {
+                const data = await getProgramas(selectedFacultad);
+                setProgramas(data);
+                setSelectedPrograma(''); // Reset programa selection
+            } catch (error) {
+                console.error('Error cargando programas:', error);
+                setProgramas([]);
+            }
+        };
+        loadProgramas();
+    }, [selectedFacultad]);
+
+    const handleScrapeHorarios = async () => {
+        if (!selectedFacultad || !selectedPrograma) {
+            alert('Por favor selecciona una facultad y un programa');
+            return;
+        }
+
+        try {
+            setIsScraping(true);
+            console.log('🌐 Iniciando web scraping...');
+            
+            const html = await scrapeHorarios(selectedFacultad, selectedPrograma);
+            
+            console.log('✅ HTML obtenido, parseando...');
+            
+            // Crear un File simulado a partir del HTML
+            const blob = new Blob([html], { type: 'text/html' });
+            const file = new File([blob], 'horarios.html', { type: 'text/html' });
+            
+            // Parsear el HTML usando la función existente
+            const data = await parseHTMLFile(file);
+            
+            console.log('✅ Parseo exitoso!');
+            console.log('Datos completos:', data);
+
+            // Guardar en el store de Zustand
+            setMateriasData(data);
+        } catch (error) {
+            console.error('❌ Error durante el scraping:', error);
+            alert(`Error al obtener horarios: ${error.message}`);
+        } finally {
+            setIsScraping(false);
+        }
+    };
+
     const handleGenerate = async () => {
         setIsGenerating(true);
         
@@ -235,42 +309,120 @@ export default function Sidebar() {
             transition={{ type: 'spring', stiffness: 120, damping: 16 }}
         >
             {!materias || materias.length === 0 ? (
-                <div
-                    onClick={handleUploadClick}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
-                    className={`group h-full relative flex flex-col items-center justify-center p-6 border-2 border-dashed border-zinc-200 dark:border-zinc-800 hover:border-primary/50 dark:hover:border-primary/50 transition-all cursor-pointer ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
-                    style={{
-                        backgroundImage: `repeating-linear-gradient(
-                            45deg,
-                            transparent,
-                            transparent 2px,
-                            ${darkTheme ? 'rgba(4, 0, 255, 0.07)' : 'rgba(0, 132, 255, 0.07)'} 5px,
-                            ${darkTheme ? 'rgba(4, 0, 255, 0.07)' : 'rgba(0, 132, 255, 0.07)'} 6px,
-                            transparent 4px,
-                            transparent 10px
-                        )`
-                    }}
-                >
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".html"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                    />
-                    {isLoading ? (
-                        <>
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
-                            <p className="text-xs font-medium text-center text-zinc-700 dark:text-zinc-300">Procesando archivo...</p>
-                        </>
-                    ) : (
-                        <>
-                            <span className="material-symbols-outlined text-zinc-400 group-hover:text-primary transition-colors text-xl mb-2">Subir Archivo</span>
-                            <p className="text-sm font-medium text-center text-zinc-700 dark:text-zinc-300">Importar archivo HTML</p>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center mt-1">Arrastrar el archivo o clickear para buscarlo</p>
-                        </>
-                    )}
+                <div className="h-full flex flex-col items-center justify-center p-6">
+                    <div className="w-full max-w-md space-y-6">
+                        {/* Web Scraping Section */}
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider text-center">
+                                Obtener Horarios UdeA
+                            </h3>
+                            
+                            {/* Facultad Selector */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                    Facultad
+                                </label>
+                                <select
+                                    value={selectedFacultad}
+                                    onChange={(e) => setSelectedFacultad(e.target.value)}
+                                    disabled={isScraping}
+                                    className="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                                >
+                                    <option value="">Selecciona una facultad...</option>
+                                    {facultades.map((fac) => (
+                                        <option key={fac.value} value={fac.value}>
+                                            {fac.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Programa Selector */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                    Programa
+                                </label>
+                                <select
+                                    value={selectedPrograma}
+                                    onChange={(e) => setSelectedPrograma(e.target.value)}
+                                    disabled={!selectedFacultad || isScraping || programas.length === 0}
+                                    className="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                                >
+                                    <option value="">
+                                        {!selectedFacultad 
+                                            ? 'Primero selecciona una facultad...' 
+                                            : programas.length === 0 
+                                            ? 'Cargando programas...' 
+                                            : 'Selecciona un programa...'}
+                                    </option>
+                                    {programas.map((prog) => (
+                                        <option key={prog.value} value={prog.value}>
+                                            {prog.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Scrape Button */}
+                            <button
+                                onClick={handleScrapeHorarios}
+                                disabled={!selectedFacultad || !selectedPrograma || isScraping}
+                                className="w-full px-4 py-3 bg-primary hover:bg-primary/90 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
+                            >
+                                {isScraping ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                        <span>Obteniendo horarios...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined text-lg">cloud_download</span>
+                                        <span>Obtener Horarios</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-white dark:bg-background-dark px-2 text-zinc-500 dark:text-zinc-400">
+                                    o
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Upload HTML Section */}
+                        <div
+                            onClick={handleUploadClick}
+                            onDragOver={handleDragOver}
+                            onDrop={handleDrop}
+                            className={`group relative flex flex-col items-center justify-center p-6 border-2 border-dashed border-zinc-200 dark:border-zinc-800 hover:border-primary/50 dark:hover:border-primary/50 transition-all cursor-pointer rounded-lg ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+                        >
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".html"
+                                onChange={handleFileUpload}
+                                className="hidden"
+                            />
+                            {isLoading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                                    <p className="text-xs font-medium text-center text-zinc-700 dark:text-zinc-300">Procesando archivo...</p>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="material-symbols-outlined text-zinc-400 group-hover:text-primary transition-colors text-4xl mb-2">upload_file</span>
+                                    <p className="text-sm font-medium text-center text-zinc-700 dark:text-zinc-300">Importar archivo HTML</p>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center mt-1">Arrastra o haz clic para cargar</p>
+                                </>
+                            )}
+                        </div>
+                    </div>
                 </div>
             ) : (
                 <>
