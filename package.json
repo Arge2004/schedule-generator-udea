@@ -1,0 +1,20 @@
+{
+  "name": "schedule-generator-monolito",
+  "version": "1.0.0",
+  "description": "Generador de horarios UdeA - Monolito completo",
+  "scripts": {
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && NODE_ENV=production npm start",
+    "deploy": "npm run build && npm start",
+    "install:all": "cd frontend && npm install && cd ../backend && npm install && npx playwright install"
+  },
+  "keywords": ["horarios", "udea", "scraping"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

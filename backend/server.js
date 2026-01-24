@@ -1,12 +1,18 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { scrapeHorarios, getFacultades, getProgramas } from './scraper.js';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 3001;
+const isDevelopment = process.env.NODE_ENV !== 'production';
 
 // Middlewares
 app.use(cors());
@@ -107,13 +113,24 @@ app.post('/api/scrape-horarios', async (req, res) => {
   }
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ 
-    success: false, 
-    error: 'Ruta no encontrada' 
+// Servir archivos estáticos del frontend en producción
+if (!isDevelopment) {
+  const frontendPath = path.join(__dirname, '../frontend/dist');
+  app.use(express.static(frontendPath));
+  
+  // Fallback para SPA routing - cualquier ruta que no sea /api/* sirve index.html
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
   });
-});
+} else {
+  // 404 handler para desarrollo (cuando frontend está en puerto separado)
+  app.use((req, res) => {
+    res.status(404).json({ 
+      success: false, 
+      error: 'Ruta no encontrada' 
+    });
+  });
+}
 
 // Error handler
 app.use((error, req, res, next) => {
@@ -127,9 +144,14 @@ app.use((error, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`\n🚀 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`\nEndpoints disponibles:`);
+  console.log(`🔧 Modo: ${isDevelopment ? 'Desarrollo (API only)' : 'Producción (Monolito)'}`);
+  console.log(`\nEndpoints API:`);
   console.log(`  GET  /api/health`);
   console.log(`  GET  /api/facultades`);
   console.log(`  GET  /api/programas/:facultad`);
-  console.log(`  POST /api/scrape-horarios\n`);
+  console.log(`  POST /api/scrape-horarios`);
+  if (!isDevelopment) {
+    console.log(`\n🌐 Frontend: http://localhost:${PORT}`);
+  }
+  console.log();
 });
