@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ScheduleProvider } from './ScheduleContext';
 import { AnimatePresence } from 'framer-motion';
 import ClassBlock from './ClassBlock';
@@ -73,6 +74,66 @@ export default function Schedule() {
     useEffect(() => {
         setNotifier && setNotifier(showToastMessage);
     }, [setNotifier]);
+
+    // Ref para el nodo del schedule que vamos a exportar
+    const scheduleRef = React.useRef(null);
+    const [exportMenuOpen, setExportMenuOpen] = useState(false);
+    const [exporting, setExporting] = useState(false);
+
+    // Refs para el botón y el menú de export, para cerrar al click fuera
+    const exportButtonRef = React.useRef(null);
+    const exportMenuRef = React.useRef(null);
+    const [menuPos, setMenuPos] = useState({ left: 0, top: 0 });
+
+    // Cerrar menú si se hace click fuera
+    useEffect(() => {
+        if (!exportMenuOpen) return;
+        const onDocClick = (e) => {
+            if (exportButtonRef.current?.contains(e.target)) return;
+            if (exportMenuRef.current?.contains(e.target)) return;
+            setExportMenuOpen(false);
+        };
+        document.addEventListener('mousedown', onDocClick);
+        return () => document.removeEventListener('mousedown', onDocClick);
+    }, [exportMenuOpen]);
+
+    // Recalcular posición del menú para que aparezca cerca del botón (encima si cabe, si no abajo)
+    useEffect(() => {
+        if (!exportMenuOpen) return;
+        const compute = () => {
+            const btn = exportButtonRef.current;
+            const menu = exportMenuRef.current;
+            if (!btn) return;
+            const rect = btn.getBoundingClientRect();
+            const menuWidth = menu ? menu.offsetWidth : 160; // fallback
+            const menuHeight = menu ? menu.offsetHeight : 80;
+            const spacing = 8;
+
+            // Preferir mostrar arriba del botón si hay espacio
+            let top = rect.top - menuHeight - spacing;
+            let left = rect.left;
+
+            // Si no cabe arriba, mostrar abajo
+            if (top < 8) {
+                top = rect.bottom + spacing;
+            }
+
+            // Asegurar que el menú no salga del viewport a la derecha
+            const maxLeft = window.innerWidth - menuWidth - 8;
+            if (left > maxLeft) left = maxLeft;
+            if (left < 8) left = 8;
+
+            setMenuPos({ left, top });
+        };
+
+        compute();
+        window.addEventListener('resize', compute);
+        window.addEventListener('scroll', compute, true);
+        return () => {
+            window.removeEventListener('resize', compute);
+            window.removeEventListener('scroll', compute, true);
+        };
+    }, [exportMenuOpen]);
 
     const handleClassHover = (clase, position) => {
         // Cancelar cualquier timeout de ocultación
@@ -523,7 +584,7 @@ export default function Schedule() {
 
     return (
         <ScheduleProvider celdasMateria={celdasMateria} showToastMessage={showToastMessage}>
-        <div className="flex-1 flex flex-col bg-white dark:bg-background-dark" style={{ overflow: (draggingMateria || (availableHorarios && availableHorarios.length > 0)) ? 'visible' : 'hidden' }}>
+        <div ref={scheduleRef} className="flex-1 flex flex-col bg-white dark:bg-background-dark" style={{ overflow: (draggingMateria || (availableHorarios && availableHorarios.length > 0)) ? 'visible' : 'hidden' }}>
             {/* Área del Schedule (ocupa el espacio disponible) */}
             <div className="flex-1 flex flex-col" style={{ overflow: (draggingMateria || (availableHorarios && availableHorarios.length > 0)) ? 'visible' : 'hidden' }}>
                 {/* Header con los días */}
@@ -650,6 +711,35 @@ export default function Schedule() {
             <div className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/50 backdrop-blur-sm px-6 py-3 flex-shrink-0 min-h-[60px]">
                 <div className="flex items-center justify-center h-full">
                     <div className="flex justify-center gap-4">
+                        {/* Export dropdown (PNG / PDF) */}
+                        <div className="absolute left-2 bottom-2 z-[9999]">
+                            <button
+                                ref={exportButtonRef}
+                                onClick={() => setExportMenuOpen(!exportMenuOpen)}
+                                className="p-2 bg-primary px-4 hover:bg-primary/90 rounded-lg transition-all cursor-pointer group flex items-center gap-2"
+                                title="Exportar horario"
+                            >
+                                {exporting ? 'Exportando...' : 'Exportar'}
+                                <svg className={`w-4 h-4 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+
+                            {exportMenuOpen && createPortal(
+                                <div ref={exportMenuRef} style={{ position: 'fixed', left: menuPos.left, top: menuPos.top, zIndex: 10000 }} className="bg-white dark:bg-zinc-900 rounded-md shadow-md border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                                    <button className="w-full cursor-pointer text-left px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center gap-3">
+                                        <img src="/png.png" alt="PNG" className="w-4 h-4" />
+                                        <span className='text-zinc-900 dark:text-white'>PNG</span>
+                                    </button>
+                                    <button className="w-full cursor-pointer text-left px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center gap-3">
+                                        <img src="/pdf.png" alt="PDF" className="w-4 h-4" />
+                                        <span className='text-zinc-900 dark:text-white'>PDF</span>
+                                    </button>
+                                </div>,
+                                document.body
+                            )}
+                        </div>
+
                         {/* Navegación entre horarios */}
                         {horariosGenerados && horariosGenerados.length > 1 && (
                             <div className="flex items-center gap-2">
