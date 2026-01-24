@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 
 export default function ParallaxBackground() {
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -93,13 +94,23 @@ export default function ParallaxBackground() {
     }, []);
 
     return (
-        <div className="flex-1 h-full relative overflow-hidden bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950">
-            
+        <motion.div
+            className="flex-1 h-full relative overflow-hidden bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1 }}
+        >
             {/* TEXTO CIRCULAR: Universidad de Antioquia */}
-            <div 
+            <motion.div 
                 className="absolute top-60 left-1/2 -translate-x-1/2 z-[2] pointer-events-none transition-transform duration-500 ease-out"
+                animate={{
+                    x: mousePosition.x * 15,
+                    y: mousePosition.y * 12,
+                    scale: 1 + Math.sin(time * 0.4) * 0.02
+                }}
+                transition={{ type: 'spring', stiffness: 40, damping: 12 }}
                 style={{
-                    transform: `translate(calc(${mousePosition.x * 15}px), ${mousePosition.y * 12}px) scale(${1 + Math.sin(time * 0.4) * 0.02})`,
                     filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5)) drop-shadow(0 0 20px rgba(255, 255, 255, 0.5))',
                 }}
             >
@@ -189,7 +200,7 @@ export default function ParallaxBackground() {
                         </textPath>
                     </text>
                 </svg>
-            </div>
+            </motion.div>
 
             {/* Algunas líneas duplicadas por delante de biblioteca y fuente */}
             <div 
@@ -283,175 +294,163 @@ export default function ParallaxBackground() {
             {/* Nubes - detrás de los árboles */}
             <div className="absolute inset-0 pointer-events-none z-[3]">
                 {clouds.map((cloud, i) => (
-                    <div
+                    <motion.div
                         key={i}
-                        className="absolute transition-transform duration-1000 ease-out"
+                        className="absolute"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{
+                            opacity: cloud.opacity,
+                            scale: 1 + Math.sin(time * 0.3 + i) * 0.1,
+                            x: mousePosition.x * cloud.speed + Math.sin(time + i) * 30,
+                            y: Math.cos(time * 0.5 + i) * 20,
+                            rotate: cloud.rotation + Math.sin(time + i) * 4
+                        }}
+                        transition={{ duration: 1, type: 'spring', stiffness: 30, damping: 18 }}
                         style={{
                             left: cloud.left,
                             top: cloud.top,
-                            transform: `translateX(${mousePosition.x * cloud.speed + Math.sin(time + i) * 30}px) translateY(${Math.cos(time * 0.5 + i) * 20}px) rotate(${cloud.rotation + Math.sin(time + i) * 4}deg) scale(${1 + Math.sin(time * 0.3 + i) * 0.1})`,
-                            opacity: cloud.opacity,
                             filter: `blur(${2.5 + Math.abs(Math.sin(time + i)) * 0.5}px)`,
                         }}
                     >
                         <img
                             src="/background/nube.png"
                             alt="Nube"
-                            style={{
-                                width: `${cloud.width}px`,
-                                height: 'auto',
-                            }}
+                            style={{ width: `${cloud.width}px`, height: 'auto' }}
                             className="drop-shadow-lg"
                         />
-                    </div>
+                    </motion.div>
                 ))}
             </div>
 
             {/* Árboles de fondo - capa lejana más grande */}
-            <div
-                className="absolute -bottom-0 -left-10 -right-10 h-3/4 transition-transform duration-500 ease-out z-[100]"
-                style={{
-                    transform: `translate(${mousePosition.x * 25 + Math.sin(time * 0.5) * 10}px, ${mousePosition.y * 15 + Math.cos(time * 0.4) * 6}px) scale(${1 + Math.sin(time * 0.3) * 0.04})`,
-                    filter: `blur(1.5px)`,
+            <motion.div
+                className="absolute -bottom-0 -left-10 -right-10 h-3/4 z-[100]"
+                initial={{ opacity: 0, scale: 1.1 }}
+                animate={{
+                    opacity: 1,
+                    scale: 1 + Math.sin(time * 0.3) * 0.04,
+                    x: mousePosition.x * 25 + Math.sin(time * 0.5) * 10,
+                    y: mousePosition.y * 15 + Math.cos(time * 0.4) * 6
                 }}
+                transition={{ duration: 0.8, type: 'spring', stiffness: 30, damping: 18 }}
+                style={{ filter: `blur(1.5px)` }}
             >
-                <img
-                    src="/background/arboles.png"
-                    alt="Árboles"
-                    className="absolute bottom-0 left-0 w-full h-auto object-cover"
-                />
-            </div>
+                <img src="/background/arboles.png" alt="Árboles" className="absolute bottom-0 left-0 w-full h-auto object-cover" />
+            </motion.div>
 
-            {/* Edificios - Biblioteca (izquierda) - mucho más grande */}
-            <div
-                className="absolute bottom-50 left-50 transition-transform duration-400 ease-out z-[3]"
-                style={{
-                    transform: `translate(${mousePosition.x * 40 + Math.sin(time * 0.6) * 8}px, ${mousePosition.y * 30 + Math.sin(time * 0.6) * 6}px) scale(${2 + Math.sin(time * 0.4) * 0.06}) rotate(${Math.sin(time * 0.3) * 1}deg)`,
-                    filter: `blur(${mousePosition.x < -0.2 ? 0.3 : 1}px)`,
+            {/* Edificios - Biblioteca (izquierda) */}
+            <motion.div
+                className="absolute bottom-50 left-50 z-[3]"
+                initial={{ opacity: 0, scale: 1.8 }}
+                animate={{
+                    opacity: 1,
+                    scale: 2 + Math.sin(time * 0.4) * 0.06,
+                    x: mousePosition.x * 40 + Math.sin(time * 0.6) * 8,
+                    y: mousePosition.y * 30 + Math.sin(time * 0.6) * 6,
+                    rotate: Math.sin(time * 0.3) * 1
                 }}
+                transition={{ duration: 0.7, type: 'spring', stiffness: 30, damping: 18 }}
+                style={{ filter: `blur(${mousePosition.x < -0.2 ? 0.3 : 1}px)` }}
             >
-                <img
-                    src="/background/biblioteca.png"
-                    alt="Biblioteca"
-                    className="w-[500px] h-auto object-contain drop-shadow-2xl"
-                />
-            </div>
+                <img src="/background/biblioteca.png" alt="Biblioteca" className="w-[500px] h-auto object-contain drop-shadow-2xl" />
+            </motion.div>
 
-            {/* Edificios - Auditorio (derecha) - mucho más grande */}
-            <div
-                className="absolute bottom-45 -right-20 transition-transform duration-400 ease-out z-[3]"
-                style={{
-                    transform: `translate(${mousePosition.x * 40 + Math.cos(time * 0.5) * 8}px, ${mousePosition.y * 30 + Math.cos(time * 0.5) * 6}px) scale(${0.8 + Math.cos(time * 0.45) * 0.05}) rotate(${Math.cos(time * 0.3) * 1}deg)`,
-                    filter: `blur(${mousePosition.x > 0.2 ? 0.3 : 1}px)`,
+            {/* Edificios - Auditorio (derecha) */}
+            <motion.div
+                className="absolute bottom-45 -right-20 z-[3]"
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{
+                    opacity: 1,
+                    scale: 0.8 + Math.cos(time * 0.45) * 0.05,
+                    x: mousePosition.x * 40 + Math.cos(time * 0.5) * 8,
+                    y: mousePosition.y * 30 + Math.cos(time * 0.5) * 6,
+                    rotate: Math.cos(time * 0.3) * 1
                 }}
+                transition={{ duration: 0.7, type: 'spring', stiffness: 30, damping: 18 }}
+                style={{ filter: `blur(${mousePosition.x > 0.2 ? 0.3 : 1}px)` }}
             >
-                <img
-                    src="/background/auditorio.png"
-                    alt="Auditorio"
-                    className="w-[500px] h-auto object-contain drop-shadow-2xl"
-                />
-            </div>
+                <img src="/background/auditorio.png" alt="Auditorio" className="w-[500px] h-auto object-contain drop-shadow-2xl" />
+            </motion.div>
 
-            {/* Fuente central - más grande */}
-            <div
-                className="absolute bottom-70 left-1/2 transition-transform duration-300 ease-out z-10"
-                style={{
-                    transform: `translate(calc(-50% + ${mousePosition.x * 55 + Math.sin(time * 0.8) * 15}px), ${mousePosition.y * 45 + Math.cos(time * 0.7) * 10}px) scale(${2.2 + Math.sin(time * 0.5) * 0.08})`,
-                    filter: `blur(${Math.abs(mousePosition.x) < 0.3 ? 0.1 : 0.5}px)`,
+            {/* Fuente central */}
+            <motion.div
+                className="absolute bottom-70 left-1/2 transform -translate-x-1/2 z-10"
+                initial={{ opacity: 0, scale: 2 }}
+                animate={{
+                    opacity: 1,
+                    scale: 2.2 + Math.sin(time * 0.5) * 0.08,
+                    x: mousePosition.x * 55 + Math.sin(time * 0.8) * 15,
+                    y: mousePosition.y * 45 + Math.cos(time * 0.7) * 10,
+                    rotate: 0
                 }}
+                transition={{ duration: 0.6, type: 'spring', stiffness: 30, damping: 18 }}
+                style={{ filter: `blur(${Math.abs(mousePosition.x) < 0.3 ? 0.1 : 0.5}px)` }}
             >
-                <img
-                    src="/background/fuente.png"
-                    alt="Fuente"
-                    className="w-96 h-auto object-contain z-20 drop-shadow-2xl"
-                />
-            </div>
+                <img src="/background/fuente.png" alt="Fuente" className="w-96 h-auto object-contain z-20 drop-shadow-2xl" />
+            </motion.div>
 
-            {/* Arbustos que van ATRÁS de la fuente */}
+            {/* Arbustos detrás de la fuente */}
             <div className="absolute inset-0 z-5 pointer-events-none">
                 {bushesBeforeBackground.map((bush, i) => (
-                    <div
+                    <motion.div
                         key={i}
-                        className={`absolute ${bush.bottom} ${bush.x} transition-transform duration-400 ease-out`}
-                        style={{
-                            transform: `
-                                translate(${mousePosition.x * bush.depth * 1.5}px, ${mousePosition.y * (bush.depth - 4) * 1.3}px)
-                                scale(${bush.scale})
-                            `,
-                            filter: `blur(0.5px)`,
+                        className={`absolute ${bush.bottom} ${bush.x}`}
+                        initial={{ opacity: 0, scale: bush.scale * 0.9 }}
+                        animate={{
+                            opacity: 0.7,
+                            scale: bush.scale,
+                            x: mousePosition.x * bush.depth * 1.5,
+                            y: mousePosition.y * (bush.depth - 4) * 1.3
                         }}
+                        transition={{ duration: 0.7, type: 'spring', stiffness: 30, damping: 18 }}
+                        style={{ filter: `blur(0.5px)` }}
                     >
-                        <img
-                            src="/background/arbusto.png"
-                            alt="Arbusto"
-                            className="w-[180px] h-auto object-contain drop-shadow-lg"
-                            style={{
-                                transform: `
-                                    scaleX(${1 + Math.sin(time * 2.1 + i * 2) * 0.1})
-                                    scaleY(${1 + Math.cos(time * 1.1 + i * 1.8) * 0.06})
-                                    skewX(${Math.sin(time * 1.2 + i * 1.3) * 3}deg)
-                                    skewY(${Math.cos(time * 0.7 + i * 1.5) * 2}deg)
-                                `,
-                                opacity: 0.7,
-                            }}
-                        />
-                    </div>
+                        <img src="/background/arbusto.png" alt="Arbusto" className="w-[180px] h-auto object-contain drop-shadow-lg" style={{
+                            transform: `scaleX(${1 + Math.sin(time * 2.1 + i * 2) * 0.1}) scaleY(${1 + Math.cos(time * 1.1 + i * 1.8) * 0.06}) skewX(${Math.sin(time * 1.2 + i * 1.3) * 3}deg) skewY(${Math.cos(time * 0.7 + i * 1.5) * 2}deg)`
+                        }} />
+                    </motion.div>
                 ))}
             </div>
 
-            {/* Capa de suelo/pasto - removida temporalmente */}
-            {/* <div
-                className="absolute -bottom-10 -left-20 -right-20 h-1/3 bg-gradient-to-t from-emerald-200 via-emerald-100 to-transparent dark:from-emerald-950 dark:via-emerald-900 dark:to-transparent transition-transform duration-200 ease-out"
-                style={{
-                    transform: `translateY(${mousePosition.y * 20}px) scale(1.3)`,
-                }}
-            /> */}
-
+            {/* Arbustos delante */}
             <div className="absolute inset-0 z-30 pointer-events-none">
                 {bushes.map((bush, i) => (
-                    <div
+                    <motion.div
                         key={i}
-                        className={`absolute ${bush.bottom} ${bush.x} transition-transform duration-350 ease-out`}
-                        style={{
-                            transform: `
-                                translate(${mousePosition.x * bush.depth * 1.8}px, ${mousePosition.y * (bush.depth - 4) * 1.5}px)
-                                scale(${bush.scale})
-                            `,
-                            filter: `blur(0px)`,
+                        className={`absolute ${bush.bottom} ${bush.x}`}
+                        initial={{ opacity: 0, scale: bush.scale * 0.9 }}
+                        animate={{
                             opacity: bush.opacity || 1,
+                            scale: bush.scale,
+                            x: mousePosition.x * bush.depth * 1.8,
+                            y: mousePosition.y * (bush.depth - 4) * 1.5
                         }}
+                        transition={{ duration: 0.7, type: 'spring', stiffness: 30, damping: 18 }}
+                        style={{ filter: `blur(0px)` }}
                     >
-                        <img
-                            src="/background/arbusto.png"
-                            alt="Arbusto"
-                            className="w-[180px] h-auto object-contain drop-shadow-xl"
-                        />
-                    </div>
+                        <img src="/background/arbusto.png" alt="Arbusto" className="w-[180px] h-auto object-contain drop-shadow-xl" />
+                    </motion.div>
                 ))}
             </div>
 
+            {/* Árboles individuales */}
             {trees.map((tree, i) => (
-                <div
+                <motion.div
                     key={i}
-                    className={`absolute bottom-0 ${tree.bottom} transition-transform duration-500 ease-out`}
-                    style={{
-                        left: tree.left,
-                        transform: `translateX(${mousePosition.x * tree.speed * 2 + Math.sin(time * 0.4 + i * 0.7) * 18}px) translateY(${Math.cos(time * 0.3 + i * 0.5) * 10}px) scale(${tree.scale + Math.sin(time * 0.35 + i) * 0.08}) rotate(${Math.sin(time * 0.25 + i) * 3}deg)`,
+                    className={`absolute bottom-0 ${tree.bottom}`}
+                    initial={{ opacity: 0, scale: tree.scale * 0.9 }}
+                    animate={{
                         opacity: tree.opacity,
-                        zIndex: tree.zIndex || 1,
-                        filter: `blur(${tree.opacity < 0.85 ? 1 : 0.5}px)`,
+                        scale: tree.scale + Math.sin(time * 0.35 + i) * 0.08,
+                        x: mousePosition.x * tree.speed * 2 + Math.sin(time * 0.4 + i * 0.7) * 18,
+                        y: Math.cos(time * 0.3 + i * 0.5) * 10,
+                        rotate: Math.sin(time * 0.25 + i) * 3
                     }}
+                    transition={{ duration: 0.7, type: 'spring', stiffness: 30, damping: 18 }}
+                    style={{ left: tree.left, zIndex: tree.zIndex || 1, filter: `blur(${tree.opacity < 0.85 ? 1 : 0.5}px)` }}
                 >
-                    <img
-                        src="/background/arbol.png"
-                        alt="Árbol"
-                        style={{
-                            width: `${tree.width}px`,
-                            height: 'auto',
-                        }}
-                        className="drop-shadow-2xl"
-                    />
-                </div>
+                    <img src="/background/arbol.png" alt="Árbol" style={{ width: `${tree.width}px`, height: 'auto' }} className="drop-shadow-2xl" />
+                </motion.div>
             ))}
 
             <div
@@ -471,6 +470,6 @@ export default function ParallaxBackground() {
 
             {/* Overlay sutil para el tema oscuro */}
             <div className="absolute inset-0 bg-black/0 dark:bg-black/40 pointer-events-none transition-colors duration-500" />
-        </div>
+        </motion.div>
     );
 }
