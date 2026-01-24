@@ -24,20 +24,19 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
   return (
     <motion.div
       ref={blockRef}
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ 
-        opacity: isPreview ? 0.7 : 1, 
-        scale: 1,
-      }}
-      exit={{ opacity: 0, scale: 0.8 }}
-      transition={{ 
-        duration: 0.3,
-        ease: "easeOut"
+      // Slide enter/exit so permanent blocks animate visibly
+      initial={{ x: '-80%', opacity: 0, scale: isPreview ? 0.95 : 0.98 }}
+      animate={{ x: 0, opacity: isPreview ? 0.75 : 1, scale: 1 }}
+      exit={{ x: '1000%', opacity: 0, scale: 0.95 }}
+      transition={{
+        type: 'spring',
+        stiffness: 220,
+        damping: 20,
       }}
       whileHover={{ 
         scale: 1.02, 
         y: -2,
-        transition: { duration: 0.2 }
+        transition: { duration: 0.15 }
       }}
       className={`absolute inset-1 rounded-lg border-2 border-l-[6px] flex flex-col justify-center p-2.5 overflow-hidden hover:shadow-lg hover:z-20 cursor-pointer ${
         isPreview ? 'border-dashed' : ''

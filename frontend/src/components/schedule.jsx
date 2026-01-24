@@ -523,9 +523,9 @@ export default function Schedule() {
 
     return (
         <ScheduleProvider celdasMateria={celdasMateria} showToastMessage={showToastMessage}>
-        <div className="flex-1 flex flex-col bg-white dark:bg-background-dark overflow-hidden">
+        <div className="flex-1 flex flex-col bg-white dark:bg-background-dark" style={{ overflow: (draggingMateria || (availableHorarios && availableHorarios.length > 0)) ? 'visible' : 'hidden' }}>
             {/* Área del Schedule (ocupa el espacio disponible) */}
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col" style={{ overflow: (draggingMateria || (availableHorarios && availableHorarios.length > 0)) ? 'visible' : 'hidden' }}>
                 {/* Header con los días */}
                 <div className="grid grid-cols-[80px_repeat(7,minmax(140px,1fr))] bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-800 flex-shrink-0">
                     {/* Celda vacía en la esquina */}
