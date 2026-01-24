@@ -171,7 +171,30 @@ export async function parseHTMLFile(file) {
     
     reader.onload = (e) => {
       try {
-        const htmlContent = e.target.result;
+        let htmlContent = e.target.result;
+        
+        // Si detectamos que el HTML declara ISO-8859-1 pero tiene caracteres raros,
+        // intentar leer de nuevo con windows-1252
+        if (htmlContent.includes('charset=ISO-8859-1') || htmlContent.includes('charset="ISO-8859-1"')) {
+          // Detectar si hay caracteres mal codificados (como Ã© en lugar de é)
+          if (/Ã[©ª±¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿]/.test(htmlContent)) {
+            // Parece que se leyó mal, releer con windows-1252
+            const readerRetry = new FileReader();
+            readerRetry.onload = (e2) => {
+              try {
+                const result = parseUniversidadHTML(e2.target.result);
+                resolve(result);
+              } catch (error) {
+                reject(error);
+              }
+            };
+            readerRetry.onerror = () => reject(readerRetry.error);
+            readerRetry.readAsText(file, 'windows-1252');
+            return;
+          }
+        }
+        
+        // Continuar con la lectura UTF-8
         const result = parseUniversidadHTML(htmlContent);
         resolve(result);
       } catch (error) {
@@ -180,8 +203,10 @@ export async function parseHTMLFile(file) {
     };
     
     reader.onerror = () => reject(reader.error);
-    // Especificar la codificación windows-1252 (Latin-1) para caracteres con acento
-    reader.readAsText(file, 'windows-1252');
+    
+    // Intentar leer como UTF-8 primero (para contenido del scraping)
+    reader.readAsText(file, 'UTF-8');
   });
 }
+
 

@@ -367,7 +367,7 @@ export default function Sidebar() {
                             <button
                                 onClick={handleScrapeHorarios}
                                 disabled={!selectedFacultad || !selectedPrograma || isScraping}
-                                className="w-full px-4 py-3 bg-primary hover:bg-primary/90 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
+                                className="w-full px-4 py-3 mt-10 bg-primary hover:bg-primary/90 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
                             >
                                 {isScraping ? (
                                     <>
@@ -376,51 +376,10 @@ export default function Sidebar() {
                                     </>
                                 ) : (
                                     <>
-                                        <span className="material-symbols-outlined text-lg">cloud_download</span>
                                         <span>Obtener Horarios</span>
                                     </>
                                 )}
                             </button>
-                        </div>
-
-                        {/* Divider */}
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
-                            </div>
-                            <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-white dark:bg-background-dark px-2 text-zinc-500 dark:text-zinc-400">
-                                    o
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Upload HTML Section */}
-                        <div
-                            onClick={handleUploadClick}
-                            onDragOver={handleDragOver}
-                            onDrop={handleDrop}
-                            className={`group relative flex flex-col items-center justify-center p-6 border-2 border-dashed border-zinc-200 dark:border-zinc-800 hover:border-primary/50 dark:hover:border-primary/50 transition-all cursor-pointer rounded-lg ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
-                        >
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".html"
-                                onChange={handleFileUpload}
-                                className="hidden"
-                            />
-                            {isLoading ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
-                                    <p className="text-xs font-medium text-center text-zinc-700 dark:text-zinc-300">Procesando archivo...</p>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="material-symbols-outlined text-zinc-400 group-hover:text-primary transition-colors text-4xl mb-2">upload_file</span>
-                                    <p className="text-sm font-medium text-center text-zinc-700 dark:text-zinc-300">Importar archivo HTML</p>
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center mt-1">Arrastra o haz clic para cargar</p>
-                                </>
-                            )}
                         </div>
                     </div>
                 </div>

@@ -65,7 +65,14 @@ export async function scrapeHorarios(facultad, programa) {
     await page.waitForTimeout(2000);
 
     // Obtener el HTML completo de la página resultante
-    const html = await page.content();
+    let html = await page.content();
+    
+    // Asegurar que el HTML declare UTF-8 en lugar de ISO-8859-1
+    // Playwright ya convierte el contenido a UTF-8, solo necesitamos actualizar el meta tag
+    html = html.replace(
+      /<meta[^>]*charset\s*=\s*["']?ISO-8859-1["']?[^>]*>/gi,
+      '<meta charset="UTF-8">'
+    );
     
     console.log('HTML obtenido exitosamente');
 
