@@ -170,6 +170,12 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
 
   // Handlers para drag and drop (solo en modo manual)
   const handleDragStart = (e) => {
+    // No permitir arrastrar si la materia está deshabilitada por conflictos
+    if (subjectDisabled) {
+      e.preventDefault();
+      return;
+    }
+
     if (generationMode !== 'manual' || !materia?.grupos || materia.grupos.length === 0) {
       e.preventDefault();
       return;
@@ -200,12 +206,12 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
       }`}>
         {generationMode === 'manual' ? (
           <div 
-            draggable={dragEnabled && materia?.grupos && materia.grupos.length > 0}
-            onDragStart={dragEnabled ? handleDragStart : undefined}
-            onDragEnd={dragEnabled ? handleDragEnd : undefined}
+            draggable={dragEnabled && materia?.grupos && materia.grupos.length > 0 && !subjectDisabled}
+            onDragStart={dragEnabled && !subjectDisabled ? handleDragStart : undefined}
+            onDragEnd={dragEnabled && !subjectDisabled ? handleDragEnd : undefined}
             onClick={!dragEnabled ? handleItemClick : undefined}
             className={`flex items-center gap-3 p-2.5 hover:bg-zinc-200 rounded dark:hover:bg-zinc-100/10 group ${
-              dragEnabled && materia?.grupos && materia.grupos.length > 0 ? 'cursor-move' : 'cursor-pointer'
+              dragEnabled && materia?.grupos && materia.grupos.length > 0 && !subjectDisabled ? 'cursor-move' : 'cursor-pointer'
             }`}
             style={subjectDisabled && !isSelected ? {
               backgroundImage: `repeating-linear-gradient(
