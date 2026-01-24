@@ -5,6 +5,7 @@ import { generarHorariosAutomaticos } from '../logic/generator.js';
 import { useMateriasStore } from '../store/materiasStore.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getFacultades, getProgramas, scrapeHorarios } from '../services/api.js';
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function Sidebar() {
     const [isLoading, setIsLoading] = useState(false);
@@ -118,7 +119,10 @@ export default function Sidebar() {
         }
 
         if (!file.name.endsWith('.html')) {
-            alert('Por favor, selecciona un archivo HTML válido');
+            toast.error('Por favor, selecciona un archivo HTML válido', {
+                duration: 3000,
+                position: 'top-center',
+            });
             return;
         }
 
@@ -130,11 +134,32 @@ export default function Sidebar() {
             console.log('✅ Parseo exitoso!');
             console.log('Datos completos:', data);
 
+            // Verificar si hay materias disponibles
+            if (!data.materias || data.materias.length === 0) {
+                toast('No hay horarios disponibles en este archivo', {
+                    icon: 'ℹ️',
+                    duration: 4000,
+                    position: 'top-center',
+                    style: {
+                        background: '#3b82f6',
+                        color: '#fff',
+                    },
+                });
+                return;
+            }
+
             // Guardar en el store de Zustand
             setMateriasData(data);
+            toast.success('¡Archivo procesado exitosamente!', {
+                duration: 2000,
+                position: 'top-center',
+            });
         } catch (error) {
             console.error('❌ Error al parsear el archivo:', error);
-            alert('Error al procesar el archivo. Verifica que sea un HTML válido.');
+            toast.error('Error al procesar el archivo. Verifica que sea un HTML válido.', {
+                duration: 3000,
+                position: 'top-center',
+            });
         } finally {
             setIsLoading(false);
         }
@@ -205,7 +230,10 @@ export default function Sidebar() {
 
     const handleScrapeHorarios = async () => {
         if (!selectedFacultad || !selectedPrograma) {
-            alert('Por favor selecciona una facultad y un programa');
+            toast.error('Por favor selecciona una facultad y un programa', {
+                duration: 3000,
+                position: 'top-center',
+            });
             return;
         }
 
@@ -227,11 +255,32 @@ export default function Sidebar() {
             console.log('✅ Parseo exitoso!');
             console.log('Datos completos:', data);
 
+            // Verificar si hay materias disponibles
+            if (!data.materias || data.materias.length === 0) {
+                toast('No hay horarios disponibles para la selección actual', {
+                    icon: 'ℹ️',
+                    duration: 4000,
+                    position: 'top-center',
+                    style: {
+                        background: '#3b82f6',
+                        color: '#fff',
+                    },
+                });
+                return;
+            }
+
             // Guardar en el store de Zustand
             setMateriasData(data);
+            toast.success('¡Horarios cargados exitosamente!', {
+                duration: 2000,
+                position: 'top-center',
+            });
         } catch (error) {
             console.error('❌ Error durante el scraping:', error);
-            alert(`Error al obtener horarios: ${error.message}`);
+            toast.error(`Error al obtener horarios: ${error.message}`, {
+                duration: 4000,
+                position: 'top-center',
+            });
         } finally {
             setIsScraping(false);
         }
@@ -309,13 +358,15 @@ export default function Sidebar() {
     };
 
     return (
-        <motion.aside
-            className="w-80 h-full border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col overflow-y-auto"
-            initial={{ x: -80, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -80, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 120, damping: 16 }}
-        >
+        <>
+            <Toaster />
+            <motion.aside
+                className="w-80 h-full border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col overflow-y-auto"
+                initial={{ x: -80, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -80, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 120, damping: 16 }}
+            >
             {!materias || materias.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center p-6">
                     <div className="w-full max-w-md space-y-6">
@@ -654,5 +705,6 @@ export default function Sidebar() {
                 </>
             )}
         </motion.aside>
+        </>
     )
 }
