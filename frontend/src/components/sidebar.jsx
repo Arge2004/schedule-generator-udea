@@ -10,6 +10,8 @@ export default function Sidebar() {
     const [isLoading, setIsLoading] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isScraping, setIsScraping] = useState(false);
+    const [isLoadingFacultades, setIsLoadingFacultades] = useState(false);
+    const [isLoadingProgramas, setIsLoadingProgramas] = useState(false);
     const [facultades, setFacultades] = useState([]);
     const [programas, setProgramas] = useState([]);
     const [selectedFacultad, setSelectedFacultad] = useState('');
@@ -165,10 +167,13 @@ export default function Sidebar() {
     useEffect(() => {
         const loadFacultades = async () => {
             try {
+                setIsLoadingFacultades(true);
                 const data = await getFacultades();
                 setFacultades(data);
             } catch (error) {
                 console.error('Error cargando facultades:', error);
+            } finally {
+                setIsLoadingFacultades(false);
             }
         };
         loadFacultades();
@@ -184,12 +189,15 @@ export default function Sidebar() {
             }
 
             try {
+                setIsLoadingProgramas(true);
                 const data = await getProgramas(selectedFacultad);
                 setProgramas(data);
                 setSelectedPrograma(''); // Reset programa selection
             } catch (error) {
                 console.error('Error cargando programas:', error);
                 setProgramas([]);
+            } finally {
+                setIsLoadingProgramas(false);
             }
         };
         loadProgramas();
@@ -325,10 +333,12 @@ export default function Sidebar() {
                                 <select
                                     value={selectedFacultad}
                                     onChange={(e) => setSelectedFacultad(e.target.value)}
-                                    disabled={isScraping}
+                                    disabled={isScraping || isLoadingFacultades}
                                     className="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
                                 >
-                                    <option value="">Selecciona una facultad...</option>
+                                    <option value="">
+                                        {isLoadingFacultades ? 'Cargando facultades...' : 'Selecciona una facultad...'}
+                                    </option>
                                     {facultades.map((fac) => (
                                         <option key={fac.value} value={fac.value}>
                                             {fac.label}
@@ -345,13 +355,13 @@ export default function Sidebar() {
                                 <select
                                     value={selectedPrograma}
                                     onChange={(e) => setSelectedPrograma(e.target.value)}
-                                    disabled={!selectedFacultad || isScraping || programas.length === 0}
+                                    disabled={!selectedFacultad || isScraping || isLoadingProgramas}
                                     className="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
                                 >
                                     <option value="">
                                         {!selectedFacultad 
                                             ? 'Primero selecciona una facultad...' 
-                                            : programas.length === 0 
+                                            : isLoadingProgramas 
                                             ? 'Cargando programas...' 
                                             : 'Selecciona un programa...'}
                                     </option>
