@@ -27,7 +27,8 @@ export default function GrupoSelectorModal() {
   // Filtrar grupos que no tengan conflicto usando la función centralizada
   const gruposSinConflicto = gruposConflicto.filter(grupo => {
     if (!draggingMateria) return false;
-    // Buscar la materia original por código
+    if (grupo.cupoDisponible === 0) return false; // Excluir grupos sin cupo
+   // Buscar la materia original por código
     const materiaOriginal = materias?.find(m => m.codigo === draggingMateria.codigo);
     if (!materiaOriginal) return false;
     return !checkGrupoConflict(
