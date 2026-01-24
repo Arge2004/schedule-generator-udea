@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useScheduleContext } from './ScheduleContext';
 import { useMateriasStore } from '../store/materiasStore';
 
 /**
  * Modal que aparece cuando hay múltiples grupos con el mismo horario
  * Permite al usuario seleccionar cuál grupo quiere agregar
  */
+
 export default function GrupoSelectorModal() {
   const {
     showGrupoSelector,
@@ -15,38 +17,69 @@ export default function GrupoSelectorModal() {
     gruposSeleccionados,
     setShowGrupoSelector,
     clearDragState,
+    materias,
   } = useMateriasStore();
 
-  console.log('GrupoSelectorModal render:', { showGrupoSelector, gruposConflicto, draggingMateria });
+  const { celdasMateria, showToastMessage, checkGrupoConflict } = useScheduleContext();
+  const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  const horas = Array.from({ length: 16 }, (_, i) => i + 6);
 
-  if (!showGrupoSelector || gruposConflicto.length === 0) {
-    console.log('Modal no se muestra:', { showGrupoSelector, gruposCount: gruposConflicto.length });
+  // Filtrar grupos que no tengan conflicto usando la función centralizada
+  const gruposSinConflicto = gruposConflicto.filter(grupo => {
+    if (!draggingMateria) return false;
+    // Buscar la materia original por código
+    const materiaOriginal = materias?.find(m => m.codigo === draggingMateria.codigo);
+    if (!materiaOriginal) return false;
+    return !checkGrupoConflict(
+      materiaOriginal,
+      grupo,
+      gruposSeleccionados[draggingMateria.codigo]
+    );
+  });
+
+  // Auto-selección si solo hay un grupo sin conflicto
+  useEffect(() => {
+    if (showGrupoSelector && gruposSinConflicto.length === 1 && draggingMateria) {
+      const grupo = gruposSinConflicto[0];
+      selectGrupo(draggingMateria.codigo, grupo.numero);
+      const isSelected = gruposSeleccionados[draggingMateria.codigo];
+      if (!isSelected) {
+        toggleMateriaSelected(draggingMateria.codigo);
+      }
+      setShowGrupoSelector(false, []);
+      useMateriasStore.setState({
+        draggingMateria: null,
+        hoveredScheduleCell: null,
+        availableHorarios: [],
+        previewGrupo: null,
+        showGrupoSelector: false,
+        gruposConflicto: [],
+        pendingModal: false,
+      });
+    }
+  }, [showGrupoSelector, gruposSinConflicto, draggingMateria]);
+
+  if (!showGrupoSelector || gruposSinConflicto.length === 0) {
+    if (showGrupoSelector && gruposConflicto.length > 0 && showToastMessage) {
+      showToastMessage('⚠️ No hay grupos disponibles sin conflicto de horario');
+    }
     return null;
   }
 
-  console.log('Modal visible con grupos:', gruposConflicto);
-  console.log('🎯🎯🎯 MODAL SE ESTÁ RENDERIZANDO AHORA 🎯🎯🎯');
-
   const handleSelectGrupo = (numeroGrupo) => {
-    console.log('handleSelectGrupo llamado:', { numeroGrupo, draggingMateria });
-    
     if (!draggingMateria) {
       console.error('No hay draggingMateria disponible');
       return;
     }
 
-    console.log('Seleccionando grupo:', numeroGrupo, 'para materia:', draggingMateria.codigo);
-
     // Seleccionar el grupo
     selectGrupo(draggingMateria.codigo, numeroGrupo);
-    
+
     // Marcar la materia como seleccionada si no lo está
     const isSelected = gruposSeleccionados[draggingMateria.codigo];
     if (!isSelected) {
       toggleMateriaSelected(draggingMateria.codigo);
     }
-
-    console.log('Grupo seleccionado, cerrando modal');
 
     // Cerrar el modal y limpiar TODO el estado
     setShowGrupoSelector(false, []);
@@ -63,7 +96,6 @@ export default function GrupoSelectorModal() {
   };
 
   const handleCancel = () => {
-    console.log('Modal cancelado');
     setShowGrupoSelector(false, []);
     // Limpiar completamente todo el estado
     useMateriasStore.setState({
@@ -76,6 +108,7 @@ export default function GrupoSelectorModal() {
       pendingModal: false,
     });
   };
+
 
   return (
     <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm" style={{ zIndex: 99999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
@@ -90,24 +123,22 @@ export default function GrupoSelectorModal() {
           </p>
         </div>
 
-        {/* Lista de grupos */}
+        {/* Lista de grupos sin conflicto */}
         <div className="flex-1 overflow-y-auto p-6 space-y-3">
-          {gruposConflicto.map((grupo, idx) => {
+          {gruposSinConflicto.map((grupo, idx) => {
             const sinCupos = grupo.cupoDisponible === 0;
             const isSelected = draggingMateria && gruposSeleccionados[draggingMateria.codigo] === grupo.numero;
-            
             return (
               <button
                 key={idx}
                 onClick={() => !sinCupos && handleSelectGrupo(grupo.numero)}
                 disabled={sinCupos}
-                className={`w-full text-left p-5 rounded-xl border-2 transition-all ${
-                  sinCupos
+                className={`w-full text-left p-5 rounded-xl border-2 transition-all ${sinCupos
                     ? 'border-zinc-200 dark:border-zinc-800 opacity-60 cursor-not-allowed bg-zinc-50 dark:bg-zinc-900/50'
                     : isSelected
-                    ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-500/10 cursor-pointer shadow-sm'
-                    : 'border-zinc-200 dark:border-zinc-800 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 cursor-pointer'
-                }`}
+                      ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-500/10 cursor-pointer shadow-sm'
+                      : 'border-zinc-200 dark:border-zinc-800 hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 cursor-pointer'
+                  }`}
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex items-center gap-2">
@@ -158,7 +189,7 @@ export default function GrupoSelectorModal() {
                       ))}
                     </div>
                   )}
-                  
+
                   {grupo.profesor && (
                     <div className="flex items-center gap-2 pt-1">
                       <svg className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">

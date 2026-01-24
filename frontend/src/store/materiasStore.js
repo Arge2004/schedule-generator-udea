@@ -25,6 +25,9 @@ export const useMateriasStore = create((set) => ({
   gruposConflicto: [], // Grupos que tienen el mismo horario al soltar
   previewGrupo: null, // Preview del grupo al hacer hover { codigo, numeroGrupo, horarios, color }
   pendingModal: false, // Flag para indicar que hay un modal pendiente
+  // Notifier para mensajes (puede ser seteado por Schedule)
+  notify: (message) => { console.log('Notify:', message); },
+  setNotifier: (fn) => set({ notify: fn }),
 
   // Acciones
   setMateriasData: (data) => set({

@@ -11,11 +11,51 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
     selectGrupo, 
     resetKey,
     setDraggingMateria,
-    clearDragState
+    clearDragState,
+    materias,
   } = useMateriasStore();
   const isSelected = !!materiasSeleccionadas[materia?.codigo];
   const [isExpanded, setIsExpanded] = useState(false);
   const grupoSeleccionado = gruposSeleccionados[materia?.codigo];
+  const [celdasMateriaHorario, setCeldasMateriaHorario] = useState(new Map());
+
+  // Sincronizar celdas ocupadas con los grupos seleccionados antes de renderizar el dropdown
+  useEffect(() => {
+    if (generationMode === 'manual' && gruposSeleccionados) {
+      const diasArr = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      const horasArr = Array.from({ length: 16 }, (_, i) => i + 6);
+      const map = new Map();
+      // Obtener todas las materias desde el store (estado global)
+      let todasMaterias = [];
+      if (materias && Array.isArray(materias)) {
+        todasMaterias = materias;
+      } else if (materia) {
+        todasMaterias = [materia];
+      }
+      Object.entries(gruposSeleccionados).forEach(([codigo, grupoNum]) => {
+        if (!codigo || !grupoNum) return;
+        // Buscar la materia y grupo correspondiente en la lista global
+        const mat = todasMaterias.find(m => m.codigo === codigo);
+        if (!mat) return;
+        const grupo = mat.grupos.find(g => g.numero === grupoNum);
+        if (!grupo) return;
+        grupo.horarios.forEach(horario => {
+          horario.dias.forEach(dia => {
+            const diaIndex = diasArr.indexOf(dia);
+            if (diaIndex !== -1) {
+              const horaInicioIdx = horasArr.indexOf(horario.horaInicio);
+              const duracion = horario.horaFin - horario.horaInicio;
+              for (let i = 0; i < duracion; i++) {
+                const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
+                map.set(celdaKey, codigo);
+              }
+            }
+          });
+        });
+      });
+      setCeldasMateriaHorario(map);
+    }
+  }, [gruposSeleccionados, generationMode, materia]);
 
   const handleChange = () => {
     if (materia?.codigo) {
@@ -27,19 +67,49 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
     }
   };
 
+  // Validar conflicto de horarios antes de seleccionar grupo
   const handleGrupoSelect = (numeroGrupo) => {
     // Si el grupo ya está seleccionado, deseleccionar
     if (grupoSeleccionado === numeroGrupo) {
       selectGrupo(materia.codigo, null);
-      // Quitar la materia de seleccionadas
       toggleMateriaSelected(materia.codigo);
-    } else {
-      // Seleccionar el nuevo grupo
-      selectGrupo(materia.codigo, numeroGrupo);
-      // Marcar la materia como seleccionada al seleccionar un grupo
-      if (!isSelected) {
-        toggleMateriaSelected(materia.codigo);
-      }
+      return;
+    }
+
+    // Obtener celdas ocupadas del schedule desde el estado local
+    const celdasMateria = celdasMateriaHorario;
+    const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const horas = Array.from({ length: 16 }, (_, i) => i + 6);
+    const grupo = materia.grupos.find(g => g.numero === numeroGrupo);
+    let tieneConflicto = false;
+    if (grupo) {
+      grupo.horarios.forEach(horario => {
+        horario.dias.forEach(dia => {
+          const diaIndex = dias.indexOf(dia);
+          if (diaIndex !== -1) {
+            const horaInicioIdx = horas.indexOf(horario.horaInicio);
+            const duracion = horario.horaFin - horario.horaInicio;
+            for (let i = 0; i < duracion; i++) {
+              const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
+              const materiaEnCeldaCodigo = celdasMateria.get(celdaKey);
+              if (materiaEnCeldaCodigo && materiaEnCeldaCodigo !== materia.codigo) {
+                tieneConflicto = true;
+                break;
+              }
+            }
+          }
+        });
+      });
+    }
+    if (tieneConflicto) {
+      // Mostrar notificación (usando el notifier registrado en el store)
+      const { notify } = useMateriasStore.getState();
+      if (notify) notify('⚠️ No se puede seleccionar: hay un conflicto con otra materia');
+      return;
+    }
+    selectGrupo(materia.codigo, numeroGrupo);
+    if (!isSelected) {
+      toggleMateriaSelected(materia.codigo);
     }
   };
 
@@ -61,6 +131,38 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
     }
   };
 
+  // Calcular si existe al menos un grupo disponible (sin conflictos) para esta materia
+  const anyGrupoAvailable = (() => {
+    if (!materia?.grupos || materia.grupos.length === 0) return false;
+    const diasArr = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const horasArr = Array.from({ length: 16 }, (_, i) => i + 6);
+    return materia.grupos.some(gr => {
+      if (gr.cupoDisponible === 0) return false;
+      // Si el grupo no tiene horarios, considerarlo disponible
+      if (!gr.horarios || gr.horarios.length === 0) return true;
+      // Verificar si alguno de sus horarios choca con el mapa de celdas
+      for (const horario of gr.horarios) {
+        for (const dia of horario.dias) {
+          const diaIndex = diasArr.indexOf(dia);
+          if (diaIndex === -1) continue;
+          const horaInicioIdx = horasArr.indexOf(horario.horaInicio);
+          const duracion = horario.horaFin - horario.horaInicio;
+          for (let i = 0; i < duracion; i++) {
+            const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
+            const materiaEnCeldaCodigo = celdasMateriaHorario.get(celdaKey);
+            if (materiaEnCeldaCodigo && materiaEnCeldaCodigo !== materia.codigo) {
+              // Tiene conflicto, este grupo no está disponible
+              return false;
+            }
+          }
+        }
+      }
+      // No se detectaron conflictos para este grupo
+      return true;
+    });
+  })();
+  const subjectDisabled = !anyGrupoAvailable;
+
   const toggleExpand = (e) => {
     e.preventDefault();
     setIsExpanded(!isExpanded);
@@ -72,9 +174,7 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
       e.preventDefault();
       return;
     }
-    
-    console.log('Drag start:', materia.nombre);
-    
+        
     // Guardar datos de la materia en el store
     setDraggingMateria({
       codigo: materia.codigo,
@@ -88,24 +188,7 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
   };
 
   const handleDragEnd = () => {
-    console.log('Drag end - Verificando estado...');
     // Limpiar después de un delay MÁS LARGO para que el drop tenga tiempo de procesar
-    setTimeout(() => {
-      const state = useMateriasStore.getState();
-      console.log('Drag end - Estado verificado:', {
-        pendingModal: state.pendingModal,
-        showGrupoSelector: state.showGrupoSelector,
-        draggingMateria: !!state.draggingMateria
-      });
-      
-      // Si no hay modal activo y aún hay draggingMateria, es porque no hubo drop válido
-      if (!state.pendingModal && !state.showGrupoSelector && state.draggingMateria) {
-        console.log('Drag end: Limpiando por timeout (no hubo drop válido)');
-        clearDragState();
-      } else {
-        console.log('Drag end: NO limpiando - hay modal activo o ya se limpió');
-      }
-    }, 200); // Aumentado a 200ms para dar más tiempo
   };
 
   return (
@@ -124,6 +207,15 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
             className={`flex items-center gap-3 p-2.5 hover:bg-zinc-200 rounded dark:hover:bg-zinc-100/10 group ${
               dragEnabled && materia?.grupos && materia.grupos.length > 0 ? 'cursor-move' : 'cursor-pointer'
             }`}
+            style={subjectDisabled && !isSelected ? {
+              backgroundImage: `repeating-linear-gradient(
+                45deg,
+                rgba(220,38,38,0.18) 0px,
+                rgba(220,38,38,0.18) 6px,
+                transparent 6px,
+                transparent 12px
+              )`
+            } : undefined}
           >
             <div className="flex flex-col items-start flex-1">
               <span className="text-sm font-semibold text-slate-900 dark:text-zinc-100">
@@ -145,7 +237,18 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
             )}
           </div>
         ) : (
-          <label className="flex items-center gap-3 p-2.5 hover:bg-zinc-50 rounded-lg dark:hover:bg-zinc-100/10 cursor-pointer group">
+          <label
+            className={`flex items-center gap-3 p-2.5 hover:bg-zinc-50 rounded-lg dark:hover:bg-zinc-100/10 cursor-pointer group ${subjectDisabled && !isSelected ? 'opacity-90' : ''}`}
+            style={subjectDisabled && !isSelected ? {
+              backgroundImage: `repeating-linear-gradient(
+                45deg,
+                rgba(220,38,38,0.18) 0px,
+                rgba(220,38,38,0.18) 6px,
+                transparent 6px,
+                transparent 12px
+              )`
+            } : undefined}
+          >
             <div className="flex flex-col items-start flex-1">
               <span className="text-sm font-semibold text-slate-900 dark:text-zinc-100">
                 {materia?.nombre ? materia.nombre : "Undefined Subject"}
@@ -154,10 +257,15 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
                 ID: {materia?.codigo ? materia.codigo : "XXXXXX"} • <span className="text-primary">{materia?.grupos ? materia.grupos.length + " Grupos disponibles" : "Sin grupos"}</span>
               </span>
             </div>
+            {subjectDisabled && !isSelected && (
+              // efecto de rayas diagonales aplicado vía style del contenedor
+              null
+            )}
             <input
-              className="w-5 h-5 rounded cursor-pointer border border-zinc-300 dark:bg-zinc-900 dark:border-zinc-700 focus:ring-primary"
+              className={`w-5 h-5 rounded border border-zinc-300 dark:bg-zinc-900 dark:border-zinc-700 focus:ring-primary ${subjectDisabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
               type="checkbox"
               checked={isSelected}
+              disabled={subjectDisabled}
               onChange={handleChange}
               onFocus={(e) => e.preventDefault()}
               style={{
@@ -199,17 +307,43 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
               {materia.grupos.map((grupo, idx) => {
                 const sinCupos = grupo.cupoDisponible === 0;
                 const isGrupoSelected = grupoSeleccionado === grupo.numero;
+                // Validar conflicto para este grupo
+                let tieneConflicto = false;
+                if (grupo) {
+                  grupo.horarios.forEach(horario => {
+                    horario.dias.forEach(dia => {
+                      const diasArr = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+                      const horasArr = Array.from({ length: 16 }, (_, i) => i + 6);
+                      const diaIndex = diasArr.indexOf(dia);
+                      if (diaIndex !== -1) {
+                        const horaInicioIdx = horasArr.indexOf(horario.horaInicio);
+                        const duracion = horario.horaFin - horario.horaInicio;
+                        for (let i = 0; i < duracion; i++) {
+                          const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
+                          const materiaEnCeldaCodigo = celdasMateriaHorario.get(celdaKey);
+                          if (materiaEnCeldaCodigo && materiaEnCeldaCodigo !== materia.codigo) {
+                            tieneConflicto = true;
+                            break;
+                          }
+                        }
+                      }
+                    });
+                  });
+                }
+                const disabled = sinCupos || tieneConflicto;
                 return (
                   <div 
                     key={idx}
-                    onClick={() => !sinCupos && handleGrupoSelect(grupo.numero)}
-                    className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                      isGrupoSelected
-                        ? 'border-primary bg-primary/5 dark:bg-primary/10'
-                        : sinCupos 
-                          ? 'border-zinc-200 dark:border-zinc-800 opacity-60 cursor-not-allowed' 
-                          : 'border-zinc-200 dark:border-zinc-800 hover:border-primary/40 bg-white dark:bg-zinc-900/50'
+                    onClick={disabled ? undefined : () => handleGrupoSelect(grupo.numero)}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      disabled
+                        ? 'bg-zinc-200 dark:bg-zinc-800 opacity-60 cursor-not-allowed border-zinc-200 dark:border-zinc-800'
+                        : isGrupoSelected
+                          ? 'border-primary bg-primary/5 dark:bg-primary/10 cursor-pointer'
+                          : 'border-zinc-200 dark:border-zinc-800 hover:border-primary/40 bg-white dark:bg-zinc-900/50 cursor-pointer'
                     }`}
+                    aria-disabled={disabled}
+                    tabIndex={disabled ? -1 : 0}
                   >
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-2">
