@@ -199,7 +199,7 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
 
   return (
     <div className="space-y-2">
-      <div className={`rounded-lg transition-all border-2 flex flex-col gap-2 ${
+      <div className={`rounded-lg transition-all border-2 flex flex-col gap-2 select-none ${
         (generationMode === 'manual' && grupoSeleccionado) || (generationMode !== 'manual' && isSelected) 
           ? 'border-primary' 
           : 'border-transparent'

@@ -361,7 +361,7 @@ export default function Sidebar() {
         <>
             <Toaster />
             <motion.aside
-                className="w-80 h-full border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col overflow-y-auto"
+                className="w-80 h-full select-none border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col overflow-y-auto"
                 initial={{ x: -80, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: -80, opacity: 0 }}
