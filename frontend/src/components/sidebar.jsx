@@ -22,6 +22,9 @@ export default function Sidebar() {
     const [generationMode, setGenerationMode] = useState('manual'); // 'manual' o 'automatico'
     const [dragEnabled, setDragEnabled] = useState(false); // Habilitar/deshabilitar drag and drop
     const [horaMinima, setHoraMinima] = useState(6); // Hora mínima para las clases (6-22)
+    // Modal para confirmar cambio de modo que puede borrar selecciones
+    const [showConfirmModeModal, setShowConfirmModeModal] = useState(false);
+    const [pendingMode, setPendingMode] = useState(null);
     const [evitarHuecos, setEvitarHuecos] = useState(false);
     const [darkTheme, setDarkTheme] = useState(() => {
         // Inicializar desde localStorage o por defecto true
@@ -357,6 +360,40 @@ export default function Sidebar() {
         }
     };
 
+    // Solicita el cambio de modo; si hay materias seleccionadas, pedir confirmación
+    const requestModeChange = (targetMode) => {
+        if (targetMode === generationMode) return;
+        const seleccionCount = materiasSeleccionadas ? Object.keys(materiasSeleccionadas).length : 0;
+        if (seleccionCount > 0) {
+            setPendingMode(targetMode);
+            setShowConfirmModeModal(true);
+            return;
+        }
+        // No hay seleccionadas: aplicar cambio y limpiar BUT delay the cleanup so the toggle animation can complete smoothly
+        setGenerationMode(targetMode);
+        setTimeout(() => {
+            resetMateriasSeleccionadas();
+            clearHorariosGenerados();
+        }, 220);
+    };
+
+    const handleConfirmModeChange = () => {
+        if (!pendingMode) return;
+        setGenerationMode(pendingMode);
+        // Close modal immediately so user sees change, but delay heavy cleanup to let animation run
+        setShowConfirmModeModal(false);
+        setTimeout(() => {
+            resetMateriasSeleccionadas();
+            clearHorariosGenerados();
+        }, 220);
+        setPendingMode(null);
+    };
+
+    const handleCancelModeChange = () => {
+        setPendingMode(null);
+        setShowConfirmModeModal(false);
+    }; 
+
     return (
         <>
             <Toaster />
@@ -453,12 +490,11 @@ export default function Sidebar() {
                             <div className="relative flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-1 gap-1 overflow-hidden">
                                 {/* Fondo animado */}
                                 <motion.div
-                                    layout
                                     initial={false}
                                     animate={{
                                         x: generationMode === 'manual' ? 0 : '100%',
                                     }}
-                                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                                    transition={{ type: 'spring', stiffness: 200, damping: 24 }}
                                     className="absolute top-0 left-0 w-1/2 h-full rounded-md bg-primary z-0 shadow-md"
                                     style={{
                                         // El fondo cubre el botón activo
@@ -466,7 +502,7 @@ export default function Sidebar() {
                                     }}
                                 />
                                 <motion.button
-                                    onClick={() => setGenerationMode('manual')}
+                                    onClick={() => requestModeChange('manual')}
                                     whileTap={{ scale: 0.95 }}
                                     whileHover={{ scale: 1.04 }}
                                     className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none relative z-10 ${generationMode === 'manual'
@@ -478,7 +514,7 @@ export default function Sidebar() {
                                     Manual
                                 </motion.button>
                                 <motion.button
-                                    onClick={() => setGenerationMode('automatico')}
+                                    onClick={() => requestModeChange('automatico')}
                                     whileTap={{ scale: 0.95 }}
                                     whileHover={{ scale: 1.04 }}
                                     className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none relative z-10 ${generationMode === 'automatico'
@@ -704,6 +740,26 @@ export default function Sidebar() {
                     </AnimatePresence>
                 </>
             )}
+
+                    <AnimatePresence>
+                        {showConfirmModeModal && (
+                            <motion.div className="fixed inset-0 z-50 flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                <div className="absolute inset-0 bg-black/40" onClick={handleCancelModeChange} />
+                                <motion.div className="bg-white dark:bg-zinc-900 rounded-lg p-6 z-10 w-full max-w-md" initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 10, opacity: 0 }}>
+                                    <h3 className="text-lg mb-2 text-primary">Cambiar modo de generación</h3>
+                                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+                                        <span className='block'>¿Estás seguro? Esto puede borrar tu horario actual.</span>
+                                        <span className='block mt-1 text-white dark:text-zinc-900' >.</span>
+                                        <span className='text-red-600'>{Object.keys(materiasSeleccionadas || {}).length} materias </span> seleccionadas serán eliminadas al cambiar a <span className='font-bold text-primary/80'>{pendingMode === 'manual' ? 'Manual' : 'Automático'}</span>. 
+                                    </p>
+                                    <div className="flex justify-center gap-2">
+                                        <button onClick={handleCancelModeChange} className="px-4 py-2 w-[125px] rounded-md bg-zinc-300 text-zinc-900 hover:bg-zinc-300/80 cursor-pointer dark:text-white dark:bg-zinc-800 dark:hover:bg-zinc-700">Cancelar</button>
+                                        <button onClick={handleConfirmModeChange} className="px-4 py-2 w-[125px] rounded-md bg-primary hover:bg-primary/80 cursor-pointer text-white">Sí, cambiar</button>
+                                    </div>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
         </motion.aside>
         </>
     )
