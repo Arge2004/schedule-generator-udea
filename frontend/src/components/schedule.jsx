@@ -362,9 +362,17 @@ export default function Schedule() {
         const validHorarios = [];
         draggingMateria.grupos.forEach(grupo => {
             grupo.horarios.forEach(horario => {
-                // Debe aplicar al día y a la hora bajo cursor
-                if (!horario.dias.includes(dias[diaIndex])) return;
-                if (!(horario.horaInicio <= horas[horaIndex] && horario.horaFin > horas[horaIndex])) return;
+                // Comprobar solapamiento con la celda
+                // Incluir si hay solapamiento interior (horario.horaInicio < cellEnd && horario.horaFin > cellStart)
+                // Además *incluir* si el grupo empieza justo después de la celda (horario.horaInicio === cellEnd)
+                // Pero *NO* incluir si el grupo termina justo antes de la celda (horario.horaFin === cellStart)
+                const cellStart = horas[horaIndex];
+                const cellEnd = cellStart + 1;
+                const overlaps = horario.dias.includes(dias[diaIndex]) && (
+                    (horario.horaInicio < cellEnd && horario.horaFin > cellStart) ||
+                    horario.horaInicio === cellEnd
+                );
+                if (!overlaps) return;
 
                 // Verificar conflicto en todas las celdas que ocupa el horario
                 let tieneConflicto = false;
@@ -470,8 +478,14 @@ export default function Schedule() {
             // Excluir grupos que ya tienen conflicto global
             if (groupHasConflict(grupo)) return false;
             return grupo.horarios.some(horario => {
-                // Verificar que el horario aplica a esta celda
-                if (!horario.dias.includes(dia) || horario.horaInicio > hora || horario.horaFin <= hora) {
+                // Comprobar solapamiento con la celda (incluir touch-after pero no touch-before)
+                const cellStart = hora;
+                const cellEnd = hora + 1;
+                const overlaps = horario.dias.includes(dia) && (
+                    (horario.horaInicio < cellEnd && horario.horaFin > cellStart) ||
+                    horario.horaInicio === cellEnd
+                );
+                if (!overlaps) {
                     return false;
                 }
 
@@ -507,8 +521,14 @@ export default function Schedule() {
 
             draggingMateria.grupos.forEach(grupo => {
                 grupo.horarios.forEach(horario => {
-                    // Verificar si este horario aplica a la celda donde se soltó
-                    if (horario.dias.includes(dia) && horario.horaInicio <= hora && horario.horaFin > hora) {
+                    // Verificar si este horario solapa (o toca después) la celda donde se soltó
+                    const cellStart = hora;
+                    const cellEnd = hora + 1;
+                    const overlaps = horario.dias.includes(dia) && (
+                        (horario.horaInicio < cellEnd && horario.horaFin > cellStart) ||
+                        horario.horaInicio === cellEnd
+                    );
+                    if (overlaps) {
                         algunGrupoTieneHorarioAqui = true;
 
                         // Ahora verificar si tiene conflictos con otras materias

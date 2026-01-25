@@ -54,6 +54,10 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
         });
       });
       setCeldasMateriaHorario(map);
+    } else {
+      // En modo automático o cuando no hay gruposseleccionados, limpiar el mapa
+      // para evitar bloqueos residuales de un estado manual anterior
+      setCeldasMateriaHorario(new Map());
     }
   }, [gruposSeleccionados, generationMode, materia]);
 

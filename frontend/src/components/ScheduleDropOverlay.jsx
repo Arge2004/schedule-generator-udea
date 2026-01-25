@@ -17,32 +17,33 @@ export default function ScheduleDropOverlay({ availableHorarios, dias, horas, on
   const handleBackdropDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    console.log('🚫 Drop en backdrop (área sin horario disponible)');
-    
-    // Verificar si hay alguna celda ocupada por otra materia en esta posición
+
+    // Calcular celda sobre la que se soltó
     const rect = e.currentTarget.getBoundingClientRect();
     const cellWidth = rect.width / 7; // 7 días
     const cellHeight = rect.height / horas.length;
-    
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
     const diaIndex = Math.floor(x / cellWidth);
     const horaIndex = Math.floor(y / cellHeight);
-    
+
     if (diaIndex >= 0 && diaIndex < 7 && horaIndex >= 0 && horaIndex < horas.length) {
+      // Delegar al mismo handler de drop que maneja solapamientos y modal
+      if (onBlockDrop) {
+        onBlockDrop(e, diaIndex, horaIndex);
+        return;
+      }
+
+      // Fallback — si no hay handler, mostrar mensajes simples
       const celdaKey = `${diaIndex}-${horaIndex}`;
       const materiaEnCeldaCodigo = celdasMateria?.get(celdaKey);
-      
       if (materiaEnCeldaCodigo && materiaEnCeldaCodigo !== draggingMateria?.codigo) {
-        console.log('Conflicto detectado con codigo:', materiaEnCeldaCodigo);
         showToastMessage?.('⚠️ No se puede colocar: hay un conflicto con otra materia');
       } else {
         showToastMessage?.('⚠️ Esta materia no tiene clases en este horario');
       }
     }
-    
+
     clearDragState();
   };
 

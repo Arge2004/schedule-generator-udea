@@ -5,6 +5,7 @@ export default function ParallaxBackground() {
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
     const [mouseVelocity, setMouseVelocity] = useState({ x: 0, y: 0 });
     const [time, setTime] = useState(0);
+    document.querySelector('html').classList.remove('dark')
 
     const bushes = [
         // Biblioteca
@@ -324,7 +325,7 @@ export default function ParallaxBackground() {
 
             {/* Árboles de fondo - capa lejana más grande */}
             <motion.div
-                className="absolute -bottom-0 -left-10 -right-10 h-3/4 z-[100]"
+                className="absolute -top-20 lg:top-40 -left-10 -right-30 h-3/4 z-[100]"
                 initial={{ opacity: 0, scale: 1.1 }}
                 animate={{
                     opacity: 1,
