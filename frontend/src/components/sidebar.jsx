@@ -42,7 +42,9 @@ export default function Sidebar() {
         materiasSeleccionadas,
         resetMateriasSeleccionadas,
         setHorariosGenerados,
-        clearHorariosGenerados
+        clearHorariosGenerados,
+        clearMaterias,
+        clearRemovedGroups
     } = useMateriasStore();
 
     // Aplicar/remover clase dark del documento
@@ -418,12 +420,36 @@ export default function Sidebar() {
         <>
             <Toaster />
             <motion.aside
-                className="w-80 h-full select-none border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col overflow-y-auto"
+                className="w-80 h-full select-none border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col overflow-y-auto relative"
                 initial={{ x: -80, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: -80, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 120, damping: 16 }}
             >
+                {/* Botón: Volver al menú principal (limpia materias y estados) — sólo mostrar cuando hay materias cargadas */}
+                {materias && materias.length > 0 && (
+                    <div className="absolute top-3 right-3 z-50">
+                        <button
+                            onClick={() => {
+                                try {
+                                    resetMateriasSeleccionadas();
+                                    clearHorariosGenerados();
+                                    clearRemovedGroups && clearRemovedGroups();
+                                    clearMaterias();
+                                    setSelectedFacultad('');
+                                    setSelectedPrograma('');
+                                } catch (err) {
+                                    console.error('Error al volver al menú:', err);
+                                    toast.error('No se pudo volver al menú: ' + (err?.message || ''));
+                                }
+                            }}
+                            className={`px-3 py-1 rounded-md text-sm font-medium dark:bg-zinc-900 dark:text-white dark:border-zinc-800 dark:hover:bg-zinc-800 bg-white/80 text-zinc-900 border-zinc-200 hover:bg-zinc-100`}
+                            title="Volver al menú principal"
+                        >
+                            Menú
+                        </button>
+                    </div>
+                )}
                 {!materias || materias.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center p-6">
                         <div className="w-full max-w-md space-y-6">
@@ -649,10 +675,19 @@ export default function Sidebar() {
                                 <button
                                     onClick={handleScrapeHorarios}
                                     disabled={isScraping}
-                                    className="px-3 py-2 cursor-pointer border border-primary text-primary rounded-lg text-xs font-bold transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                                    className="w-full px-4 py-2 text-sm text-primary border-primary border-1 cursor-pointer hover:bg-primary/30 disabled:bg-primary/20 disabled:cursor-not-allowed rounded-lg transition-all flex items-center justify-center gap-2"
                                     title="Actualizar horarios desde la UdeA"
                                 >
-                                    {isScraping ? 'Actualizando...' : 'Actualizar'}
+                                    {isScraping ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                                            <span>Actualizando...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>Actualizar</span>
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>
