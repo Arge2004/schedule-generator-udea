@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react'
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import Subject from './subject.jsx';
 import { parseHTMLFile } from '../logic/parser.js';
+
 import { generarHorariosAutomaticos } from '../logic/generator.js';
 import { useMateriasStore } from '../store/materiasStore.js';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -35,6 +36,61 @@ export default function Sidebar() {
     const fileInputRef = useRef(null);
     const scrollContainerRef = useRef(null);
     const previousScrollPos = useRef(0);
+
+    // Track menu open to temporarily reduce effects if needed
+    const [menuOpen, setMenuOpen] = useState(false);
+
+    // Memoized styles and theme for react-select
+    const selectStyles = useMemo(() => ({
+        control: (base) => ({
+            ...base,
+            minHeight: '40px',
+            borderRadius: '0.5rem',
+            background: 'transparent',
+            borderColor: 'transparent',
+            boxShadow: 'none'
+        }),
+        placeholder: (base) => ({ ...base, color: darkTheme ? '#9CA3AF' : '#6b7280' }),
+        option: (base, state) => ({
+            ...base,
+            color: darkTheme ? '#ffffff' : '#111827',
+            backgroundColor: state.isFocused ? (darkTheme ? '#111827' : '#f8fafc') : 'transparent'
+        }),
+        singleValue: (base) => ({ ...base, color: darkTheme ? '#ffffff' : '#111827' }),
+        menu: (base) => ({ ...base, transform: 'translateZ(0)', willChange: 'transform, opacity' }),
+        menuList: (base) => ({ ...base, transform: 'translateZ(0)', willChange: 'transform, opacity', maxHeight: '240px' })
+    }), [darkTheme]);
+
+    const selectTheme = useMemo(() => (t) => ({ ...t, colors: { ...t.colors, primary25: 'rgba(19,146,236,0.06)', primary: '#1392ec' } }), []);
+
+    const memoFacultades = useMemo(() => facultades || [], [facultades]);
+    const memoProgramas = useMemo(() => programas || [], [programas]);
+
+    const handleFacultadChange = useCallback((option) => {
+        const value = option ? option.value : '';
+        setSelectedFacultad(value);
+        localStorage.setItem('selectedFacultad', value);
+    }, []);
+
+    const handleProgramaChange = useCallback((option) => {
+        const value = option ? option.value : '';
+        setSelectedPrograma(value);
+        localStorage.setItem('selectedPrograma', value);
+    }, []);
+
+    useEffect(() => {
+        if (menuOpen) {
+            document.body.classList.add('select-menu-open');
+        } else {
+            document.body.classList.remove('select-menu-open');
+        }
+        return () => {
+            document.body.classList.remove('select-menu-open');
+        }
+    }, [menuOpen]);
+
+    // NOTE: Removed MenuList virtualized implementation by request — reverting to default Menu rendering.
+    // Keeping menuOpen state so we can temporarily reduce heavy effects via CSS while the menu is open.
 
     // Usar Zustand store
     const {
@@ -477,30 +533,19 @@ export default function Sidebar() {
                                         Facultad
                                     </label>
                                     <Select
-                                        options={facultades}
-                                        value={facultades.find(f => f.value === selectedFacultad) || null}
-                                        onChange={(option) => {
-                                            const value = option ? option.value : '';
-                                            setSelectedFacultad(value);
-                                            localStorage.setItem('selectedFacultad', value);
-                                        }}
+                                        options={memoFacultades}
+                                        value={memoFacultades.find(f => f.value === selectedFacultad) || null}
+                                        onChange={handleFacultadChange}
                                         isDisabled={isScraping || isLoadingFacultades}
                                         placeholder={isLoadingFacultades ? 'Cargando facultades...' : 'Selecciona una facultad...'}
                                         className="w-full text-start text-sm border-1 border-zinc-300 rounded-lg"
                                         classNamePrefix="rs"
-                                        styles={{
-                                            control: (base) => ({
-                                                ...base,
-                                                minHeight: '40px',
-                                                borderRadius: '0.5rem',
-                                                background: 'transparent',
-                                                borderColor: 'transparent',
-                                                boxShadow: 'none'
-                                            }),
-                                            placeholder: (base) => ({ ...base, color: '#6b7280' }),
-                                            option: (base) => ({ ...base, color: '#111827' }),
-                                        }}
-                                        theme={(t) => ({ ...t, colors: { ...t.colors, primary25: 'rgba(19,146,236,0.06)', primary: '#1392ec' } })}
+                                        styles={selectStyles}
+                                        theme={selectTheme}
+                                        onMenuOpen={() => setMenuOpen(true)}
+                                        onMenuClose={() => setMenuOpen(false)}
+                                        menuShouldScrollIntoView={false}
+                                        isClearable
                                     />
                                 </div>
 
@@ -510,30 +555,19 @@ export default function Sidebar() {
                                         Programa
                                     </label>
                                     <Select
-                                        options={programas}
-                                        value={programas.find(p => p.value === selectedPrograma) || null}
-                                        onChange={(option) => {
-                                            const value = option ? option.value : '';
-                                            setSelectedPrograma(value);
-                                            localStorage.setItem('selectedPrograma', value);
-                                        }}
+                                        options={memoProgramas}
+                                        value={memoProgramas.find(p => p.value === selectedPrograma) || null}
+                                        onChange={handleProgramaChange}
                                         isDisabled={!selectedFacultad || isScraping || isLoadingProgramas}
                                         placeholder={!selectedFacultad ? 'Primero selecciona una facultad...' : isLoadingProgramas ? 'Cargando programas...' : 'Selecciona un programa...'}
                                         className="w-full text-start text-sm border-1 border-zinc-300 rounded-lg" 
                                         classNamePrefix="rs"
-                                        styles={{
-                                            control: (base) => ({
-                                                ...base,
-                                                minHeight: '40px',
-                                                borderRadius: '0.5rem',
-                                                background: 'transparent',
-                                                borderColor: 'transparent',
-                                                boxShadow: 'none'
-                                            }),
-                                            placeholder: (base) => ({ ...base, color: '#6b7280' }),
-                                            option: (base) => ({ ...base, color: '#111827' }),
-                                        }}
-                                        theme={(t) => ({ ...t, colors: { ...t.colors, primary25: 'rgba(19,146,236,0.06)', primary: '#1392ec' } })}
+                                        styles={selectStyles}
+                                        theme={selectTheme}
+                                        onMenuOpen={() => setMenuOpen(true)}
+                                        onMenuClose={() => setMenuOpen(false)}
+                                        menuShouldScrollIntoView={false}
+                                        isClearable
                                     />
                                 </div>
 

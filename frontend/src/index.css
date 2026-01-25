@@ -93,3 +93,26 @@ h1 {
 .scrollbar-custom::-webkit-scrollbar-thumb:hover {
   background: #0f7cd1;
 }
+
+/* Reduce heavy visual effects while react-select menu is open to avoid repaints */
+.select-menu-open .backdrop-blur-sm,
+.select-menu-open .backdrop-blur-md {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.select-menu-open .blob-core,
+.select-menu-open .blob-halo {
+  filter: none !important;
+  opacity: 0.65 !important;
+  transition: none !important;
+}
+.select-menu-open .shadow-md,
+.select-menu-open .shadow-sm {
+  box-shadow: none !important;
+}
+/* Temporarily pause CSS animations/transitions while the menu is open to reduce main-thread work */
+.select-menu-open * {
+  transition-duration: 0s !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+}
