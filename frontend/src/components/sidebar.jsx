@@ -43,6 +43,7 @@ export default function Sidebar() {
         resetMateriasSeleccionadas,
         setHorariosGenerados,
         clearHorariosGenerados,
+        horariosGenerados,
         clearMaterias,
         clearRemovedGroups
     } = useMateriasStore();
@@ -382,22 +383,32 @@ export default function Sidebar() {
         }
     };
 
-    // Solicita el cambio de modo; si hay materias seleccionadas, pedir confirmación
+    // Solicita el cambio de modo; si hay un horario generado y se va de 'automático' a 'manual', pedir confirmación
     const requestModeChange = (targetMode) => {
         if (targetMode === generationMode) return;
-        const seleccionCount = materiasSeleccionadas ? Object.keys(materiasSeleccionadas).length : 0;
-        if (seleccionCount > 0) {
+        // Comprobar si hay horarios ya generados (solo importa al cambiar de 'automatico' a 'manual')
+        const scheduleCount = horariosGenerados ? horariosGenerados.length : 0;
+        if (generationMode === 'automatico' && targetMode === 'manual' && scheduleCount > 0) {
             setPendingMode(targetMode);
             setShowConfirmModeModal(true);
             return;
         }
-        // No hay seleccionadas: aplicar cambio y limpiar BUT delay the cleanup so the toggle animation can complete smoothly
+
+        const seleccionCount = materiasSeleccionadas ? Object.keys(materiasSeleccionadas).length : 0;
+
+        if (generationMode === 'manual' && targetMode === 'automatico' && seleccionCount >= 1) {
+            setPendingMode(targetMode);
+            setShowConfirmModeModal(true);
+            return;
+        }
+
+        // Aplicar cambio y limpiar después de una pequeña espera para que la animación del toggle se complete
         setGenerationMode(targetMode);
         setTimeout(() => {
             resetMateriasSeleccionadas();
             clearHorariosGenerados();
         }, 220);
-    };
+    }; 
 
     const handleConfirmModeChange = () => {
         if (!pendingMode) return;
@@ -443,7 +454,7 @@ export default function Sidebar() {
                                     toast.error('No se pudo volver al menú: ' + (err?.message || ''));
                                 }
                             }}
-                            className={`px-3 py-1 rounded-md text-sm font-medium dark:bg-zinc-900 dark:text-white dark:border-zinc-800 dark:hover:bg-zinc-800 bg-white/80 text-zinc-900 border-zinc-200 hover:bg-zinc-100`}
+                            className={`px-3 py-1 cursor-pointer rounded-md text-sm font-medium dark:bg-zinc-900 dark:text-white dark:border-zinc-800 dark:hover:bg-zinc-800 bg-white/80 text-zinc-900 border-zinc-200 hover:bg-zinc-100`}
                             title="Volver al menú principal"
                         >
                             Menú
@@ -675,7 +686,7 @@ export default function Sidebar() {
                                 <button
                                     onClick={handleScrapeHorarios}
                                     disabled={isScraping}
-                                    className="w-full px-4 py-2 text-sm text-primary border-primary border-1 cursor-pointer hover:bg-primary/30 disabled:bg-primary/20 disabled:cursor-not-allowed rounded-lg transition-all flex items-center justify-center gap-2"
+                                    className="w-full px-4 py-2 text-sm text-primary border-primary border-1 cursor-pointer hover:bg-primary/10 disabled:bg-primary/20 disabled:cursor-not-allowed rounded-lg transition-all flex items-center justify-center gap-2"
                                     title="Actualizar horarios desde la UdeA"
                                 >
                                     {isScraping ? (
@@ -819,7 +830,11 @@ export default function Sidebar() {
                                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
                                     <span className='block'>¿Estás seguro? Esto puede borrar tu horario actual.</span>
                                     <span className='block mt-1 text-white dark:text-zinc-900' >.</span>
-                                    <span className='text-red-600'>{Object.keys(materiasSeleccionadas || {}).length} materias </span> seleccionadas serán eliminadas al cambiar a <span className='font-bold text-primary/80'>{pendingMode === 'manual' ? 'Manual' : 'Automático'}</span>.
+                                    {horariosGenerados && horariosGenerados.length > 0 ? (
+                                        <span><span className='text-red-600'>{horariosGenerados.length} horarios </span>generados serán eliminados al cambiar a <span className='font-bold text-primary/80'>{pendingMode === 'manual' ? 'Manual' : 'Automático'}</span>.</span>
+                                    ) : (
+                                        <span><span className='text-red-600'>{Object.keys(materiasSeleccionadas || {}).length} materias </span> seleccionadas serán eliminadas al cambiar a <span className='font-bold text-primary/80'>{pendingMode === 'manual' ? 'Manual' : 'Automático'}</span>.</span>
+                                    )}
                                 </p>
                                 <div className="flex justify-center gap-2">
                                     <button onClick={handleCancelModeChange} className="px-4 py-2 w-[125px] rounded-md bg-zinc-300 text-zinc-900 hover:bg-zinc-300/80 cursor-pointer dark:text-white dark:bg-zinc-800 dark:hover:bg-zinc-700">Cancelar</button>
