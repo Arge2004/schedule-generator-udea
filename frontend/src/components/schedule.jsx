@@ -736,7 +736,7 @@ export default function Schedule() {
                                 <button
                                     ref={exportButtonRef}
                                     onClick={() => setExportMenuOpen(!exportMenuOpen)}
-                                    className="p-2 bg-primary px-4 hover:bg-primary/90 rounded-lg transition-all cursor-pointer group flex items-center gap-2"
+                                    className="p-2 bg-primary text-sm px-4 hover:bg-primary/90 rounded-lg transition-all cursor-pointer group flex items-center gap-2"
                                     title="Exportar horario"
                                 >
                                     {exporting ? 'Exportando...' : 'Exportar'}

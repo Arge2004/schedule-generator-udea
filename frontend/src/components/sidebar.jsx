@@ -6,6 +6,7 @@ import { useMateriasStore } from '../store/materiasStore.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getFacultades, getProgramas, scrapeHorarios } from '../services/api.js';
 import toast, { Toaster } from 'react-hot-toast';
+import Select from 'react-select';
 
 export default function Sidebar() {
     const [isLoading, setIsLoading] = useState(false);
@@ -475,24 +476,32 @@ export default function Sidebar() {
                                     <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
                                         Facultad
                                     </label>
-                                    <select
-                                        value={selectedFacultad}
-                                        onChange={(e) => {
-                                            setSelectedFacultad(e.target.value);
-                                            localStorage.setItem('selectedFacultad', e.target.value);
+                                    <Select
+                                        options={facultades}
+                                        value={facultades.find(f => f.value === selectedFacultad) || null}
+                                        onChange={(option) => {
+                                            const value = option ? option.value : '';
+                                            setSelectedFacultad(value);
+                                            localStorage.setItem('selectedFacultad', value);
                                         }}
-                                        disabled={isScraping || isLoadingFacultades}
-                                        className="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
-                                    >
-                                        <option value="">
-                                            {isLoadingFacultades ? 'Cargando facultades...' : 'Selecciona una facultad...'}
-                                        </option>
-                                        {facultades.map((fac) => (
-                                            <option key={fac.value} value={fac.value}>
-                                                {fac.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        isDisabled={isScraping || isLoadingFacultades}
+                                        placeholder={isLoadingFacultades ? 'Cargando facultades...' : 'Selecciona una facultad...'}
+                                        className="w-full text-start text-sm border-1 border-zinc-300 rounded-lg"
+                                        classNamePrefix="rs"
+                                        styles={{
+                                            control: (base) => ({
+                                                ...base,
+                                                minHeight: '40px',
+                                                borderRadius: '0.5rem',
+                                                background: 'transparent',
+                                                borderColor: 'transparent',
+                                                boxShadow: 'none'
+                                            }),
+                                            placeholder: (base) => ({ ...base, color: '#6b7280' }),
+                                            option: (base) => ({ ...base, color: '#111827' }),
+                                        }}
+                                        theme={(t) => ({ ...t, colors: { ...t.colors, primary25: 'rgba(19,146,236,0.06)', primary: '#1392ec' } })}
+                                    />
                                 </div>
 
                                 {/* Programa Selector */}
@@ -500,35 +509,39 @@ export default function Sidebar() {
                                     <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
                                         Programa
                                     </label>
-                                    <select
-                                        value={selectedPrograma}
-                                        onChange={(e) => {
-                                            setSelectedPrograma(e.target.value);
-                                            localStorage.setItem('selectedPrograma', e.target.value);
+                                    <Select
+                                        options={programas}
+                                        value={programas.find(p => p.value === selectedPrograma) || null}
+                                        onChange={(option) => {
+                                            const value = option ? option.value : '';
+                                            setSelectedPrograma(value);
+                                            localStorage.setItem('selectedPrograma', value);
                                         }}
-                                        disabled={!selectedFacultad || isScraping || isLoadingProgramas}
-                                        className="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
-                                    >
-                                        <option value="">
-                                            {!selectedFacultad
-                                                ? 'Primero selecciona una facultad...'
-                                                : isLoadingProgramas
-                                                    ? 'Cargando programas...'
-                                                    : 'Selecciona un programa...'}
-                                        </option>
-                                        {programas.map((prog) => (
-                                            <option key={prog.value} value={prog.value}>
-                                                {prog.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        isDisabled={!selectedFacultad || isScraping || isLoadingProgramas}
+                                        placeholder={!selectedFacultad ? 'Primero selecciona una facultad...' : isLoadingProgramas ? 'Cargando programas...' : 'Selecciona un programa...'}
+                                        className="w-full text-start text-sm border-1 border-zinc-300 rounded-lg" 
+                                        classNamePrefix="rs"
+                                        styles={{
+                                            control: (base) => ({
+                                                ...base,
+                                                minHeight: '40px',
+                                                borderRadius: '0.5rem',
+                                                background: 'transparent',
+                                                borderColor: 'transparent',
+                                                boxShadow: 'none'
+                                            }),
+                                            placeholder: (base) => ({ ...base, color: '#6b7280' }),
+                                            option: (base) => ({ ...base, color: '#111827' }),
+                                        }}
+                                        theme={(t) => ({ ...t, colors: { ...t.colors, primary25: 'rgba(19,146,236,0.06)', primary: '#1392ec' } })}
+                                    />
                                 </div>
 
                                 {/* Scrape Button */}
                                 <button
                                     onClick={handleScrapeHorarios}
                                     disabled={!selectedFacultad || !selectedPrograma || isScraping}
-                                    className="w-full px-4 py-3 mt-10 bg-primary cursor-pointer hover:bg-primary/90 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
+                                    className="w-full px-4 text-sm py-3 mt-10 bg-primary cursor-pointer hover:bg-primary/90 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:cursor-not-allowed text-white rounded-lg transition-all flex items-center justify-center gap-2"
                                 >
                                     {isScraping ? (
                                         <>
