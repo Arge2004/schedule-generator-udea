@@ -36,10 +36,10 @@ export default function Sidebar() {
     const previousScrollPos = useRef(0);
 
     // Usar Zustand store
-    const { 
-        materias, 
-        setMateriasData, 
-        materiasSeleccionadas, 
+    const {
+        materias,
+        setMateriasData,
+        materiasSeleccionadas,
         resetMateriasSeleccionadas,
         setHorariosGenerados,
         clearHorariosGenerados
@@ -232,7 +232,13 @@ export default function Sidebar() {
     }, [selectedFacultad]);
 
     const handleScrapeHorarios = async () => {
-        if (!selectedFacultad || !selectedPrograma) {
+        // Prefer localStorage values to avoid async state race
+        const facultadLS = localStorage.getItem('selectedFacultad');
+        const programaLS = localStorage.getItem('selectedPrograma');
+        const facultadToUse = facultadLS || selectedFacultad;
+        const programaToUse = programaLS || selectedPrograma;
+
+        if (!facultadToUse || !programaToUse) {
             toast.error('Por favor selecciona una facultad y un programa', {
                 duration: 3000,
                 position: 'top-center',
@@ -240,21 +246,25 @@ export default function Sidebar() {
             return;
         }
 
+        // Update UI state to reflect chosen values (doesn't affect the scraping inputs)
+        setSelectedFacultad(facultadToUse);
+        setSelectedPrograma(programaToUse);
+
         try {
             setIsScraping(true);
             console.log('🌐 Iniciando web scraping...');
-            
-            const html = await scrapeHorarios(selectedFacultad, selectedPrograma);
-            
+
+            const html = await scrapeHorarios(facultadToUse, programaToUse);
+
             console.log('✅ HTML obtenido, parseando...');
-            
+
             // Crear un File simulado a partir del HTML
             const blob = new Blob([html], { type: 'text/html' });
             const file = new File([blob], 'horarios.html', { type: 'text/html' });
-            
+
             // Parsear el HTML usando la función existente
             const data = await parseHTMLFile(file);
-            
+
             console.log('✅ Parseo exitoso!');
             console.log('Datos completos:', data);
 
@@ -274,8 +284,18 @@ export default function Sidebar() {
 
             // Guardar en el store de Zustand
             setMateriasData(data);
-            toast.success('¡Horarios cargados exitosamente!', {
-                duration: 2000,
+            // Asegurar limpieza y forzar re-evaluación visual
+            resetMateriasSeleccionadas();
+            clearHorariosGenerados();
+
+            // Pequeño delay para permitir que Zustand actualice antes de revisar
+            setTimeout(() => {
+                const current = useMateriasStore.getState().materias;
+                console.debug('[handleScrapeHorarios] store materias after set:', current ? current.length : 0);
+            }, 20);
+
+            toast.success(`Se actualizaron ${data.materias.length} materias — selecciones reseteadas`, {
+                duration: 2500,
                 position: 'top-center',
             });
         } catch (error) {
@@ -291,15 +311,15 @@ export default function Sidebar() {
 
     const handleGenerate = async () => {
         setIsGenerating(true);
-        
+
         try {
             // Obtener códigos de materias seleccionadas
             const codigosSeleccionados = Object.keys(materiasSeleccionadas);
-            
+
             console.log('🚀 Generando horarios automáticos...');
             console.log('📚 Materias seleccionadas:', codigosSeleccionados);
             console.log('⚙️ Opciones:', { horaMinima, evitarHuecos });
-            
+
             // Generar horarios
             const horariosGenerados = generarHorariosAutomaticos(
                 materias,
@@ -309,15 +329,15 @@ export default function Sidebar() {
                     evitarHuecos
                 }
             );
-            
+
             console.log('\n✅ Horarios generados:', horariosGenerados.length);
             console.log('\n📊 MEJORES HORARIOS:\n');
-            
+
             horariosGenerados.forEach((horario, index) => {
                 console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                 console.log(`🏆 HORARIO #${index + 1} - Puntuación: ${horario.puntuacion} pts`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                
+
                 console.log('\n📝 Grupos seleccionados:');
                 horario.grupos.forEach(grupo => {
                     console.log(`  • ${grupo.nombreMateria} (${grupo.codigoMateria}) - Grupo ${grupo.numeroGrupo}`);
@@ -325,13 +345,13 @@ export default function Sidebar() {
                         console.log(`    ${h.dias.join(', ')}: ${h.horaInicio}:00 - ${h.horaFin}:00 ${h.aula ? `[${h.aula}]` : ''}`);
                     });
                 });
-                
+
                 console.log('\n📈 Estadísticas:');
                 console.log(`  • Días con clases: ${horario.detalles.diasConClases}`);
                 console.log(`  • Total horas/semana: ${horario.detalles.totalHorasClase}h`);
                 console.log(`  • Clase más temprana: ${horario.detalles.horaMasTempranaGlobal}:00`);
                 console.log(`  • Clase más tarde: ${horario.detalles.horaMasTardeGlobal}:00`);
-                
+
                 console.log('\n📅 Horario por día:');
                 Object.entries(horario.detalles.horariosPorDia).forEach(([dia, clases]) => {
                     if (clases.length > 0) {
@@ -342,9 +362,9 @@ export default function Sidebar() {
                     }
                 });
             });
-            
+
             console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-            
+
             if (horariosGenerados.length === 0) {
                 console.warn('⚠️ No se pudieron generar horarios válidos. Verifica que las materias seleccionadas tengan grupos compatibles.');
             } else {
@@ -352,7 +372,7 @@ export default function Sidebar() {
                 setHorariosGenerados(horariosGenerados);
                 console.log('✨ Horarios guardados en el store. Mostrando el mejor horario en el grid.');
             }
-            
+
         } catch (error) {
             console.error('❌ Error al generar horarios:', error);
         } finally {
@@ -392,7 +412,7 @@ export default function Sidebar() {
     const handleCancelModeChange = () => {
         setPendingMode(null);
         setShowConfirmModeModal(false);
-    }; 
+    };
 
     return (
         <>
@@ -404,235 +424,249 @@ export default function Sidebar() {
                 exit={{ x: -80, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 120, damping: 16 }}
             >
-            {!materias || materias.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center p-6">
-                    <div className="w-full max-w-md space-y-6">
-                        {/* Web Scraping Section */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider text-center">
-                                Obtener Horarios UdeA
-                            </h3>
-                            
-                            {/* Facultad Selector */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                                    Facultad
-                                </label>
-                                <select
-                                    value={selectedFacultad}
-                                    onChange={(e) => setSelectedFacultad(e.target.value)}
-                                    disabled={isScraping || isLoadingFacultades}
-                                    className="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
-                                >
-                                    <option value="">
-                                        {isLoadingFacultades ? 'Cargando facultades...' : 'Selecciona una facultad...'}
-                                    </option>
-                                    {facultades.map((fac) => (
-                                        <option key={fac.value} value={fac.value}>
-                                            {fac.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                {!materias || materias.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center p-6">
+                        <div className="w-full max-w-md space-y-6">
+                            {/* Web Scraping Section */}
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider text-center">
+                                    Obtener Horarios UdeA
+                                </h3>
 
-                            {/* Programa Selector */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                                    Programa
-                                </label>
-                                <select
-                                    value={selectedPrograma}
-                                    onChange={(e) => setSelectedPrograma(e.target.value)}
-                                    disabled={!selectedFacultad || isScraping || isLoadingProgramas}
-                                    className="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
-                                >
-                                    <option value="">
-                                        {!selectedFacultad 
-                                            ? 'Primero selecciona una facultad...' 
-                                            : isLoadingProgramas 
-                                            ? 'Cargando programas...' 
-                                            : 'Selecciona un programa...'}
-                                    </option>
-                                    {programas.map((prog) => (
-                                        <option key={prog.value} value={prog.value}>
-                                            {prog.label}
+                                {/* Facultad Selector */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                        Facultad
+                                    </label>
+                                    <select
+                                        value={selectedFacultad}
+                                        onChange={(e) => {
+                                            setSelectedFacultad(e.target.value);
+                                            localStorage.setItem('selectedFacultad', e.target.value);
+                                        }}
+                                        disabled={isScraping || isLoadingFacultades}
+                                        className="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                                    >
+                                        <option value="">
+                                            {isLoadingFacultades ? 'Cargando facultades...' : 'Selecciona una facultad...'}
                                         </option>
-                                    ))}
-                                </select>
-                            </div>
+                                        {facultades.map((fac) => (
+                                            <option key={fac.value} value={fac.value}>
+                                                {fac.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
 
-                            {/* Scrape Button */}
-                            <button
-                                onClick={handleScrapeHorarios}
-                                disabled={!selectedFacultad || !selectedPrograma || isScraping}
-                                className="w-full px-4 py-3 mt-10 bg-primary hover:bg-primary/90 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
-                            >
-                                {isScraping ? (
-                                    <>
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                        <span>Obteniendo horarios...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <span>Obtener Horarios</span>
-                                    </>
-                                )}
-                            </button>
+                                {/* Programa Selector */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                        Programa
+                                    </label>
+                                    <select
+                                        value={selectedPrograma}
+                                        onChange={(e) => {
+                                            setSelectedPrograma(e.target.value);
+                                            localStorage.setItem('selectedPrograma', e.target.value);
+                                        }}
+                                        disabled={!selectedFacultad || isScraping || isLoadingProgramas}
+                                        className="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                                    >
+                                        <option value="">
+                                            {!selectedFacultad
+                                                ? 'Primero selecciona una facultad...'
+                                                : isLoadingProgramas
+                                                    ? 'Cargando programas...'
+                                                    : 'Selecciona un programa...'}
+                                        </option>
+                                        {programas.map((prog) => (
+                                            <option key={prog.value} value={prog.value}>
+                                                {prog.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Scrape Button */}
+                                <button
+                                    onClick={handleScrapeHorarios}
+                                    disabled={!selectedFacultad || !selectedPrograma || isScraping}
+                                    className="w-full px-4 py-3 mt-10 bg-primary cursor-pointer hover:bg-primary/90 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
+                                >
+                                    {isScraping ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                            <span>Obteniendo horarios...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>Obtener Horarios</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            ) : (
-                <>
-                    <div className="p-4 space-y-6 flex flex-col flex-1 min-h-0">
-                        {/* Mode Toggle */}
-                        <div className="space-y-4">
-                            <p className="text-xs text-start font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-1">Modo de Generación</p>
-                            <div className="relative flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-1 gap-1 overflow-hidden">
-                                {/* Fondo animado */}
-                                <motion.div
-                                    initial={false}
-                                    animate={{
-                                        x: generationMode === 'manual' ? 0 : '100%',
-                                    }}
-                                    transition={{ type: 'spring', stiffness: 200, damping: 24 }}
-                                    className="absolute top-0 left-0 w-1/2 h-full rounded-md bg-primary z-0 shadow-md"
-                                    style={{
-                                        // El fondo cubre el botón activo
-                                        width: '50%',
-                                    }}
-                                />
-                                <motion.button
-                                    onClick={() => requestModeChange('manual')}
-                                    whileTap={{ scale: 0.95 }}
-                                    whileHover={{ scale: 1.04 }}
-                                    className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none relative z-10 ${generationMode === 'manual'
-                                            ? 'text-white'
-                                            : 'text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 dark:hover:text-white'
-                                        }`}
-                                    transition={{ type: 'spring', stiffness: 180, damping: 12 }}
-                                >
-                                    Manual
-                                </motion.button>
-                                <motion.button
-                                    onClick={() => requestModeChange('automatico')}
-                                    whileTap={{ scale: 0.95 }}
-                                    whileHover={{ scale: 1.04 }}
-                                    className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none relative z-10 ${generationMode === 'automatico'
-                                            ? 'text-white'
-                                            : 'text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 dark:hover:text-white'
-                                        }`}
-                                    transition={{ type: 'spring', stiffness: 180, damping: 12 }}
-                                >
-                                    Automático
-                                </motion.button>
-                            </div>
-                        </div>
-                        {/* Subject Search */}
-                        <div className="space-y-4 flex flex-col flex-1 min-h-0">
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between px-1">
-                                    <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Materias</p>
-                                    <div className="flex items-center gap-1.5">
-                                        {materiasSeleccionadas && Object.keys(materiasSeleccionadas).length > 0 && (
-                                            <>
-                                                <span className="text-[12px] bg-primary text-white px-2 py-0.5 rounded-full font-bold">
-                                                    {Object.keys(materiasSeleccionadas).length}
-                                                </span>
-                                                <span className="text-zinc-400 dark:text-zinc-600 text-[10px] font-bold">/</span>
-                                            </>
-                                        )}
-                                        <span className="text-[12px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
-                                            {materiasFiltradas.length}
-                                        </span>
-
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <div className="relative flex-1">
-                                        <input
-                                            className="w-full pl-4 pr-4 py-2 bg-zinc-100 dark:bg-zinc-900 border-none rounded-lg text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary/20 placeholder:text-zinc-500 dark:placeholder:text-zinc-500"
-                                            placeholder="Buscar materias..."
-                                            type="text"
-                                            value={searchTerm}
-                                            onChange={handleSearchChange}
-                                        />
-                                        {searchTerm && (
-                                            <button
-                                                onClick={() => setSearchTerm('')}
-                                                className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-                                            >
-                                                ✕
-                                            </button>
-                                        )}
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            resetMateriasSeleccionadas();
-                                            clearHorariosGenerados();
+                ) : (
+                    <>
+                        <div className="p-4 space-y-6 flex flex-col flex-1 min-h-0">
+                            {/* Mode Toggle */}
+                            <div className="space-y-4">
+                                <p className="text-xs text-start font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-1">Modo de Generación</p>
+                                <div className="relative flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-1 gap-1 overflow-hidden">
+                                    {/* Fondo animado */}
+                                    <motion.div
+                                        initial={false}
+                                        animate={{
+                                            x: generationMode === 'manual' ? 0 : '100%',
                                         }}
-                                        className="px-3 py-2 cursor-pointer bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 rounded-lg text-primary text-xs font-bold focus:outline-none"
-                                        title="Deseleccionar todas"
+                                        transition={{ type: 'spring', stiffness: 200, damping: 24 }}
+                                        className="absolute top-0 left-0 w-1/2 h-full rounded-md bg-primary z-0 shadow-md"
+                                        style={{
+                                            // El fondo cubre el botón activo
+                                            width: '50%',
+                                        }}
+                                    />
+                                    <motion.button
+                                        onClick={() => requestModeChange('manual')}
+                                        whileTap={{ scale: 0.95 }}
+                                        whileHover={{ scale: 1.04 }}
+                                        className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none relative z-10 ${generationMode === 'manual'
+                                            ? 'text-white'
+                                            : 'text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 dark:hover:text-white'
+                                            }`}
+                                        transition={{ type: 'spring', stiffness: 180, damping: 12 }}
                                     >
-                                        RESET
-                                    </button>
+                                        Manual
+                                    </motion.button>
+                                    <motion.button
+                                        onClick={() => requestModeChange('automatico')}
+                                        whileTap={{ scale: 0.95 }}
+                                        whileHover={{ scale: 1.04 }}
+                                        className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none relative z-10 ${generationMode === 'automatico'
+                                            ? 'text-white'
+                                            : 'text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 dark:hover:text-white'
+                                            }`}
+                                        transition={{ type: 'spring', stiffness: 180, damping: 12 }}
+                                    >
+                                        Automático
+                                    </motion.button>
                                 </div>
                             </div>
-                            <div
-                                ref={scrollContainerRef}
-                                onScroll={(e) => {
-                                    previousScrollPos.current = e.target.scrollTop;
-                                }}
-                                className="space-y-1 flex-1 min-h-0 overflow-y-auto scrollbar-custom"
-                            >
-                                <AnimatePresence>
-                                    {!materias || materias.length === 0 ? (
-                                        <motion.p
-                                            className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-4"
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: 10 }}
-                                            transition={{ duration: 0.3 }}
+                            {/* Subject Search */}
+                            <div className="space-y-4 flex flex-col flex-1 min-h-0">
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between px-1">
+                                        <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Materias</p>
+                                        <div className="flex items-center gap-1.5">
+                                            {materiasSeleccionadas && Object.keys(materiasSeleccionadas).length > 0 && (
+                                                <>
+                                                    <span className="text-[12px] bg-primary text-white px-2 py-0.5 rounded-full font-bold">
+                                                        {Object.keys(materiasSeleccionadas).length}
+                                                    </span>
+                                                    <span className="text-zinc-400 dark:text-zinc-600 text-[10px] font-bold">/</span>
+                                                </>
+                                            )}
+                                            <span className="text-[12px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
+                                                {materiasFiltradas.length}
+                                            </span>
+
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <input
+                                                className="w-full pl-4 pr-4 py-2 bg-zinc-100 dark:bg-zinc-900 border-none rounded-lg text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-primary/20 placeholder:text-zinc-500 dark:placeholder:text-zinc-500"
+                                                placeholder="Buscar materias..."
+                                                type="text"
+                                                value={searchTerm}
+                                                onChange={handleSearchChange}
+                                            />
+                                            {searchTerm && (
+                                                <button
+                                                    onClick={() => setSearchTerm('')}
+                                                    className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                                                >
+                                                    ✕
+                                                </button>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                resetMateriasSeleccionadas();
+                                                clearHorariosGenerados();
+                                            }}
+                                            className="px-3 py-2 cursor-pointer bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 rounded-lg text-primary text-xs font-bold focus:outline-none"
+                                            title="Deseleccionar todas"
                                         >
-                                            No hay materias cargadas. Sube un archivo HTML.
-                                        </motion.p>
-                                    ) : materiasFiltradas.length === 0 ? (
-                                        <motion.p
-                                            className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-4"
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: 10 }}
-                                            transition={{ duration: 0.3 }}
-                                        >
-                                            No se encontraron materias con "{debouncedSearchTerm}"
-                                        </motion.p>
-                                    ) : (
-                                        materiasFiltradas.map(materia => (
-                                            <motion.div
-                                                key={materia.codigo}
+                                            RESET
+                                        </button>
+                                    </div>
+                                </div>
+                                <div
+                                    ref={scrollContainerRef}
+                                    onScroll={(e) => {
+                                        previousScrollPos.current = e.target.scrollTop;
+                                    }}
+                                    className="space-y-1 flex-1 min-h-0 overflow-y-auto scrollbar-custom"
+                                >
+                                    <AnimatePresence>
+                                        {!materias || materias.length === 0 ? (
+                                            <motion.p
+                                                className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-4"
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 exit={{ opacity: 0, y: 10 }}
-                                                transition={{ duration: 0.25 }}
+                                                transition={{ duration: 0.3 }}
                                             >
-                                                <Subject materia={materia} generationMode={generationMode} dragEnabled={dragEnabled} />
-                                            </motion.div>
-                                        ))
-                                    )}
-                                </AnimatePresence>
+                                                No hay materias cargadas. Sube un archivo HTML.
+                                            </motion.p>
+                                        ) : materiasFiltradas.length === 0 ? (
+                                            <motion.p
+                                                className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-4"
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: 10 }}
+                                                transition={{ duration: 0.3 }}
+                                            >
+                                                No se encontraron materias con "{debouncedSearchTerm}"
+                                            </motion.p>
+                                        ) : (
+                                            materiasFiltradas.map(materia => (
+                                                <motion.div
+                                                    key={materia.codigo}
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: 10 }}
+                                                    transition={{ duration: 0.25 }}
+                                                >
+                                                    <Subject materia={materia} generationMode={generationMode} dragEnabled={dragEnabled} />
+                                                </motion.div>
+                                            ))
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                                <button
+                                    onClick={handleScrapeHorarios}
+                                    disabled={isScraping}
+                                    className="px-3 py-2 cursor-pointer border border-primary text-primary rounded-lg text-xs font-bold transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                                    title="Actualizar horarios desde la UdeA"
+                                >
+                                    {isScraping ? 'Actualizando...' : 'Actualizar'}
+                                </button>
                             </div>
                         </div>
-                    </div>
-                    {/* Botón Generar Horario - Solo en modo automático */}
-                    {generationMode === 'automatico' && (
-                        <div className="px-4 pb-4">
-                            <motion.button
-                                onClick={handleGenerate}
-                                disabled={isGenerating || Object.keys(materiasSeleccionadas).length === 0}
-                                whileTap={{ scale: 0.97 }}
-                                whileHover={{ scale: 1.03 }}
-                                className={`w-full py-3 ${isGenerating ? 'bg-[#1392ec] cursor-not-allowed' : 'cursor-pointer bg-[#1392ec] hover:bg-[#1392ec]/90 disabled:bg-zinc-100 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed'} text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md disabled:shadow-none`}
-                                style={(Object.keys(materiasSeleccionadas).length === 0) ? {
-                                    backgroundImage: `repeating-linear-gradient(
+                        {/* Botón Generar Horario - Solo en modo automático */}
+                        {generationMode === 'automatico' && (
+                            <div className="px-4 pb-4">
+                                <motion.button
+                                    onClick={handleGenerate}
+                                    disabled={isGenerating || Object.keys(materiasSeleccionadas).length === 0}
+                                    whileTap={{ scale: 0.97 }}
+                                    whileHover={{ scale: 1.03 }}
+                                    className={`w-full py-3 ${isGenerating ? 'bg-[#1392ec] cursor-not-allowed' : 'cursor-pointer bg-[#1392ec] hover:bg-[#1392ec]/90 disabled:bg-zinc-100 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed'} text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md disabled:shadow-none`}
+                                    style={(Object.keys(materiasSeleccionadas).length === 0) ? {
+                                        backgroundImage: `repeating-linear-gradient(
                                         45deg,
                                         transparent,
                                         transparent 4px,
@@ -641,126 +675,126 @@ export default function Sidebar() {
                                         transparent 4px,
                                         transparent 10px
                                     )`
-                                } : {}}
-                                transition={{ type: 'spring', stiffness: 180, damping: 12 }}
-                            >
-                                {isGenerating ? (
-                                    <motion.div
-                                        className="rounded-full h-5 w-5 border-2 border-white border-t-transparent"
-                                        animate={{ rotate: 360 }}
-                                        transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
-                                        style={{ display: 'inline-block' }}
-                                    />
-                                ) : (
-                                    <>
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                        <span className='text-sm font-semibold'>Generar Horario</span>
-                                    </>
-                                )}
-                            </motion.button>
-                        </div>
-                    )}
-                    {/* Preferencias de Generación Automática */}
-                    <AnimatePresence>
-                    {generationMode === 'automatico' && (
-                        <motion.div
-                            className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 20 }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            <div className="flex items-center justify-between mb-4">
-                                <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Preferencias</p>
+                                    } : {}}
+                                    transition={{ type: 'spring', stiffness: 180, damping: 12 }}
+                                >
+                                    {isGenerating ? (
+                                        <motion.div
+                                            className="rounded-full h-5 w-5 border-2 border-white border-t-transparent"
+                                            animate={{ rotate: 360 }}
+                                            transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
+                                            style={{ display: 'inline-block' }}
+                                        />
+                                    ) : (
+                                        <>
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <span className='text-sm font-semibold'>Generar Horario</span>
+                                        </>
+                                    )}
+                                </motion.button>
                             </div>
-                            <div className="space-y-3">
-                                <div className="space-y-1.5">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Hora mínima de clases</span>
-                                        <span className="text-xs font-bold text-primary">{horaMinima}:00</span>
+                        )}
+                        {/* Preferencias de Generación Automática */}
+                        <AnimatePresence>
+                            {generationMode === 'automatico' && (
+                                <motion.div
+                                    className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 20 }}
+                                    transition={{ duration: 0.3 }}
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Preferencias</p>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <select
-                                            value={horaMinima}
-                                            onChange={(e) => setHoraMinima(Number(e.target.value))}
-                                            className="flex-1 px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
-                                        >
-                                            <option value={6}>6:00 AM</option>
-                                            <option value={7}>7:00 AM</option>
-                                            <option value={8}>8:00 AM</option>
-                                            <option value={9}>9:00 AM</option>
-                                            <option value={10}>10:00 AM</option>
-                                            <option value={11}>11:00 AM</option>
-                                            <option value={12}>12:00 PM</option>
-                                            <option value={13}>1:00 PM</option>
-                                            <option value={14}>2:00 PM</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Evitar horarios con huecos extensos</span>
-                                    <button
-                                        onClick={() => setEvitarHuecos(!evitarHuecos)}
-                                        className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${evitarHuecos ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                                    >
-                                        <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${evitarHuecos ? 'right-0.5' : 'left-0.5'}`}></div>
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                    {generationMode === 'manual' && (
-                        <motion.div
-                            className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 20 }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            <div className="flex items-center justify-between mb-4">
-                                <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Preferencias</p>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Permitir arrastrar materias al horario</span>
-                                    <button
-                                        onClick={() => {
-                                            setDragEnabled(!dragEnabled)
-                                        }}
-                                        className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${dragEnabled ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                                    >
-                                        <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${dragEnabled ? 'right-0.5' : 'left-0.5'}`}></div>
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                    </AnimatePresence>
-                </>
-            )}
-
-                    <AnimatePresence>
-                        {showConfirmModeModal && (
-                            <motion.div className="fixed inset-0 z-50 flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                <div className="absolute inset-0 bg-black/40" onClick={handleCancelModeChange} />
-                                <motion.div className="bg-white dark:bg-zinc-900 rounded-lg p-6 z-10 w-full max-w-md" initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 10, opacity: 0 }}>
-                                    <h3 className="text-lg mb-2 text-primary">Cambiar modo de generación</h3>
-                                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
-                                        <span className='block'>¿Estás seguro? Esto puede borrar tu horario actual.</span>
-                                        <span className='block mt-1 text-white dark:text-zinc-900' >.</span>
-                                        <span className='text-red-600'>{Object.keys(materiasSeleccionadas || {}).length} materias </span> seleccionadas serán eliminadas al cambiar a <span className='font-bold text-primary/80'>{pendingMode === 'manual' ? 'Manual' : 'Automático'}</span>. 
-                                    </p>
-                                    <div className="flex justify-center gap-2">
-                                        <button onClick={handleCancelModeChange} className="px-4 py-2 w-[125px] rounded-md bg-zinc-300 text-zinc-900 hover:bg-zinc-300/80 cursor-pointer dark:text-white dark:bg-zinc-800 dark:hover:bg-zinc-700">Cancelar</button>
-                                        <button onClick={handleConfirmModeChange} className="px-4 py-2 w-[125px] rounded-md bg-primary hover:bg-primary/80 cursor-pointer text-white">Sí, cambiar</button>
+                                    <div className="space-y-3">
+                                        <div className="space-y-1.5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Hora mínima de clases</span>
+                                                <span className="text-xs font-bold text-primary">{horaMinima}:00</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <select
+                                                    value={horaMinima}
+                                                    onChange={(e) => setHoraMinima(Number(e.target.value))}
+                                                    className="flex-1 px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                                                >
+                                                    <option value={6}>6:00 AM</option>
+                                                    <option value={7}>7:00 AM</option>
+                                                    <option value={8}>8:00 AM</option>
+                                                    <option value={9}>9:00 AM</option>
+                                                    <option value={10}>10:00 AM</option>
+                                                    <option value={11}>11:00 AM</option>
+                                                    <option value={12}>12:00 PM</option>
+                                                    <option value={13}>1:00 PM</option>
+                                                    <option value={14}>2:00 PM</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Evitar horarios con huecos extensos</span>
+                                            <button
+                                                onClick={() => setEvitarHuecos(!evitarHuecos)}
+                                                className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${evitarHuecos ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                                            >
+                                                <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${evitarHuecos ? 'right-0.5' : 'left-0.5'}`}></div>
+                                            </button>
+                                        </div>
                                     </div>
                                 </motion.div>
+                            )}
+                            {generationMode === 'manual' && (
+                                <motion.div
+                                    className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 20 }}
+                                    transition={{ duration: 0.3 }}
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Preferencias</p>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Permitir arrastrar materias al horario</span>
+                                            <button
+                                                onClick={() => {
+                                                    setDragEnabled(!dragEnabled)
+                                                }}
+                                                className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${dragEnabled ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                                            >
+                                                <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${dragEnabled ? 'right-0.5' : 'left-0.5'}`}></div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </>
+                )}
+
+                <AnimatePresence>
+                    {showConfirmModeModal && (
+                        <motion.div className="fixed inset-0 z-50 flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                            <div className="absolute inset-0 bg-black/40" onClick={handleCancelModeChange} />
+                            <motion.div className="bg-white dark:bg-zinc-900 rounded-lg p-6 z-10 w-full max-w-md" initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 10, opacity: 0 }}>
+                                <h3 className="text-lg mb-2 text-primary">Cambiar modo de generación</h3>
+                                <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+                                    <span className='block'>¿Estás seguro? Esto puede borrar tu horario actual.</span>
+                                    <span className='block mt-1 text-white dark:text-zinc-900' >.</span>
+                                    <span className='text-red-600'>{Object.keys(materiasSeleccionadas || {}).length} materias </span> seleccionadas serán eliminadas al cambiar a <span className='font-bold text-primary/80'>{pendingMode === 'manual' ? 'Manual' : 'Automático'}</span>.
+                                </p>
+                                <div className="flex justify-center gap-2">
+                                    <button onClick={handleCancelModeChange} className="px-4 py-2 w-[125px] rounded-md bg-zinc-300 text-zinc-900 hover:bg-zinc-300/80 cursor-pointer dark:text-white dark:bg-zinc-800 dark:hover:bg-zinc-700">Cancelar</button>
+                                    <button onClick={handleConfirmModeChange} className="px-4 py-2 w-[125px] rounded-md bg-primary hover:bg-primary/80 cursor-pointer text-white">Sí, cambiar</button>
+                                </div>
                             </motion.div>
-                        )}
-                    </AnimatePresence>
-        </motion.aside>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </motion.aside>
         </>
     )
 }

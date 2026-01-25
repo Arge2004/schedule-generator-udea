@@ -30,14 +30,23 @@ export const useMateriasStore = create((set) => ({
   setNotifier: (fn) => set({ notify: fn }),
 
   // Acciones
-  setMateriasData: (data) => set({
+  setMateriasData: (data) => set((state) => ({
     materias: data.materias,
     facultad: data.facultad,
     programa: data.programa,
     semestre: data.semestre,
     fecha: data.fecha,
     isLoaded: true,
-  }),
+    // Reset selections and generated schedules when loading new data
+    materiasSeleccionadas: {},
+    gruposSeleccionados: {},
+    horariosGenerados: [],
+    horarioActualIndex: 0,
+    previewGrupo: null,
+    removedGroups: state.removedGroups ? [] : undefined,
+    resetKey: (state.resetKey || 0) + 1,
+  })),
+
 
   // Limpiar el store
   clearMaterias: () => set({
