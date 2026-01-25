@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import ColorBlobs from './ColorBlobs.jsx';
 import { ScheduleProvider } from './ScheduleContext';
 import { AnimatePresence } from 'framer-motion';
 import ClassBlock from './ClassBlock';
@@ -446,7 +447,6 @@ export default function Schedule() {
             draggingMateria.grupos.forEach(grupo => {
                 // Si el grupo tiene conflicto en alguna de sus clases, NO mostrar NINGUNA de sus clases
                 if (groupHasConflict(grupo)) {
-                    console.debug('[DRAG ENTER] Grupo descartado por conflicto global', { codigo: draggingMateria.codigo, grupo: grupo.numero });
                     return;
                 }
                 // Agregar todos los horarios del grupo (porque el grupo es globalmente válido)
@@ -457,7 +457,6 @@ export default function Schedule() {
                     });
                 });
             });
-            console.debug('[DRAG ENTER] availableHorarios for', draggingMateria?.codigo, todosLosHorarios.map(h => ({dias: h.dias, horaInicio: h.horaInicio, horaFin: h.horaFin, numeroGrupo: h.numeroGrupo}))); 
             setAvailableHorarios(todosLosHorarios);
         }
     };
@@ -553,8 +552,6 @@ export default function Schedule() {
                 });
             });
 
-            console.log('[DROP] resultado validación:', { algunGrupoTieneHorarioAqui, hayConflictos, dia, hora, draggingMateriaCodigo: draggingMateria?.codigo });
-
             if (algunGrupoTieneHorarioAqui && hayConflictos) {
                 showToastMessage('⚠️ No se puede colocar: hay un conflicto con otra materia');
             } else if (!algunGrupoTieneHorarioAqui) {
@@ -604,231 +601,253 @@ export default function Schedule() {
 
     return (
         <ScheduleProvider celdasMateria={celdasMateria} showToastMessage={showToastMessage}>
-        <div ref={scheduleRef} className="flex-1 flex flex-col bg-white dark:bg-background-dark" style={{ overflow: (draggingMateria || (availableHorarios && availableHorarios.length > 0)) ? 'visible' : 'hidden' }}>
-            {/* Área del Schedule (ocupa el espacio disponible) */}
-            <div className="flex-1 flex flex-col" style={{ overflow: (draggingMateria || (availableHorarios && availableHorarios.length > 0)) ? 'visible' : 'hidden' }}>
-                {/* Header con los días */}
-                <div className="grid grid-cols-[80px_repeat(7,minmax(140px,1fr))] bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-800 flex-shrink-0">
-                    {/* Celda vacía en la esquina */}
-                    <div className="border-r border-zinc-200 dark:border-zinc-800 py-4"></div>
+            <div ref={scheduleRef} className="flex-1 flex flex-col bg-white dark:bg-background-dark relative" style={{ overflow: (draggingMateria || (availableHorarios && availableHorarios.length > 0)) ? 'visible' : 'hidden' }}>
+                {/* Subtle color blobs for schedule background */}
+                <ColorBlobs dark={darkTheme} className="z-10" />
 
-                    {/* Días de la semana */}
-                    {dias.map((dia) => (
+                {/* Área del Schedule (ocupa el espacio disponible) */}
+                <div className="flex-1 flex flex-col" style={{ overflow: (draggingMateria || (availableHorarios && availableHorarios.length > 0)) ? 'visible' : 'hidden' }}>
+                    {/* Header con los días */}
+                    <div className="grid grid-cols-[80px_repeat(7,minmax(140px,1fr))] bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-800 flex-shrink-0">
+                        {/* Celda vacía en la esquina */}
+                        <div className="border-r border-zinc-200 dark:border-zinc-800 py-4"></div>
+
+                        {/* Días de la semana */}
+                        {dias.map((dia) => (
+                            <div
+                                key={dia}
+                                className="py-4 px-4 text-center font-bold text-sm text-zinc-700 dark:text-zinc-200 border-r border-zinc-200 dark:border-zinc-800 select-none"
+                            >
+                                {dia}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Grid de horarios con posicionamiento explícito */}
+                    <div className="flex-1 min-h-0 overflow-hidden">
                         <div
-                            key={dia}
-                            className="py-4 px-4 text-center font-bold text-sm text-zinc-700 dark:text-zinc-200 border-r border-zinc-200 dark:border-zinc-800 select-none"
+                            className="grid h-full w-full relative"
+                            style={{
+                                gridTemplateColumns: '80px repeat(7, minmax(140px, 1fr))',
+                                gridTemplateRows: `repeat(${horas.length}, 1fr)`,
+                            }}
+                            onDragOver={handleDragOver}
+                            onDragEnter={handleDragEnter}
+                            onDragLeave={handleDragLeave}
                         >
-                            {dia}
-                        </div>
-                    ))}
-                </div>
+                            {/* Generar todas las celdas del grid */}
+                            {horas.map((hora, horaIdx) => (
+                                <React.Fragment key={hora}>
+                                    {/* Columna de hora */}
+                                    <div
+                                        className="px-3 text-xs font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50 border-r border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-center select-none"
+                                        style={{
+                                            gridColumn: 1,
+                                            gridRow: horaIdx + 1,
+                                        }}
+                                    >
+                                        {formatHora(hora)}
+                                    </div>
 
-                {/* Grid de horarios con posicionamiento explícito */}
-                <div className="flex-1 min-h-0 overflow-hidden">
-                    <div
-                        className="grid h-full w-full relative"
-                        style={{
-                            gridTemplateColumns: '80px repeat(7, minmax(140px, 1fr))',
-                            gridTemplateRows: `repeat(${horas.length}, 1fr)`,
-                        }}
-                        onDragOver={handleDragOver}
-                        onDragEnter={handleDragEnter}
-                        onDragLeave={handleDragLeave}
-                    >
-                        {/* Generar todas las celdas del grid */}
-                        {horas.map((hora, horaIdx) => (
-                            <React.Fragment key={hora}>
-                                {/* Columna de hora */}
-                                <div
-                                    className="px-3 text-xs font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50 border-r border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-center select-none"
-                                    style={{
-                                        gridColumn: 1,
-                                        gridRow: horaIdx + 1,
-                                    }}
-                                >
-                                    {formatHora(hora)}
-                                </div>
+                                    {/* Celdas vacías para cada día */}
+                                    {dias.map((dia, diaIdx) => {
+                                        const celdaKey = `${diaIdx}-${horaIdx}`;
+                                        const tieneClase = celdasOcupadas.has(celdaKey);
 
-                                {/* Celdas vacías para cada día */}
-                                {dias.map((dia, diaIdx) => {
-                                    const celdaKey = `${diaIdx}-${horaIdx}`;
-                                    const tieneClase = celdasOcupadas.has(celdaKey);
-
-                                    return (
-                                        <div
-                                            key={`${dia}-${hora}`}
-                                            className={`bg-white dark:bg-background-dark ${tieneClase
+                                        return (
+                                            <div
+                                                key={`${dia}-${hora}`}
+                                                className={`bg-white dark:bg-background-dark ${tieneClase
                                                     ? ''
                                                     : 'border-r border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-100/5'
-                                                }`}
-                                            style={{
-                                                gridColumn: diaIdx + 2,
-                                                gridRow: horaIdx + 1,
-                                                zIndex: 1,
-                                            }}
-                                            onDrop={(e) => {
-                                                handleDrop(e, diaIdx, horaIdx);
-                                            }}
-                                            onDragOver={(e) => {
-                                                e.preventDefault();
-                                            }}
-                                        />
-                                    );
-                                })}
-                            </React.Fragment>
-                        ))}
-
-                        {/* Renderizar las clases sobre el grid */}
-                        <AnimatePresence mode="popLayout">
-                            {clasesParaRenderizar.map((clase, idx) => (
-                                <div
-                                    key={`${clase.materia}-${clase.grupo}-${clase.diaIndex}-${clase.horaIndex}-${clase.isPreview ? 'preview' : 'permanent'}`}
-                                    className="relative"
-                                    style={{
-                                        gridColumn: clase.diaIndex + 2, // +2 porque la primera columna es la de horas
-                                        gridRow: `${clase.horaIndex + 1} / span ${clase.duracion}`,
-                                        zIndex: clase.isPreview ? 6 : 10,
-                                        pointerEvents: draggingMateria ? 'none' : 'auto', // Permitir drops cuando se arrastra
-                                    }}
-                                >
-                                    <ClassBlock
-                                        clase={clase}
-                                        onHover={handleClassHover}
-                                        onLeave={handleClassLeave}
-                                    />
-                                </div>
+                                                    }`}
+                                                style={{
+                                                    gridColumn: diaIdx + 2,
+                                                    gridRow: horaIdx + 1,
+                                                    zIndex: 1,
+                                                }}
+                                                onDrop={(e) => {
+                                                    handleDrop(e, diaIdx, horaIdx);
+                                                }}
+                                                onDragOver={(e) => {
+                                                    e.preventDefault();
+                                                }}
+                                            />
+                                        );
+                                    })}
+                                </React.Fragment>
                             ))}
-                        </AnimatePresence>
 
-                        {/* Overlay de horarios disponibles durante drag */}
-                        {draggingMateria && (
-                            <ScheduleDropOverlay
-                                availableHorarios={availableHorarios}
-                                dias={dias}
-                                horas={horas}
-                                onBlockDrop={handleDrop}
-                                showToastMessage={showToastMessage}
-                                celdasMateria={celdasMateria}
-                                hoveredCell={hoveredCell}
-                                hoveredValidKeys={hoveredValidKeys}
-                                hoveredValidGroupNumbers={hoveredValidGroupNumbers}
-                            />
-                        )}
-                    </div>
-                </div>
+                            {/* Renderizar las clases sobre el grid */}
+                            <AnimatePresence mode="popLayout">
+                                {clasesParaRenderizar.map((clase, idx) => (
+                                    <div
+                                        key={`${clase.materia}-${clase.grupo}-${clase.diaIndex}-${clase.horaIndex}-${clase.isPreview ? 'preview' : 'permanent'}`}
+                                        className="relative"
+                                        style={{
+                                            gridColumn: clase.diaIndex + 2, // +2 porque la primera columna es la de horas
+                                            gridRow: `${clase.horaIndex + 1} / span ${clase.duracion}`,
+                                            zIndex: clase.isPreview ? 6 : 10,
+                                            pointerEvents: draggingMateria ? 'none' : 'auto', // Permitir drops cuando se arrastra
+                                        }}
+                                    >
+                                        <ClassBlock
+                                            clase={clase}
+                                            onHover={handleClassHover}
+                                            onLeave={handleClassLeave}
+                                        />
+                                    </div>
+                                ))}
+                            </AnimatePresence>
 
-                {/* Tooltip global */}
-                {tooltipData && (
-                    <ClassTooltip
-                        clase={tooltipData}
-                        color={tooltipData.color}
-                        position={tooltipPosition}
-                    />
-                )}
-            </div>
-
-            {/* Barra de herramientas inferior */}
-            <div className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/50 backdrop-blur-sm px-6 py-3 flex-shrink-0 min-h-[60px]">
-                <div className="flex items-center justify-center h-full">
-                    <div className="flex justify-center gap-4">
-                        {/* Export dropdown (PNG / PDF) */}
-                        <div className="absolute left-2 bottom-2 z-[9999]">
-                            <button
-                                ref={exportButtonRef}
-                                onClick={() => setExportMenuOpen(!exportMenuOpen)}
-                                className="p-2 bg-primary px-4 hover:bg-primary/90 rounded-lg transition-all cursor-pointer group flex items-center gap-2"
-                                title="Exportar horario"
-                            >
-                                {exporting ? 'Exportando...' : 'Exportar'}
-                                <svg className={`w-4 h-4 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-
-                            {exportMenuOpen && createPortal(
-                                <div ref={exportMenuRef} style={{ position: 'fixed', left: menuPos.left, top: menuPos.top, zIndex: 10000 }} className="bg-white dark:bg-zinc-900 rounded-md shadow-md border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-                                    <button className="w-full cursor-pointer text-left px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center gap-3">
-                                        <img src="/png.png" alt="PNG" className="w-4 h-4" />
-                                        <span className='text-zinc-900 dark:text-white'>PNG</span>
-                                    </button>
-                                    <button className="w-full cursor-pointer text-left px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center gap-3">
-                                        <img src="/pdf.png" alt="PDF" className="w-4 h-4" />
-                                        <span className='text-zinc-900 dark:text-white'>PDF</span>
-                                    </button>
-                                </div>,
-                                document.body
+                            {/* Overlay de horarios disponibles durante drag */}
+                            {draggingMateria && (
+                                <ScheduleDropOverlay
+                                    availableHorarios={availableHorarios}
+                                    dias={dias}
+                                    horas={horas}
+                                    onBlockDrop={handleDrop}
+                                    showToastMessage={showToastMessage}
+                                    celdasMateria={celdasMateria}
+                                    hoveredCell={hoveredCell}
+                                    hoveredValidKeys={hoveredValidKeys}
+                                    hoveredValidGroupNumbers={hoveredValidGroupNumbers}
+                                />
                             )}
                         </div>
+                    </div>
 
-                        {/* Navegación entre horarios */}
-                        {horariosGenerados && horariosGenerados.length > 1 && (
-                            <div className="flex items-center gap-2">
+                    {/* Tooltip global */}
+                    {tooltipData && (
+                        <ClassTooltip
+                            clase={tooltipData}
+                            color={tooltipData.color}
+                            position={tooltipPosition}
+                        />
+                    )}
+                </div>
+
+                {/* Barra de herramientas inferior */}
+                <div className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/50 backdrop-blur-sm px-6 py-3 flex-shrink-0 min-h-[60px]">
+                    <div className="flex items-center justify-center h-full">
+                        <div className="flex justify-center gap-4">
+                            {/* Export dropdown (PNG / PDF) */}
+                            <div className="absolute left-2 bottom-2 z-[9999]">
                                 <button
-                                    onClick={() => {
-                                        const newIndex = horarioActualIndex > 0 ? horarioActualIndex - 1 : horariosGenerados.length - 1;
-                                        useMateriasStore.getState().setHorarioActualIndex(newIndex);
-                                    }}
-                                    className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer group"
-                                    title="Horario anterior"
+                                    ref={exportButtonRef}
+                                    onClick={() => setExportMenuOpen(!exportMenuOpen)}
+                                    className="p-2 bg-primary px-4 hover:bg-primary/90 rounded-lg transition-all cursor-pointer group flex items-center gap-2"
+                                    title="Exportar horario"
                                 >
-                                    <svg className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    {exporting ? 'Exportando...' : 'Exportar'}
+                                    <svg className={`w-4 h-4 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </button>
 
-                                <div className="px-3 py-1 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
-                                    <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                        {horarioActualIndex + 1} / {horariosGenerados.length}
-                                    </span>
-                                </div>
-
-                                <button
-                                    onClick={() => {
-                                        const newIndex = horarioActualIndex < horariosGenerados.length - 1 ? horarioActualIndex + 1 : 0;
-                                        useMateriasStore.getState().setHorarioActualIndex(newIndex);
-                                    }}
-                                    className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer group"
-                                    title="Horario siguiente"
-                                >
-                                    <svg className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </button>
+                                {exportMenuOpen && createPortal(
+                                    <div ref={exportMenuRef} style={{ position: 'fixed', left: menuPos.left, top: menuPos.top, zIndex: 10000 }} className="bg-white dark:bg-zinc-900 rounded-md shadow-md border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                                        <button className="w-full cursor-pointer text-left px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center gap-3">
+                                            <img src="/png.png" alt="PNG" className="w-4 h-4" />
+                                            <span className='text-zinc-900 dark:text-white'>PNG</span>
+                                        </button>
+                                        <button className="w-full cursor-pointer text-left px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center gap-3">
+                                            <img src="/pdf.png" alt="PDF" className="w-4 h-4" />
+                                            <span className='text-zinc-900 dark:text-white'>PDF</span>
+                                        </button>
+                                    </div>,
+                                    document.body
+                                )}
                             </div>
-                        )}
 
-                        {/* Botón de tema oscuro */}
-                        <button
-                            onClick={() => setDarkTheme(!darkTheme)}
-                            className="p-2 absolute top-4 right-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer group"
-                            title={darkTheme ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
-                        >
-                            {darkTheme ? (
-                                <svg className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-amber-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                                </svg>
-                            ) : (
-                                <svg className="w-5 h-5 text-zinc-600 group-hover:text-indigo-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                                </svg>
+                            {/* Navegación entre horarios */}
+                            {horariosGenerados && horariosGenerados.length > 1 && (
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => {
+                                            const newIndex = horarioActualIndex > 0 ? horarioActualIndex - 1 : horariosGenerados.length - 1;
+                                            useMateriasStore.getState().setHorarioActualIndex(newIndex);
+                                        }}
+                                        className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer group"
+                                        title="Horario anterior"
+                                    >
+                                        <svg className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                    </button>
+
+                                    <div className="px-3 py-1 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                                        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                            {horarioActualIndex + 1} / {horariosGenerados.length}
+                                        </span>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            const newIndex = horarioActualIndex < horariosGenerados.length - 1 ? horarioActualIndex + 1 : 0;
+                                            useMateriasStore.getState().setHorarioActualIndex(newIndex);
+                                        }}
+                                        className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer group"
+                                        title="Horario siguiente"
+                                    >
+                                        <svg className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </button>
+                                </div>
                             )}
-                        </button>
+
+                            {/* Botón de tema oscuro */}
+                            <button
+                                onClick={() => setDarkTheme(!darkTheme)}
+                                className="p-2 absolute top-4 right-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer group"
+                                title={darkTheme ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+                            >
+                                {darkTheme ? (
+                                    <svg className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-amber-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-5 h-5 text-zinc-600 group-hover:text-indigo-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                    </svg>
+                                )}
+                            </button>
+
+                            {/* Debug: toggle colored blobs visibility */}
+                            <button
+                                onClick={() => {
+                                    try {
+                                        const cur = localStorage.getItem('colorBlobsDebug') === 'true';
+                                        localStorage.setItem('colorBlobsDebug', (!cur).toString());
+                                        window.dispatchEvent(new Event('colorBlobs:update'));
+                                    } catch (e) {
+                                        console.error('Error toggling color blobs debug', e);
+                                    }
+                                }}
+                                className="p-2 absolute top-4 right-12 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer group"
+                                title="Mostrar bolitas en movimiento"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-zinc-300 group-hover:text-amber-500 dark:group-hover:text-violet-400 transition-colors">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
+
+                {/* Modal de selección de grupos - fuera del contenedor principal */}
+                <GrupoSelectorModal />
+
+                {/* Toast para mensajes de error */}
+                {showToast && (
+                    <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="bg-zinc-900 dark:bg-zinc-800 text-white px-6 py-3 rounded-lg shadow-lg border border-zinc-700 flex items-center gap-3 max-w-md">
+                            <span className="text-sm font-medium">{toastMessage}</span>
+                        </div>
+                    </div>
+                )}
             </div>
-
-            {/* Modal de selección de grupos - fuera del contenedor principal */}
-            <GrupoSelectorModal />
-
-            {/* Toast para mensajes de error */}
-            {showToast && (
-                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="bg-zinc-900 dark:bg-zinc-800 text-white px-6 py-3 rounded-lg shadow-lg border border-zinc-700 flex items-center gap-3 max-w-md">
-                        <span className="text-sm font-medium">{toastMessage}</span>
-                    </div>
-                </div>
-            )}
-        </div>
         </ScheduleProvider>
     );
 }
