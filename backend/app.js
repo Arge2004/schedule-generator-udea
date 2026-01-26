@@ -38,7 +38,7 @@ app.use('/api', horariosRoutes);
 
 // Servir archivos estáticos del frontend en producción
 if (!isDevelopment) {
-  const frontendPath = path.join(__dirname, '../frontend/dist');
+  const frontendPath = path.join(__dirname, 'public');
   app.use(express.static(frontendPath));
   
   // Fallback para SPA routing - cualquier ruta que no sea /api/* sirve index.html

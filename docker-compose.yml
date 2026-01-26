@@ -1,0 +1,24 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: schedule-generator
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
+    volumes:
+      - cache-data:/app/cache
+    networks:
+      - app-network
+
+volumes:
+  cache-data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
