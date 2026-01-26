@@ -1,11 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import Subject from './subject.jsx';
-import { parseHTMLFile } from '../logic/parser.js';
-
 import { generarHorariosAutomaticos } from '../logic/generator.js';
 import { useMateriasStore } from '../store/materiasStore.js';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getFacultades, getProgramas, scrapeHorarios } from '../services/api.js';
+import { getFacultades, getProgramas, getHorarios } from '../services/horarios.js';
 import toast, { Toaster } from 'react-hot-toast';
 import Select from 'react-select';
 
@@ -33,7 +31,6 @@ export default function Sidebar() {
         const saved = localStorage.getItem('darkTheme');
         return saved !== null ? JSON.parse(saved) : true;
     });
-    const fileInputRef = useRef(null);
     const scrollContainerRef = useRef(null);
     const previousScrollPos = useRef(0);
 
@@ -197,73 +194,6 @@ export default function Sidebar() {
         setSearchTerm(e.target.value);
     };
 
-    const handleFileUpload = async (event) => {
-        const file = event.target.files[0];
-
-        if (!file) {
-            console.log('No se seleccionó ningún archivo');
-            return;
-        }
-
-        if (!file.name.endsWith('.html')) {
-            toast.error('Por favor, selecciona un archivo HTML válido.', { duration: 8000, position: 'bottom-center', style: { background: '#ff0000ab', color: '#fff' } });
-            return;
-        }
-
-        try {
-            setIsLoading(true);
-            console.log('Parseando archivo:', file.name);
-            const data = await parseHTMLFile(file);
-
-            console.log('✅ Parseo exitoso!');
-            console.log('Datos completos:', data);
-
-            // Verificar si hay materias disponibles
-            if (!data.materias || data.materias.length === 0) {
-                toast.error('No hay horarios disponibles en este archivo.', { duration: 8000, position: 'bottom-center', style: { background: '#ff0000ab', color: '#fff' } });
-                return;
-            }
-
-            // Guardar en el store de Zustand
-            setMateriasData(data);
-            toast.success('¡Archivo procesado exitosamente!', {
-                duration: 2000,
-                position: 'top-center',
-            });
-        } catch (error) {
-            console.error('❌ Error al parsear el archivo:', error);
-            toast.error('Error al procesar el archivo. Verifica que sea un HTML válido.', {
-                duration: 3000,
-                position: 'top-center',
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleUploadClick = () => {
-        fileInputRef.current?.click();
-    };
-
-    const handleDragOver = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-    };
-
-    const handleDrop = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            // Simular el evento de cambio en el input
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(files[0]);
-            fileInputRef.current.files = dataTransfer.files;
-            handleFileUpload({ target: { files: dataTransfer.files } });
-        }
-    };
-
     // Cargar facultades al montar el componente
     useEffect(() => {
         const loadFacultades = async () => {
@@ -272,7 +202,7 @@ export default function Sidebar() {
                 const data = await getFacultades();
                 setFacultades(data);
             } catch (error) {
-                console.error('Error cargando facultades:', error);
+                toast.error('Error al cargar facultades');
             } finally {
                 setIsLoadingFacultades(false);
             }
@@ -293,9 +223,9 @@ export default function Sidebar() {
                 setIsLoadingProgramas(true);
                 const data = await getProgramas(selectedFacultad);
                 setProgramas(data);
-                setSelectedPrograma(''); // Reset programa selection
+                setSelectedPrograma('');
             } catch (error) {
-                console.error('Error cargando programas:', error);
+                toast.error('Error al cargar programas');
                 setProgramas([]);
             } finally {
                 setIsLoadingProgramas(false);
@@ -305,7 +235,6 @@ export default function Sidebar() {
     }, [selectedFacultad]);
 
     const handleScrapeHorarios = async () => {
-        // Prefer localStorage values to avoid async state race
         const facultadLS = localStorage.getItem('selectedFacultad');
         const programaLS = localStorage.getItem('selectedPrograma');
         const facultadToUse = facultadLS || selectedFacultad;
@@ -319,29 +248,22 @@ export default function Sidebar() {
             return;
         }
 
-        // Update UI state to reflect chosen values (doesn't affect the scraping inputs)
         setSelectedFacultad(facultadToUse);
         setSelectedPrograma(programaToUse);
 
         try {
             setIsScraping(true);
-            console.log('🌐 Iniciando web scraping...');
 
-            const html = await scrapeHorarios(facultadToUse, programaToUse);
+            const facultadObj = facultades.find(f => f.value === facultadToUse);
+            const programaObj = programas.find(p => p.value === programaToUse);
 
-            console.log('✅ HTML obtenido, parseando...');
+            const data = await getHorarios(
+                facultadToUse, 
+                programaToUse, 
+                facultadObj?.label || '', 
+                programaObj?.label || ''
+            );
 
-            // Crear un File simulado a partir del HTML
-            const blob = new Blob([html], { type: 'text/html' });
-            const file = new File([blob], 'horarios.html', { type: 'text/html' });
-
-            // Parsear el HTML usando la función existente
-            const data = await parseHTMLFile(file);
-
-            console.log('✅ Parseo exitoso!');
-            console.log('Datos completos:', data);
-
-            // Verificar si hay materias disponibles
             if (!data.materias || data.materias.length === 0) {
                 toast('No hay horarios disponibles para la selección actual', {
                     icon: 'ℹ️',
@@ -355,23 +277,14 @@ export default function Sidebar() {
                 return;
             }
 
-            // Guardar en el store de Zustand
             setMateriasData(data);
-            // Asegurar limpieza y forzar re-evaluación visual
             resetMateriasSeleccionadas();
             clearHorariosGenerados();
-
-            // Pequeño delay para permitir que Zustand actualice antes de revisar
-            setTimeout(() => {
-                const current = useMateriasStore.getState().materias;
-                console.debug('[handleScrapeHorarios] store materias after set:', current ? current.length : 0);
-            }, 20);
 
             const successStyle = darkTheme ? { background: '#065f46', color: '#fff' } : { background: '#16a34a', color: '#fff' };
             toast.success(`Se actualizaron ${data.materias.length} materias y se reiniciaron las selecciones`, { duration: 5000, position: 'bottom-center', style: successStyle });
 
         } catch (error) {
-            console.error('❌ Error durante el scraping:', error);
             toast.error(`Error al obtener horarios: ${error.message}`, {
                 duration: 4000,
                 position: 'top-center',
@@ -385,14 +298,8 @@ export default function Sidebar() {
         setIsGenerating(true);
 
         try {
-            // Obtener códigos de materias seleccionadas
             const codigosSeleccionados = Object.keys(materiasSeleccionadas);
 
-            console.log('🚀 Generando horarios automáticos...');
-            console.log('📚 Materias seleccionadas:', codigosSeleccionados);
-            console.log('⚙️ Opciones:', { horaMinima, evitarHuecos });
-
-            // Generar horarios
             const horariosGenerados = generarHorariosAutomaticos(
                 materias,
                 codigosSeleccionados,
@@ -402,51 +309,14 @@ export default function Sidebar() {
                 }
             );
 
-            console.log('\n✅ Horarios generados:', horariosGenerados.length);
-            console.log('\n📊 MEJORES HORARIOS:\n');
-
-            horariosGenerados.forEach((horario, index) => {
-                console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                console.log(`🏆 HORARIO #${index + 1} - Puntuación: ${horario.puntuacion} pts`);
-                console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-
-                console.log('\n📝 Grupos seleccionados:');
-                horario.grupos.forEach(grupo => {
-                    console.log(`  • ${grupo.nombreMateria} (${grupo.codigoMateria}) - Grupo ${grupo.numeroGrupo}`);
-                    grupo.horarios.forEach(h => {
-                        console.log(`    ${h.dias.join(', ')}: ${h.horaInicio}:00 - ${h.horaFin}:00 ${h.aula ? `[${h.aula}]` : ''}`);
-                    });
-                });
-
-                console.log('\n📈 Estadísticas:');
-                console.log(`  • Días con clases: ${horario.detalles.diasConClases}`);
-                console.log(`  • Total horas/semana: ${horario.detalles.totalHorasClase}h`);
-                console.log(`  • Clase más temprana: ${horario.detalles.horaMasTempranaGlobal}:00`);
-                console.log(`  • Clase más tarde: ${horario.detalles.horaMasTardeGlobal}:00`);
-
-                console.log('\n📅 Horario por día:');
-                Object.entries(horario.detalles.horariosPorDia).forEach(([dia, clases]) => {
-                    if (clases.length > 0) {
-                        console.log(`  ${dia}:`);
-                        clases.forEach(clase => {
-                            console.log(`    ${clase.horaInicio}:00-${clase.horaFin}:00 → ${clase.materia} (Grupo ${clase.grupo})`);
-                        });
-                    }
-                });
-            });
-
-            console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
             if (horariosGenerados.length === 0) {
                 toast.error('No se pudieron generar horarios válidos. Verifica las selecciones.', { duration: 8000, position: 'bottom-center', style: { background: '#ff0000ab', color: '#fff' } });
             } else {
-                // Guardar los horarios generados en el store
                 setHorariosGenerados(horariosGenerados);
-                console.log('✨ Horarios guardados en el store. Mostrando el mejor horario en el grid.');
             }
 
         } catch (error) {
-            console.error('❌ Error al generar horarios:', error);
+            toast.error('Error al generar horarios');
         } finally {
             setIsGenerating(false);
         }
@@ -519,8 +389,7 @@ export default function Sidebar() {
                                     setSelectedFacultad('');
                                     setSelectedPrograma('');
                                 } catch (err) {
-                                    console.error('Error al volver al menú:', err);
-                                    toast.error('No se pudo volver al menú: ' + (err?.message || ''));
+                                    toast.error('No se pudo volver al menú');
                                 }
                             }}
                             className={`px-3 py-1 cursor-pointer rounded-md text-sm font-medium dark:bg-zinc-900 dark:text-white dark:border-zinc-800 dark:hover:bg-zinc-800 bg-white/80 text-zinc-900 border-zinc-200 hover:bg-zinc-100`}
