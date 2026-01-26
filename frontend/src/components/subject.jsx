@@ -143,7 +143,7 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
     return materia.grupos.some(gr => {
       if (gr.cupoDisponible === 0) return false;
       // Si el grupo no tiene horarios, considerarlo disponible
-      if (!gr.horarios || gr.horarios.length === 0) return true;
+      if (!gr.horarios || gr.horarios.length === 0) return false;
       // Verificar si alguno de sus horarios choca con el mapa de celdas
       for (const horario of gr.horarios) {
         for (const dia of horario.dias) {
@@ -319,6 +319,7 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
                 const isGrupoSelected = grupoSeleccionado === grupo.numero;
                 // Validar conflicto para este grupo
                 let tieneConflicto = false;
+                let noTieneHorarios = !grupo.horarios || grupo.horarios.length === 0;
                 if (grupo) {
                   grupo.horarios.forEach(horario => {
                     horario.dias.forEach(dia => {
@@ -340,7 +341,7 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
                     });
                   });
                 }
-                const disabled = sinCupos || tieneConflicto;
+                const disabled = sinCupos || tieneConflicto || noTieneHorarios;
                 return (
                   <div 
                     key={idx}
