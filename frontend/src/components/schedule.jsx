@@ -263,11 +263,11 @@ export default function Schedule() {
 
     // Debug log to help investigate missing tooltip issues when schedule is busy
     // eslint-disable-next-line no-console
-    console.debug("[Schedule] handleClassHover", {
+    /*console.debug("[Schedule] handleClassHover", {
       materia: clase.materia,
       position,
       finalPosition,
-    });
+    });*/
 
     setTooltipData(clase);
     setTooltipPosition(finalPosition);
@@ -297,26 +297,15 @@ export default function Schedule() {
     const clases = [];
     let gruposParaProcesar = [];
 
-    // Si hay horarios generados, usar el horario actual
-    if (horariosGenerados && horariosGenerados.length > 0) {
-      const horarioSeleccionado = horariosGenerados[horarioActualIndex];
-      if (horarioSeleccionado && horarioSeleccionado.grupos) {
-        gruposParaProcesar = horarioSeleccionado.grupos.map((g, idx) => ({
-          nombreMateria: g.nombreMateria,
-          numeroGrupo: g.numeroGrupo,
-          horarios: g.horarios,
-          profesor: g.profesor,
-          color: colores[idx % colores.length],
-        }));
-      }
-    }
-    // Si no, usar grupos seleccionados manualmente
-    else if (gruposSeleccionados && materias) {
+    // Priorizar grupos seleccionados manualmente si existen (para evitar mostrar un horario generado que no coincide)
+    const anyManualSelected = gruposSeleccionados && Object.values(gruposSeleccionados).some(v => v !== null && v !== undefined);
+
+    if (anyManualSelected && gruposSeleccionados && materias) {
       let colorIndex = 0;
       Object.entries(gruposSeleccionados).forEach(
         ([codigoMateria, numeroGrupo]) => {
           if (numeroGrupo !== null) {
-            const materia = materias.find((m) => m.codigo === codigoMateria);
+            const materia = materias.find((m) => String(m.codigo) === String(codigoMateria));
             if (materia) {
               const grupo = materia.grupos.find(
                 (g) => g.numero === numeroGrupo,
@@ -327,6 +316,8 @@ export default function Schedule() {
                   numeroGrupo: grupo.numero,
                   horarios: grupo.horarios,
                   profesor: grupo.profesor,
+                  codigoMateria: materia.codigo,
+                  source: 'manual',
                   color: colores[colorIndex % colores.length],
                 });
                 colorIndex++;
@@ -336,6 +327,22 @@ export default function Schedule() {
         },
       );
     }
+    // Si no hay selección manual, usar horarios generados (si existen)
+    else if (horariosGenerados && horariosGenerados.length > 0) {
+      const horarioSeleccionado = horariosGenerados[horarioActualIndex];
+      if (horarioSeleccionado && horarioSeleccionado.grupos) {
+        // Mantener `codigoMateria` cuando el horario fue generado automáticamente
+        gruposParaProcesar = horarioSeleccionado.grupos.map((g, idx) => ({
+          nombreMateria: g.nombreMateria,
+          numeroGrupo: g.numeroGrupo,
+          horarios: g.horarios,
+          profesor: g.profesor,
+          codigoMateria: g.codigoMateria,
+          source: 'automatico',
+          color: colores[idx % colores.length],
+        }));
+      }
+    }
 
     // Agregar preview si existe y no está ya seleccionado
     if (previewGrupo && !gruposSeleccionados[previewGrupo.codigo]) {
@@ -344,6 +351,8 @@ export default function Schedule() {
         numeroGrupo: previewGrupo.numeroGrupo,
         horarios: previewGrupo.horarios,
         profesor: previewGrupo.profesor,
+        codigoMateria: previewGrupo.codigo,
+        source: 'manual',
         color: previewGrupo.color.bg.includes("blue")
           ? "#3b82f6"
           : previewGrupo.color.bg.includes("emerald")
@@ -365,13 +374,13 @@ export default function Schedule() {
 
     // Procesar cada grupo y sus horarios
     gruposParaProcesar.forEach((grupo) => {
-      // Buscar el código de materia correspondiente
+      // Buscar el código de materia correspondiente (preferir el `codigo` si está disponible)
       let codigoMateria = null;
-      if (materias) {
+      if (grupo.codigoMateria) {
+        codigoMateria = grupo.codigoMateria;
+      } else if (materias) {
         const materiaObj = materias.find(
-          (m) =>
-            m.nombre === grupo.nombreMateria ||
-            m.codigo === grupo.codigoMateria,
+          (m) => m.nombre === grupo.nombreMateria
         );
         if (materiaObj) codigoMateria = materiaObj.codigo;
       }
@@ -392,6 +401,7 @@ export default function Schedule() {
               diaIndex: diaIndex, // 0-6
               horaIndex: horas.indexOf(horario.horaInicio), // posición en el array de horas
               isPreview: grupo.isPreview || false,
+              source: grupo.source || (grupo.isPreview ? 'preview' : 'manual'),
             });
           }
         });
