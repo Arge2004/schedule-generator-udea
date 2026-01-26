@@ -26,10 +26,5 @@ router.get('/programas/:facultad', horariosController.getProgramas);
  */
 router.get('/horarios/:facultad/:programa', horariosController.getHorarios);
 
-/**
- * POST /horarios/upload
- * Parsea un HTML de horarios subido directamente
- */
-router.post('/horarios/upload', horariosController.uploadHorarios);
 
 export default router;
