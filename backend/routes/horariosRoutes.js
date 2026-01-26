@@ -26,5 +26,12 @@ router.get('/programas/:facultad', horariosController.getProgramas);
  */
 router.get('/horarios/:facultad/:programa', horariosController.getHorarios);
 
+/**
+ * POST /generar-horarios
+ * Genera horarios automáticos optimizados
+ * Body: { materias, codigosSeleccionados, opciones }
+ */
+router.post('/generar-horarios', horariosController.generarHorarios);
+
 
 export default router;

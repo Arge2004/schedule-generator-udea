@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import Subject from './subject.jsx';
-import { generarHorariosAutomaticos } from '../logic/generator.js';
 import { useMateriasStore } from '../store/materiasStore.js';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getFacultades, getProgramas, getHorarios } from '../services/horarios.js';
+import { getFacultades, getProgramas, getHorarios, generarHorarios } from '../services/horarios.js';
 import toast, { Toaster } from 'react-hot-toast';
 import Select from 'react-select';
 
@@ -300,7 +299,7 @@ export default function Sidebar() {
         try {
             const codigosSeleccionados = Object.keys(materiasSeleccionadas);
 
-            const horariosGenerados = generarHorariosAutomaticos(
+            const horariosGenerados = await generarHorarios(
                 materias,
                 codigosSeleccionados,
                 {

@@ -4,6 +4,7 @@
  */
 
 import * as horariosService from '../services/horariosService.js';
+import * as generadorService from '../services/generadorService.js';
 
 /**
  * Obtiene la lista de todas las facultades disponibles
@@ -169,8 +170,47 @@ async function getHorarios(req, res) {
   }
 }
 
+async function generarHorarios(req, res) {
+  try {
+    const { materias, codigosSeleccionados, opciones } = req.body;
+
+    if (!materias || !Array.isArray(materias)) {
+      return res.status(400).json({
+        success: false,
+        error: 'El parámetro materias es requerido y debe ser un array'
+      });
+    }
+
+    if (!codigosSeleccionados || !Array.isArray(codigosSeleccionados)) {
+      return res.status(400).json({
+        success: false,
+        error: 'El parámetro codigosSeleccionados es requerido y debe ser un array'
+      });
+    }
+
+    const horariosGenerados = generadorService.generarHorariosAutomaticos(
+      materias,
+      codigosSeleccionados,
+      opciones || {}
+    );
+
+    res.json({
+      success: true,
+      data: horariosGenerados,
+      message: `Se generaron ${horariosGenerados.length} horarios`
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Error al generar horarios',
+      details: error.message
+    });
+  }
+}
+
 export {
   getFacultades,
   getProgramas,
-  getHorarios
+  getHorarios,
+  generarHorarios
 };

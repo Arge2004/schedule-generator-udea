@@ -50,4 +50,21 @@ export async function getHorarios(facultad, programa, nombreFacultad, nombreProg
   }
 }
 
+export async function generarHorarios(materias, codigosSeleccionados, opciones) {
+  try {
+    const { data } = await api.post('/generar-horarios', {
+      materias,
+      codigosSeleccionados,
+      opciones
+    });
+    if (!data.success) {
+      throw new Error(data.error || 'Error al generar horarios');
+    }
+    return data.data;
+  } catch (error) {
+    console.error('Error en generarHorarios:', error);
+    throw error;
+  }
+}
+
 
