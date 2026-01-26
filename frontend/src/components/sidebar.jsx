@@ -117,6 +117,9 @@ export default function Sidebar() {
         materias,
         setMateriasData,
         materiasSeleccionadas,
+        gruposSeleccionados,
+        selectGrupo,
+        toggleMateriaSelected,
         resetMateriasSeleccionadas,
         setHorariosGenerados,
         clearHorariosGenerados,
@@ -257,9 +260,9 @@ export default function Sidebar() {
             const programaObj = programas.find(p => p.value === programaToUse);
 
             const data = await getHorarios(
-                facultadToUse, 
-                programaToUse, 
-                facultadObj?.label || '', 
+                facultadToUse,
+                programaToUse,
+                facultadObj?.label || '',
                 programaObj?.label || ''
             );
 
@@ -293,7 +296,44 @@ export default function Sidebar() {
         }
     };
 
+
+
+
     const handleGenerate = async () => {
+        // Antes de generar, comprobar si el cambio de hora mínima hace que algunas materias pierdan todos sus grupos
+        const removedNames = [];
+        Object.keys(materiasSeleccionadas).forEach((codigo) => {
+            const materiaObj = materias && materias.find(m => String(m.codigo) === String(codigo));
+            if (!materiaObj) {
+                if (gruposSeleccionados && gruposSeleccionados[codigo]) selectGrupo(codigo, null);
+                toggleMateriaSelected(codigo);
+                removedNames.push(codigo);
+                return;
+            }
+
+            const hasValidGroup = (materiaObj.grupos || []).some(gr =>
+                (gr.horarios || []).some(h => h.horaInicio >= horaMinima)
+            );
+
+            if (!hasValidGroup) {
+                if (gruposSeleccionados && gruposSeleccionados[codigo]) selectGrupo(codigo, null);
+                if (materiasSeleccionadas[codigo]) toggleMateriaSelected(codigo);
+                removedNames.push(materiaObj.nombre || codigo);
+            }
+        });
+
+        if (removedNames.length > 0) {
+            const names = removedNames.join(', ');
+            const message = removedNames.length === 1
+                ? `La materia ${names} fue eliminada: no tiene grupos disponibles desde las ${horaMinima}:00.`
+                : `Se eliminaron ${removedNames.length} materias por hora mínima (${horaMinima}:00): ${names}.`;
+            toast.error(message, {
+                duration: 8000,
+                position: "bottom-center",
+                style: { background: "#ff0000ab", color: "#fff" },
+            });
+        }
+
         setIsGenerating(true);
 
         try {
