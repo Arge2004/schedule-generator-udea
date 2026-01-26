@@ -4,6 +4,7 @@
 
 import { cargarScriptFacultades, cargarScriptProgramas, obtenerHorariosHTML } from '../utils/scraper.js';
 import { extraerFacultades, extraerProgramas, parsearHorariosHTML } from '../utils/parser.js';
+import DatosCompletos from '../models/DatosCompletos.js';
 import * as cache from '../utils/cache.js';
 
 const CACHE_TTL = {
@@ -66,7 +67,7 @@ async function obtenerHorarios(facultadId, programaId, nombreFacultad, nombrePro
     const cached = await cache.get(cacheKey);
     
     if (cached) {
-      return cached;
+      return DatosCompletos.fromObject(cached);
     }
 
     const htmlHorarios = await obtenerHorariosHTML(
@@ -78,7 +79,7 @@ async function obtenerHorarios(facultadId, programaId, nombreFacultad, nombrePro
 
     const datosCompletos = parsearHorariosHTML(htmlHorarios);
     
-    await cache.set(cacheKey, datosCompletos, CACHE_TTL.HORARIOS);
+    await cache.set(cacheKey, datosCompletos.toJSON(), CACHE_TTL.HORARIOS);
     
     return datosCompletos;
   } catch (error) {
