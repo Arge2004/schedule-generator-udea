@@ -4,55 +4,71 @@
 
 import { cargarScriptFacultades, cargarScriptProgramas, obtenerHorariosHTML } from '../utils/scraper.js';
 import { extraerFacultades, extraerProgramas, parsearHorariosHTML } from '../utils/parser.js';
+import * as cache from '../utils/cache.js';
 
-/**
- * Obtiene la lista de todas las facultades disponibles
- * @returns {Promise<Array<{value: string, label: string}>>}
- */
+const CACHE_TTL = {
+  FACULTADES: 86400,  // 24 horas
+  PROGRAMAS: 43200,   // 12 horas
+  HORARIOS: 21600,    // 6 horas
+};
+
 async function obtenerFacultades() {
   try {
+    const cacheKey = 'facultades';
+    const cached = await cache.get(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+
     const scriptFacultades = await cargarScriptFacultades();
     const facultades = extraerFacultades(scriptFacultades);
+    
+    await cache.set(cacheKey, facultades, CACHE_TTL.FACULTADES);
+    
     return facultades;
   } catch (error) {
     throw new Error(`Error al obtener facultades: ${error.message}`);
   }
 }
 
-/**
- * Obtiene la lista de programas para una facultad específica
- * @param {string} facultadId - ID de la facultad
- * @returns {Promise<Array<{value: string, label: string}>>}
- */
 async function obtenerProgramas(facultadId) {
   try {
     if (!facultadId) {
       throw new Error('El ID de facultad es requerido');
     }
 
+    const cacheKey = `programas:${facultadId}`;
+    const cached = await cache.get(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+
     const scriptProgramas = await cargarScriptProgramas(facultadId);
     const programas = extraerProgramas(scriptProgramas);
+    
+    await cache.set(cacheKey, programas, CACHE_TTL.PROGRAMAS);
+    
     return programas;
   } catch (error) {
     throw new Error(`Error al obtener programas: ${error.message}`);
   }
 }
 
-/**
- * Obtiene y parsea los horarios de un programa específico
- * @param {string} facultadId - ID de la facultad
- * @param {string} programaId - ID del programa
- * @param {string} nombreFacultad - Nombre completo de la facultad
- * @param {string} nombrePrograma - Nombre completo del programa
- * @returns {Promise<DatosCompletos>} Objeto con todos los datos parseados
- */
 async function obtenerHorarios(facultadId, programaId, nombreFacultad, nombrePrograma) {
   try {
     if (!facultadId || !programaId) {
       throw new Error('Los IDs de facultad y programa son requeridos');
     }
 
-    // Obtener HTML con horarios
+    const cacheKey = `horarios:${facultadId}:${programaId}`;
+    const cached = await cache.get(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+
     const htmlHorarios = await obtenerHorariosHTML(
       facultadId,
       programaId,
@@ -60,8 +76,9 @@ async function obtenerHorarios(facultadId, programaId, nombreFacultad, nombrePro
       nombrePrograma
     );
 
-    // Parsear el HTML y retornar DatosCompletos
     const datosCompletos = parsearHorariosHTML(htmlHorarios);
+    
+    await cache.set(cacheKey, datosCompletos, CACHE_TTL.HORARIOS);
     
     return datosCompletos;
   } catch (error) {

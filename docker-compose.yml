@@ -1,4 +1,16 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: schedule-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+    command: redis-server --appendonly yes
+
   app:
     build:
       context: .
@@ -9,14 +21,16 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     restart: unless-stopped
-    volumes:
-      - cache-data:/app/cache
+    depends_on:
+      - redis
     networks:
       - app-network
 
 volumes:
-  cache-data:
+  redis-data:
     driver: local
 
 networks:
