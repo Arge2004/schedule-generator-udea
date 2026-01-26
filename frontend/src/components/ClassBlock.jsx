@@ -1,13 +1,58 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useMateriasStore } from '../store/materiasStore.js';
 
 /**
  * Componente que representa una clase/materia dentro de una celda del grid
  * Se expande verticalmente según la duración de la clase
  */
 export default function ClassBlock({ clase, onHover, onLeave }) {
-  const { materia, grupo, horaInicio, horaFin, aula, color, duracion, isPreview } = clase;
+  const { materia, grupo, horaInicio, horaFin, aula, color, duracion, isPreview, codigoMateria } = clase;
   const blockRef = React.useRef(null);
+
+  const { materias } = useMateriasStore();
+
+  // Resolver código de materia si no viene en la clase
+  const codigo = useMemo(() => {
+    if (codigoMateria) return codigoMateria;
+    if (!materia || !materias) return undefined;
+    const normalize = (s = '') => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').trim();
+    const found = materias.find(m => normalize(m.nombre) === normalize(String(materia)) || m.codigo === codigoMateria);
+    return found ? found.codigo : undefined;
+  }, [codigoMateria, materia, materias]);
+
+  // Calcular color de fondo del icono como una versión más oscura del color del bloque
+  const iconColors = useMemo(() => {
+    const fallback = { bg: 'rgba(255,255,255,0.9)', text: '#111827' };
+    if (!color) return fallback;
+    try {
+      const c = String(color).trim();
+      const hexMatch = c.match(/^#([a-fA-F0-9]{3}|[a-fA-F0-9]{6})$/);
+      if (hexMatch) {
+        let hex = hexMatch[1];
+        if (hex.length === 3) {
+          hex = hex.split('').map(x => x + x).join('');
+        }
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        const darken = (amt) => {
+          const dr = Math.max(0, Math.round(r * (1 - amt)));
+          const dg = Math.max(0, Math.round(g * (1 - amt)));
+          const db = Math.max(0, Math.round(b * (1 - amt)));
+          return `rgb(${dr}, ${dg}, ${db})`;
+        };
+        const bg = darken(0.1); // 10% darker
+        const luminance = (0.1126 * r + 0.1152 * g + 0.0722 * b) / 255;
+        const text = luminance < 0.3 ? '#ffffff' : '#111827';
+        return { bg, text };
+      }
+      // Fallback: use provided color but lower opacity
+      return { bg: `${c}`, text: '#ffffff' };
+    } catch (err) {
+      return fallback;
+    }
+  }, [color]);
 
   const handleMouseEnter = () => {
     if (blockRef.current && onHover) {
@@ -24,24 +69,22 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
   return (
     <motion.div
       ref={blockRef}
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ 
-        opacity: isPreview ? 0.7 : 1, 
-        scale: 1,
+      // Slide enter/exit so permanent blocks animate visibly
+      initial={{ x: '-80%', opacity: 0, scale: isPreview ? 0.95 : 0.98 }}
+      animate={{ x: 0, opacity: isPreview ? 0.75 : 1, scale: 1 }}
+      exit={{ x: '1000%', opacity: 0, scale: 0.95 }}
+      transition={{
+        type: 'spring',
+        stiffness: 220,
+        damping: 20,
       }}
-      exit={{ opacity: 0, scale: 0.8 }}
-      transition={{ 
-        duration: 0.3,
-        ease: "easeOut"
-      }}
-      whileHover={{ 
-        scale: 1.02, 
+      whileHover={{
+        scale: 1.02,
         y: -2,
-        transition: { duration: 0.2 }
+        transition: { duration: 0.15 }
       }}
-      className={`absolute inset-1 rounded-lg border-2 border-l-[6px] flex flex-col justify-center p-2.5 overflow-hidden hover:shadow-lg hover:z-20 cursor-pointer ${
-        isPreview ? 'border-dashed' : ''
-      }`}
+      className={`absolute select-none inset-1 rounded-lg border-2 border-l-[6px] flex flex-col justify-center p-2.5 overflow-hidden hover:shadow-lg hover:z-20 cursor-pointer group ${isPreview ? 'border-dashed' : ''
+        }`}
       style={{
         backgroundColor: color ? `${color}15` : '#3b82f615',
         borderColor: color || '#3b82f6',
@@ -50,13 +93,29 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={onLeave}
     >
+      {/* Info icon (abre el curso en nueva pestaña si hay código) */}
+      {codigo && (
+        <a
+          href={`https://ingenieria2.udea.edu.co/cursum/#/publico/materias/${codigo}/programa_curso`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          title="Ver en Cursum"
+          className="absolute -right-1 -top-1 w-7 h-7 rounded-sm flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-150 ease-in-out group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+          style={{ backgroundColor: iconColors.bg, color: iconColors.text }}
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+          </svg>
+        </a>
+      )}
       <div className="flex-shrink-0">
         {isPreview && (
           <span className="text-[9px] font-bold text-white bg-black/40 px-1.5 py-0.5 rounded mb-1 inline-block">
             PREVIEW
           </span>
         )}
-        <p 
+        <p
           className="font-bold text-xs leading-tight mb-0.5 line-clamp-2"
           style={{ color: color || '#3b82f6' }}
         >
@@ -66,7 +125,7 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
           Grupo {grupo}
         </p>
       </div>
-      
+
       <div className="space-y-0.5 mt-2 flex-shrink-0">
         {aula && (
           <div className="flex items-center gap-1">

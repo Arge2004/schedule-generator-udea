@@ -25,16 +25,28 @@ export const useMateriasStore = create((set) => ({
   gruposConflicto: [], // Grupos que tienen el mismo horario al soltar
   previewGrupo: null, // Preview del grupo al hacer hover { codigo, numeroGrupo, horarios, color }
   pendingModal: false, // Flag para indicar que hay un modal pendiente
+  // Notifier para mensajes (puede ser seteado por Schedule)
+  notify: (message) => { console.log('Notify:', message); },
+  setNotifier: (fn) => set({ notify: fn }),
 
   // Acciones
-  setMateriasData: (data) => set({
+  setMateriasData: (data) => set((state) => ({
     materias: data.materias,
     facultad: data.facultad,
     programa: data.programa,
     semestre: data.semestre,
     fecha: data.fecha,
     isLoaded: true,
-  }),
+    // Reset selections and generated schedules when loading new data
+    materiasSeleccionadas: {},
+    gruposSeleccionados: {},
+    horariosGenerados: [],
+    horarioActualIndex: 0,
+    previewGrupo: null,
+    removedGroups: state.removedGroups ? [] : undefined,
+    resetKey: (state.resetKey || 0) + 1,
+  })),
+
 
   // Limpiar el store
   clearMaterias: () => set({

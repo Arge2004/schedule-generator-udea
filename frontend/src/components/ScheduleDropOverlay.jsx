@@ -6,7 +6,7 @@ import { useMateriasStore } from '../store/materiasStore';
  * Componente que muestra una superposición visual sobre el schedule
  * cuando se está arrastrando una materia, resaltando los horarios disponibles
  */
-export default function ScheduleDropOverlay({ availableHorarios, dias, horas, onBlockDrop, showToastMessage, celdasOcupadas }) {
+export default function ScheduleDropOverlay({ availableHorarios, dias, horas, onBlockDrop, showToastMessage, celdasMateria, hoveredCell, hoveredValidKeys, hoveredValidGroupNumbers }) {
   const { setPreviewGrupo, draggingMateria, clearDragState } = useMateriasStore();
   
   if (!availableHorarios || availableHorarios.length === 0) {
@@ -17,32 +17,33 @@ export default function ScheduleDropOverlay({ availableHorarios, dias, horas, on
   const handleBackdropDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    console.log('🚫 Drop en backdrop (área sin horario disponible)');
-    
-    // Verificar si hay alguna celda ocupada por otra materia en esta posición
+
+    // Calcular celda sobre la que se soltó
     const rect = e.currentTarget.getBoundingClientRect();
     const cellWidth = rect.width / 7; // 7 días
     const cellHeight = rect.height / horas.length;
-    
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
     const diaIndex = Math.floor(x / cellWidth);
     const horaIndex = Math.floor(y / cellHeight);
-    
+
     if (diaIndex >= 0 && diaIndex < 7 && horaIndex >= 0 && horaIndex < horas.length) {
+      // Delegar al mismo handler de drop que maneja solapamientos y modal
+      if (onBlockDrop) {
+        onBlockDrop(e, diaIndex, horaIndex);
+        return;
+      }
+
+      // Fallback — si no hay handler, mostrar mensajes simples
       const celdaKey = `${diaIndex}-${horaIndex}`;
-      const materiaEnCelda = celdasOcupadas?.get(celdaKey);
-      
-      if (materiaEnCelda && materiaEnCelda !== draggingMateria?.nombre) {
-        console.log('Conflicto detectado con:', materiaEnCelda);
+      const materiaEnCeldaCodigo = celdasMateria?.get(celdaKey);
+      if (materiaEnCeldaCodigo && materiaEnCeldaCodigo !== draggingMateria?.codigo) {
         showToastMessage?.('⚠️ No se puede colocar: hay un conflicto con otra materia');
       } else {
         showToastMessage?.('⚠️ Esta materia no tiene clases en este horario');
       }
     }
-    
+
     clearDragState();
   };
 
@@ -138,49 +139,65 @@ export default function ScheduleDropOverlay({ availableHorarios, dias, horas, on
       
       {/* Bloques de horarios disponibles */}
       <AnimatePresence>
-        {bloques.map(bloque => (
-          <motion.div
-            key={bloque.key}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ 
-              opacity: 1, 
-              scale: 1,
-            }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            whileHover={{ 
-              scale: 1.05,
-              transition: { duration: 0.2 }
-            }}
-            transition={{
-              duration: 0.4,
-              delay: bloques.indexOf(bloque) * 0.05,
-              ease: "easeOut"
-            }}
-            className={`${bloque.color.bg} ${bloque.color.dark} ${bloque.color.border} border-2 border-dashed rounded-md flex items-center justify-center`}
-            style={{
-              gridColumn: bloque.diaIndex + 2,
-              gridRow: `${bloque.horaInicioIndex + 1} / span ${bloque.duracion}`,
-              zIndex: 15, // Mayor que backdrop (12) y ClassBlock (10)
-              pointerEvents: 'auto',
-              cursor: 'copy',
-              backgroundImage: `repeating-linear-gradient(
-                                45deg,
-                                transparent 0px,
-                                transparent 4px,
-                                rgba(255, 255, 255, 0.15) 4px,
-                                rgba(255, 255, 255, 0.15) 8px
-                            )`
-            }}
-            onMouseEnter={() => handleMouseEnter(bloque)}
-            onMouseLeave={handleMouseLeave}
-            onDrop={(e) => handleDrop(e, bloque)}
-            onDragOver={(e) => {
-              e.preventDefault();
-              e.dataTransfer.dropEffect = 'copy';
-            }}
-          >
-          </motion.div>
-        ))}
+        {bloques.map(bloque => {
+          // Si hay una celda hovered y esa celda está dentro del bloque pero NO está válida -> ocultar ese bloque
+          let hideBloqueAtHoveredCell = false;
+          if (hoveredCell) {
+            const hoveredKey = `${hoveredCell.diaIndex}-${hoveredCell.horaIndex}`;
+            // Si el bloque cubre la columna/row del hoveredKey y hoveredValidKeys no incluye hoveredKey
+            const coversHovered = (bloque.diaIndex === hoveredCell.diaIndex) && (hoveredCell.horaIndex >= bloque.horaInicioIndex && hoveredCell.horaIndex < bloque.horaInicioIndex + bloque.duracion);
+            console.log('Covers hovered?', coversHovered, 'HoveredKey:', hoveredKey, 'ValidKeys:', hoveredValidKeys);
+            if (coversHovered && hoveredValidKeys && !hoveredValidKeys.has(hoveredKey)) {
+              hideBloqueAtHoveredCell = true;
+            }
+          }
+
+          if (hideBloqueAtHoveredCell) return null;
+
+          return (
+            <motion.div
+              key={bloque.key}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ 
+                opacity: 1, 
+                scale: 1,
+              }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              whileHover={{ 
+                scale: 1.05,
+                transition: { duration: 0.2 }
+              }}
+              transition={{
+                duration: 0.4,
+                delay: bloques.indexOf(bloque) * 0.05,
+                ease: "easeOut"
+              }}
+              className={`${bloque.color.bg} ${bloque.color.dark} ${bloque.color.border} border-2 border-dashed rounded-md flex items-center justify-center`}
+              style={{
+                gridColumn: bloque.diaIndex + 2,
+                gridRow: `${bloque.horaInicioIndex + 1} / span ${bloque.duracion}`,
+                zIndex: 15, // Mayor que backdrop (12) y ClassBlock (10)
+                pointerEvents: 'auto',
+                cursor: 'copy',
+                backgroundImage: `repeating-linear-gradient(
+                                  45deg,
+                                  transparent 0px,
+                                  transparent 4px,
+                                  rgba(255, 255, 255, 0.15) 4px,
+                                  rgba(255, 255, 255, 0.15) 8px
+                              )`
+              }}
+              onMouseEnter={() => handleMouseEnter(bloque)}
+              onMouseLeave={handleMouseLeave}
+              onDrop={(e) => handleDrop(e, bloque)}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+              }}
+            >
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
     </>
   );
