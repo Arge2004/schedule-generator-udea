@@ -15,7 +15,7 @@ services:
     mem_limit: 300m
 
   app:
-    image: ghcr.io/usuario/schedule-generator:latest
+    image: ghcr.io/arge2004/schedule-generator-udea:latest
     container_name: schedule-generator
     restart: unless-stopped
     ports:

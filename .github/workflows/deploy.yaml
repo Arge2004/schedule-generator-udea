@@ -28,7 +28,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/Arge2004/schedule-generator-udea:latest
+          tags: ghcr.io/arge2004/schedule-generator-udea:latest
 
       # 4. Deploy en la VPS vía SSH
       - name: Deploy to VPS
@@ -40,5 +40,5 @@ jobs:
           script: |
             cd /opt/schedule-generator
             git pull origin main
-            docker pull ghcr.io/Arge2004/schedule-generator-udea:latest
+            docker pull ghcr.io/arge2004/schedule-generator-udea:latest
             docker compose -f docker-compose.prod.yaml up -d
