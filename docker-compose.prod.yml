@@ -1,0 +1,36 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: schedule-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+    mem_limit: 300m
+
+  app:
+    image: ghcr.io/usuario/schedule-generator:latest
+    container_name: schedule-generator
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    networks:
+      - app-network
+    mem_limit: 400m
+
+volumes:
+  redis-data:
+
+networks:
+  app-network:
+    driver: bridge
