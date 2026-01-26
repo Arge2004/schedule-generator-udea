@@ -63,6 +63,30 @@ export default function Sidebar() {
 
     const selectTheme = useMemo(() => (t) => ({ ...t, colors: { ...t.colors, primary25: 'rgba(19,146,236,0.06)', primary: '#1392ec' } }), []);
 
+    // Light theme styles for react-select (force light appearance even in dark app theme)
+    const lightSelectStyles = useMemo(() => ({
+        control: (base) => ({
+            ...base,
+            minHeight: '40px',
+            borderRadius: '0.5rem',
+            background: '#ffffff',
+            borderColor: '#e6e6e9',
+            boxShadow: 'none',
+            color: '#111827'
+        }),
+        placeholder: (base) => ({ ...base, color: '#6b7280' }),
+        option: (base, state) => ({
+            ...base,
+            color: '#111827',
+            backgroundColor: state.isFocused ? '#f8fafc' : '#ffffff'
+        }),
+        singleValue: (base) => ({ ...base, color: '#111827' }),
+        menu: (base) => ({ ...base, background: '#ffffff' }),
+        menuList: (base) => ({ ...base, maxHeight: '240px' })
+    }), []);
+
+    const lightSelectTheme = useMemo(() => (t) => ({ ...t, colors: { ...t.colors, primary25: 'rgba(19,146,236,0.06)', primary: '#1392ec', neutral80: '#111827' } }), []);
+
     const memoFacultades = useMemo(() => facultades || [], [facultades]);
     const memoProgramas = useMemo(() => programas || [], [programas]);
 
@@ -182,10 +206,7 @@ export default function Sidebar() {
         }
 
         if (!file.name.endsWith('.html')) {
-            toast.error('Por favor, selecciona un archivo HTML válido', {
-                duration: 3000,
-                position: 'top-center',
-            });
+            toast.error('Por favor, selecciona un archivo HTML válido.', { duration: 8000, position: 'bottom-center', style: { background: '#ff0000ab', color: '#fff' } });
             return;
         }
 
@@ -199,15 +220,7 @@ export default function Sidebar() {
 
             // Verificar si hay materias disponibles
             if (!data.materias || data.materias.length === 0) {
-                toast('No hay horarios disponibles en este archivo', {
-                    icon: 'ℹ️',
-                    duration: 4000,
-                    position: 'top-center',
-                    style: {
-                        background: '#3b82f6',
-                        color: '#fff',
-                    },
-                });
+                toast.error('No hay horarios disponibles en este archivo.', { duration: 8000, position: 'bottom-center', style: { background: '#ff0000ab', color: '#fff' } });
                 return;
             }
 
@@ -354,10 +367,9 @@ export default function Sidebar() {
                 console.debug('[handleScrapeHorarios] store materias after set:', current ? current.length : 0);
             }, 20);
 
-            toast.success(`Se actualizaron ${data.materias.length} materias — selecciones reseteadas`, {
-                duration: 2500,
-                position: 'top-center',
-            });
+            const successStyle = darkTheme ? { background: '#065f46', color: '#fff' } : { background: '#16a34a', color: '#fff' };
+            toast.success(`Se actualizaron ${data.materias.length} materias y se reiniciaron las selecciones`, { duration: 5000, position: 'bottom-center', style: successStyle });
+
         } catch (error) {
             console.error('❌ Error durante el scraping:', error);
             toast.error(`Error al obtener horarios: ${error.message}`, {
@@ -426,7 +438,7 @@ export default function Sidebar() {
             console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
             if (horariosGenerados.length === 0) {
-                console.warn('⚠️ No se pudieron generar horarios válidos. Verifica que las materias seleccionadas tengan grupos compatibles.');
+                toast.error('No se pudieron generar horarios válidos. Verifica las selecciones.', { duration: 8000, position: 'bottom-center', style: { background: '#ff0000ab', color: '#fff' } });
             } else {
                 // Guardar los horarios generados en el store
                 setHorariosGenerados(horariosGenerados);
@@ -465,7 +477,7 @@ export default function Sidebar() {
             resetMateriasSeleccionadas();
             clearHorariosGenerados();
         }, 220);
-    }; 
+    };
 
     const handleConfirmModeChange = () => {
         if (!pendingMode) return;
@@ -540,8 +552,8 @@ export default function Sidebar() {
                                         placeholder={isLoadingFacultades ? 'Cargando facultades...' : 'Selecciona una facultad...'}
                                         className="w-full text-start text-sm border-1 border-zinc-300 rounded-lg"
                                         classNamePrefix="rs"
-                                        styles={selectStyles}
-                                        theme={selectTheme}
+                                        styles={lightSelectStyles}
+                                        theme={lightSelectTheme}
                                         onMenuOpen={() => setMenuOpen(true)}
                                         onMenuClose={() => setMenuOpen(false)}
                                         menuShouldScrollIntoView={false}
@@ -560,10 +572,10 @@ export default function Sidebar() {
                                         onChange={handleProgramaChange}
                                         isDisabled={!selectedFacultad || isScraping || isLoadingProgramas}
                                         placeholder={!selectedFacultad ? 'Primero selecciona una facultad...' : isLoadingProgramas ? 'Cargando programas...' : 'Selecciona un programa...'}
-                                        className="w-full text-start text-sm border-1 border-zinc-300 rounded-lg" 
+                                        className="w-full text-start text-sm border-1 border-zinc-300 rounded-lg"
                                         classNamePrefix="rs"
-                                        styles={selectStyles}
-                                        theme={selectTheme}
+                                        styles={lightSelectStyles}
+                                        theme={lightSelectTheme}
                                         onMenuOpen={() => setMenuOpen(true)}
                                         onMenuClose={() => setMenuOpen(false)}
                                         menuShouldScrollIntoView={false}

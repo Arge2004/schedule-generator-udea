@@ -8,6 +8,7 @@ import ClassTooltip from './ClassTooltip';
 import ScheduleDropOverlay from './ScheduleDropOverlay';
 import GrupoSelectorModal from './GrupoSelectorModal';
 import { useMateriasStore } from '../store/materiasStore';
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function Schedule() {
     const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -156,6 +157,10 @@ export default function Schedule() {
         } else {
             finalPosition.placement = 'top';
         }
+
+        // Debug log to help investigate missing tooltip issues when schedule is busy
+        // eslint-disable-next-line no-console
+        console.debug('[Schedule] handleClassHover', { materia: clase.materia, position, finalPosition });
 
         setTooltipData(clase);
         setTooltipPosition(finalPosition);
@@ -553,9 +558,9 @@ export default function Schedule() {
             });
 
             if (algunGrupoTieneHorarioAqui && hayConflictos) {
-                showToastMessage('⚠️ No se puede colocar: hay un conflicto con otra materia');
+                toast.error('No se puede colocar: hay un conflicto con otra materia.', { duration: 8000, position: 'bottom-center', style: { background: '#ff0000ab', color: '#fff' } });
             } else if (!algunGrupoTieneHorarioAqui) {
-                showToastMessage('⚠️ Esta materia no tiene clases en este horario');
+                toast.error('Esta materia no tiene clases en este horario.', { duration: 8000, position: 'bottom-center', style: { background: '#ff0000ab', color: '#fff' } });
             } else {
                 console.log('Estado inesperado:', { algunGrupoTieneHorarioAqui, hayConflictos });
             }
