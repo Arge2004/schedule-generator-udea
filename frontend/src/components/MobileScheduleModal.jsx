@@ -7,15 +7,34 @@ import { ScheduleProvider } from './ScheduleContext';
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const DIAS_SHORT = ['L', 'M', 'Mi', 'J', 'V', 'S'];
 
-export default function MobileScheduleModal({ isOpen, onClose, horarios, currentScheduleIndex }) {
+export default function MobileScheduleModal({ isOpen, onClose, horarios, currentScheduleIndex: externalIndex, onScheduleChange }) {
     const [activeDay, setActiveDay] = useState(0);
     const [tooltipData, setTooltipData] = useState(null);
     const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
     const hideTimeoutRef = React.useRef(null);
+    
+    // Usar índice interno si no se proporciona callback externo
+    const [internalIndex, setInternalIndex] = useState(0);
+    const currentScheduleIndex = onScheduleChange ? externalIndex : internalIndex;
+    const setCurrentScheduleIndex = onScheduleChange || setInternalIndex;
 
     if (!horarios || horarios.length === 0) return null;
 
     const currentSchedule = horarios[currentScheduleIndex] || horarios[0];
+
+    const handlePreviousSchedule = () => {
+        const newIndex = currentScheduleIndex > 0 
+            ? currentScheduleIndex - 1 
+            : horarios.length - 1;
+        setCurrentScheduleIndex(newIndex);
+    };
+
+    const handleNextSchedule = () => {
+        const newIndex = currentScheduleIndex < horarios.length - 1 
+            ? currentScheduleIndex + 1 
+            : 0;
+        setCurrentScheduleIndex(newIndex);
+    };
 
     // Manejar swipe para cambiar de día
     const handleDragEnd = (event, info) => {
@@ -122,22 +141,45 @@ export default function MobileScheduleModal({ isOpen, onClose, horarios, current
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800">
-                            <div>
-                                <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
-                                    Horario Generado
-                                </h2>
-                                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                                    {currentScheduleIndex + 1} de {horarios.length}
-                                </p>
-                            </div>
                             <button
                                 onClick={onClose}
-                                className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                             >
                                 <svg className="w-6 h-6 text-zinc-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
+                            
+                            <div className="flex-1 text-center">
+                                <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
+                                    Horario Generado
+                                </h2>
+                                {horarios.length > 1 && (
+                                    <div className="flex items-center justify-center gap-3 mt-2">
+                                        <button
+                                            onClick={handlePreviousSchedule}
+                                            className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                                        >
+                                            <svg className="w-5 h-5 text-zinc-600 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                            </svg>
+                                        </button>
+                                        <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400 min-w-[60px]">
+                                            {currentScheduleIndex + 1} de {horarios.length}
+                                        </span>
+                                        <button
+                                            onClick={handleNextSchedule}
+                                            className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                                        >
+                                            <svg className="w-5 h-5 text-zinc-600 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="w-10"></div> {/* Spacer para centrar el título */}
                         </div>
 
                         {/* Tabs de días */}

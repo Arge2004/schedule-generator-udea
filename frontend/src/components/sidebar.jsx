@@ -843,6 +843,7 @@ export default function Sidebar() {
                 onClose={() => setShowMobileSchedule(false)}
                 horarios={horariosGenerados}
                 currentScheduleIndex={currentScheduleIndex}
+                onScheduleChange={setCurrentScheduleIndex}
             />
         </>
     )
