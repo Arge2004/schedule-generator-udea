@@ -26,11 +26,6 @@ export default function Sidebar() {
     const [showConfirmModeModal, setShowConfirmModeModal] = useState(false);
     const [pendingMode, setPendingMode] = useState(null);
     const [evitarHuecos, setEvitarHuecos] = useState(false);
-    const [darkTheme, setDarkTheme] = useState(() => {
-        // Inicializar desde localStorage o por defecto true
-        const saved = localStorage.getItem('darkTheme');
-        return saved !== null ? JSON.parse(saved) : true;
-    });
     const scrollContainerRef = useRef(null);
     const previousScrollPos = useRef(0);
 
@@ -41,6 +36,22 @@ export default function Sidebar() {
     const [isMobile, setIsMobile] = useState(false);
     const [showMobileSchedule, setShowMobileSchedule] = useState(false);
     const [currentScheduleIndex, setCurrentScheduleIndex] = useState(0);
+
+    // Escuchar cambios en la preferencia del sistema en tiempo real
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        
+        const handleChange = (e) => {
+            // Solo actualizar si la sincronización está habilitada
+            syncThemeWithSystem(e.matches);
+        };
+        
+        // Agregar listener
+        mediaQuery.addEventListener('change', handleChange);
+        
+        // Cleanup
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }, []);
 
     useEffect(() => {
         const checkMobile = () => {
@@ -53,6 +64,24 @@ export default function Sidebar() {
         
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
+
+    // Usar Zustand store (debe estar antes de los useMemo que usan darkTheme)
+    const {
+        materias,
+        setMateriasData,
+        materiasSeleccionadas,
+        gruposSeleccionados,
+        selectGrupo,
+        toggleMateriaSelected,
+        resetMateriasSeleccionadas,
+        setHorariosGenerados,
+        clearHorariosGenerados,
+        horariosGenerados,
+        clearMaterias,
+        clearRemovedGroups,
+        darkTheme,
+        syncThemeWithSystem
+    } = useMateriasStore();
 
     // Memoized styles and theme for react-select
     const selectStyles = useMemo(() => ({
@@ -130,22 +159,6 @@ export default function Sidebar() {
     // NOTE: Removed MenuList virtualized implementation by request — reverting to default Menu rendering.
     // Keeping menuOpen state so we can temporarily reduce heavy effects via CSS while the menu is open.
 
-    // Usar Zustand store
-    const {
-        materias,
-        setMateriasData,
-        materiasSeleccionadas,
-        gruposSeleccionados,
-        selectGrupo,
-        toggleMateriaSelected,
-        resetMateriasSeleccionadas,
-        setHorariosGenerados,
-        clearHorariosGenerados,
-        horariosGenerados,
-        clearMaterias,
-        clearRemovedGroups
-    } = useMateriasStore();
-
     // Aplicar/remover clase dark del documento
     useEffect(() => {
         if (darkTheme) {
@@ -153,7 +166,6 @@ export default function Sidebar() {
         } else {
             document.querySelector('html').classList.remove('dark')
         }
-        localStorage.setItem('darkTheme', JSON.stringify(darkTheme));
     }, [darkTheme]);
 
     // Debounce del término de búsqueda (500ms de espera)
