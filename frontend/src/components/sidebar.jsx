@@ -46,17 +46,13 @@ export default function Sidebar() {
         const checkMobile = () => {
             const mobile = window.innerWidth <= 768;
             setIsMobile(mobile);
-            // En móvil siempre forzar modo automático
-            if (mobile && generationMode !== 'automatico') {
-                setGenerationMode('automatico');
-            }
         };
         
         checkMobile();
         window.addEventListener('resize', checkMobile);
         
         return () => window.removeEventListener('resize', checkMobile);
-    }, [generationMode]);
+    }, []);
 
     // Memoized styles and theme for react-select
     const selectStyles = useMemo(() => ({
@@ -541,51 +537,49 @@ export default function Sidebar() {
                 ) : (
                     <>
                         <div className="p-4 space-y-6 flex flex-col flex-1 min-h-0">
-                            {/* Mode Toggle - Solo visible en desktop */}
-                            {!isMobile && (
-                                <div className="space-y-4">
-                                    <p className="text-xs text-start font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-1">Modo de Generación</p>
-                                    <div className="relative flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-1 gap-1 overflow-hidden">
-                                        {/* Fondo animado */}
-                                        <motion.div
-                                            initial={false}
-                                            animate={{
-                                                x: generationMode === 'manual' ? 0 : '100%',
-                                            }}
-                                            transition={{ type: 'spring', stiffness: 200, damping: 24 }}
-                                            className="absolute top-0 left-0 w-1/2 h-full rounded-md bg-primary z-0 shadow-md"
-                                            style={{
-                                                // El fondo cubre el botón activo
-                                                width: '50%',
-                                            }}
-                                        />
-                                        <motion.button
-                                            onClick={() => requestModeChange('manual')}
-                                            whileTap={{ scale: 0.95 }}
-                                            whileHover={{ scale: 1.04 }}
-                                            className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none relative z-10 ${generationMode === 'manual'
-                                                ? 'text-white'
-                                                : 'text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 dark:hover:text-white'
-                                                }`}
-                                            transition={{ type: 'spring', stiffness: 180, damping: 12 }}
-                                        >
-                                            Manual
-                                        </motion.button>
-                                        <motion.button
-                                            onClick={() => requestModeChange('automatico')}
-                                            whileTap={{ scale: 0.95 }}
-                                            whileHover={{ scale: 1.04 }}
-                                            className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none relative z-10 ${generationMode === 'automatico'
-                                                ? 'text-white'
-                                                : 'text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 dark:hover:text-white'
-                                                }`}
-                                            transition={{ type: 'spring', stiffness: 180, damping: 12 }}
-                                        >
-                                            Automático
-                                        </motion.button>
-                                    </div>
+                            {/* Mode Toggle */}
+                            <div className="space-y-4">
+                                <p className="text-xs text-start font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-1">Modo de Generación</p>
+                                <div className="relative flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-1 gap-1 overflow-hidden">
+                                    {/* Fondo animado */}
+                                    <motion.div
+                                        initial={false}
+                                        animate={{
+                                            x: generationMode === 'manual' ? 0 : '100%',
+                                        }}
+                                        transition={{ type: 'spring', stiffness: 200, damping: 24 }}
+                                        className="absolute top-0 left-0 w-1/2 h-full rounded-md bg-primary z-0 shadow-md"
+                                        style={{
+                                            // El fondo cubre el botón activo
+                                            width: '50%',
+                                        }}
+                                    />
+                                    <motion.button
+                                        onClick={() => requestModeChange('manual')}
+                                        whileTap={{ scale: 0.95 }}
+                                        whileHover={{ scale: 1.04 }}
+                                        className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none relative z-10 ${generationMode === 'manual'
+                                            ? 'text-white'
+                                            : 'text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 dark:hover:text-white'
+                                            }`}
+                                        transition={{ type: 'spring', stiffness: 180, damping: 12 }}
+                                    >
+                                        Manual
+                                    </motion.button>
+                                    <motion.button
+                                        onClick={() => requestModeChange('automatico')}
+                                        whileTap={{ scale: 0.95 }}
+                                        whileHover={{ scale: 1.04 }}
+                                        className={`flex-1 cursor-pointer flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all focus:outline-none relative z-10 ${generationMode === 'automatico'
+                                            ? 'text-white'
+                                            : 'text-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 dark:hover:text-white'
+                                            }`}
+                                        transition={{ type: 'spring', stiffness: 180, damping: 12 }}
+                                    >
+                                        Automático
+                                    </motion.button>
                                 </div>
-                            )}
+                            </div>
                             {/* Subject Search */}
                             <div className="space-y-4 flex flex-col flex-1 min-h-0">
                                 <div className="space-y-2">
@@ -721,6 +715,27 @@ export default function Sidebar() {
                                 </motion.button>
                             </div>
                         )}
+                        
+                        {/* Botón Visualizar Horario - Solo en modo manual y móvil */}
+                        {generationMode === 'manual' && isMobile && gruposSeleccionados && Object.keys(gruposSeleccionados).length > 0 && (
+                            <div className="px-4 pb-4">
+                                <motion.button
+                                    onClick={() => {
+                                        setShowMobileSchedule(true);
+                                    }}
+                                    whileTap={{ scale: 0.97 }}
+                                    whileHover={{ scale: 1.03 }}
+                                    className="w-full py-3 cursor-pointer bg-[#1392ec] hover:bg-[#1392ec]/90 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
+                                    transition={{ type: 'spring', stiffness: 180, damping: 12 }}
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    <span className='text-sm font-semibold'>Visualizar Horario</span>
+                                </motion.button>
+                            </div>
+                        )}
                         {/* Preferencias de Generación Automática */}
                         <AnimatePresence>
                             {generationMode === 'automatico' && (
@@ -770,7 +785,7 @@ export default function Sidebar() {
                                     </div>
                                 </motion.div>
                             )}
-                            {generationMode === 'manual' && (
+                            {generationMode === 'manual' && !isMobile && (
                                 <motion.div
                                     className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20"
                                     initial={{ opacity: 0, y: 20 }}
@@ -831,9 +846,6 @@ export default function Sidebar() {
             <MobileScheduleModal
                 isOpen={showMobileSchedule}
                 onClose={() => setShowMobileSchedule(false)}
-                horarios={horariosGenerados}
-                currentScheduleIndex={currentScheduleIndex}
-                onScheduleChange={setCurrentScheduleIndex}
             />
         </>
     )

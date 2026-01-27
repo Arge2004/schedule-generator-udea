@@ -2,38 +2,71 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ClassBlock from './ClassBlock';
 import ClassTooltip from './ClassTooltip';
-import { ScheduleProvider } from './ScheduleContext';
+import { useMateriasStore } from '../store/materiasStore';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const DIAS_SHORT = ['L', 'M', 'Mi', 'J', 'V', 'S'];
 
-export default function MobileScheduleModal({ isOpen, onClose, horarios, currentScheduleIndex: externalIndex, onScheduleChange }) {
+export default function MobileScheduleModal({ isOpen, onClose }) {
     const [activeDay, setActiveDay] = useState(0);
     const [tooltipData, setTooltipData] = useState(null);
     const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
     const hideTimeoutRef = React.useRef(null);
     
-    // Usar índice interno si no se proporciona callback externo
-    const [internalIndex, setInternalIndex] = useState(0);
-    const currentScheduleIndex = onScheduleChange ? externalIndex : internalIndex;
-    const setCurrentScheduleIndex = onScheduleChange || setInternalIndex;
+    // Usar el store directamente
+    const { horariosGenerados, horarioActualIndex, setHorarioActualIndex, gruposSeleccionados, materias } = useMateriasStore();
 
-    if (!horarios || horarios.length === 0) return null;
+    // Determinar si estamos en modo manual (gruposSeleccionados) o automático (horariosGenerados)
+    const isManualMode = (!horariosGenerados || horariosGenerados.length === 0) && 
+                         gruposSeleccionados && 
+                         Object.keys(gruposSeleccionados).length > 0;
+    
+    const hasSchedule = (horariosGenerados && horariosGenerados.length > 0) || isManualMode;
+    
+    if (!hasSchedule) return null;
 
-    const currentSchedule = horarios[currentScheduleIndex] || horarios[0];
+    let currentSchedule;
+    
+    if (isManualMode) {
+        // Construir el horario desde gruposSeleccionados (modo manual)
+        currentSchedule = { grupos: [] };
+        let colorIndex = 0;
+        Object.entries(gruposSeleccionados).forEach(([codigoMateria, numeroGrupo]) => {
+            if (numeroGrupo !== null && numeroGrupo !== undefined) {
+                const materia = materias.find(m => String(m.codigo) === String(codigoMateria));
+                if (materia) {
+                    const grupo = materia.grupos.find(g => g.numero === numeroGrupo);
+                    if (grupo) {
+                        currentSchedule.grupos.push({
+                            nombreMateria: materia.nombre,
+                            codigoMateria: materia.codigo,
+                            profesor: grupo.profesor,
+                            numeroGrupo: grupo.numero,
+                            horarios: grupo.horarios,
+                            color: materia.color
+                        });
+                        colorIndex++;
+                    }
+                }
+            }
+        });
+    } else {
+        // Usar el horario generado (modo automático)
+        currentSchedule = horariosGenerados[horarioActualIndex] || horariosGenerados[0];
+    }
 
     const handlePreviousSchedule = () => {
-        const newIndex = currentScheduleIndex > 0 
-            ? currentScheduleIndex - 1 
-            : horarios.length - 1;
-        setCurrentScheduleIndex(newIndex);
+        const newIndex = horarioActualIndex > 0 
+            ? horarioActualIndex - 1 
+            : horariosGenerados.length - 1;
+        setHorarioActualIndex(newIndex);
     };
 
     const handleNextSchedule = () => {
-        const newIndex = currentScheduleIndex < horarios.length - 1 
-            ? currentScheduleIndex + 1 
+        const newIndex = horarioActualIndex < horariosGenerados.length - 1 
+            ? horarioActualIndex + 1 
             : 0;
-        setCurrentScheduleIndex(newIndex);
+        setHorarioActualIndex(newIndex);
     };
 
     // Manejar swipe para cambiar de día
@@ -152,9 +185,9 @@ export default function MobileScheduleModal({ isOpen, onClose, horarios, current
                             
                             <div className="flex-1 text-center">
                                 <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
-                                    Horarios Generados
+                                    {isManualMode ? 'Horario Manual' : 'Horarios Generados'}
                                 </h2>
-                                {horarios.length > 1 && (
+                                {!isManualMode && horariosGenerados.length > 1 && (
                                     <div className="flex items-center justify-center gap-3 mt-2">
                                         <button
                                             onClick={handlePreviousSchedule}
@@ -165,7 +198,7 @@ export default function MobileScheduleModal({ isOpen, onClose, horarios, current
                                             </svg>
                                         </button>
                                         <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400 min-w-[60px]">
-                                            {currentScheduleIndex + 1} de {horarios.length}
+                                            {horarioActualIndex + 1} de {horariosGenerados.length}
                                         </span>
                                         <button
                                             onClick={handleNextSchedule}
