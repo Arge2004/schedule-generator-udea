@@ -1,10 +1,77 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+// Componente estático para dispositivos de bajo rendimiento
+function StaticBackground() {
+    return (
+        <motion.div 
+            className="flex-1 h-full relative overflow-hidden bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
+        >
+            {/* Imagen estática de bajo rendimiento */}
+            <div className="absolute inset-0">
+                <img
+                    src="/background/lowresourcesbg.png"
+                    alt="Universidad de Antioquia"
+                    className="absolute inset-0 w-full h-full object-cover"
+                />
+            </div>
+
+            {/* Texto circular estático */}
+            <div 
+                className="absolute top-60 left-1/2 -translate-x-1/2 z-2 pointer-events-none"
+                style={{
+                    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.7)) drop-shadow(0 0 30px rgba(255, 255, 255, 0.6))',
+                }}
+            >
+                <svg viewBox="-50 0 1000 400" className="w-[1000px] h-auto overflow-visible">
+                    <defs>
+                        <filter id="glow-static">
+                            <feGaussianBlur stdDeviation="20" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <path id="circlePath-static" d="M 120,270 A 315,300 0 0,1 750,270" fill="transparent" />
+                    <text 
+                        className="font-black text-5xl tracking-[0.2em] uppercase"
+                        fill="white"
+                        stroke="rgba(255, 255, 255, 0.8)"
+                        strokeWidth="1"
+                    >
+                        <textPath href="#circlePath-static" startOffset="50%" textAnchor="middle">
+                            Universidad de Antioquia
+                        </textPath>
+                    </text>
+                </svg>
+            </div>
+
+            {/* Overlay para tema oscuro */}
+            <div className="absolute inset-0 bg-black/0 dark:bg-black/40 pointer-events-none transition-colors duration-500" />
+        </motion.div>
+    );
+}
 
 export default function ParallaxBackground() {
+    // Detectar dispositivos móviles y no renderizar nada
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                     (window.innerWidth <= 768);
+    
+    if (isMobile) {
+        return null;
+    }
+
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
     const [mouseVelocity, setMouseVelocity] = useState({ x: 0, y: 0 });
     const [time, setTime] = useState(0);
+    const [useStaticVersion, setUseStaticVersion] = useState(false);
+    const [isPerformanceCheckComplete, setIsPerformanceCheckComplete] = useState(false);
+    const performanceChecked = useRef(false);
     document.querySelector('html').classList.remove('dark')
 
     const bushes = [
@@ -57,8 +124,62 @@ export default function ParallaxBackground() {
         { left: '40%', top: '24%', width: 500, speed: 23.5, opacity: 0.35, rotation: 6 },
     ];
 
+    // NIVEL 1 - PREVENTIVO: Detectar prefers-reduced-motion
+    useEffect(() => {
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (prefersReducedMotion) {
+            setUseStaticVersion(true);
+            performanceChecked.current = true;
+            setIsPerformanceCheckComplete(true);
+            return;
+        }
+
+        // NIVEL 2 - PREDICTIVO: Detectar hardware limitado
+        const isLowEndDevice = (
+            (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) ||
+            (navigator.deviceMemory && navigator.deviceMemory < 4)
+        );
+
+        if (isLowEndDevice) {
+            setUseStaticVersion(true);
+            performanceChecked.current = true;
+            setIsPerformanceCheckComplete(true);
+            return;
+        }
+
+        // NIVEL 3 - REACTIVO: Monitorear FPS durante el primer segundo
+        let startTime = performance.now();
+        let frameCount = 0;
+        const monitorDuration = 500; // 1 segundo
+        let rafId;
+
+        function checkPerformance(currentTime) {
+            frameCount++;
+            const elapsed = currentTime - startTime;
+            
+            if (elapsed < monitorDuration) {
+                rafId = requestAnimationFrame(checkPerformance);
+            } else {
+                const fps = (frameCount * 1000) / elapsed;
+                if (fps < 40) {
+                    console.log(`Rendimiento detectado: ${fps.toFixed(1)} FPS. Cambiando a versión estática.`);
+                    setUseStaticVersion(true);
+                }
+                performanceChecked.current = true;
+                setIsPerformanceCheckComplete(true);
+            }
+        }
+
+        rafId = requestAnimationFrame(checkPerformance);
+
+        return () => {
+            if (rafId) cancelAnimationFrame(rafId);
+        };
+    }, []);
 
     useEffect(() => {
+        if (useStaticVersion) return;
+
         let lastX = 0;
         let lastY = 0;
         let lastTime = Date.now();
@@ -84,26 +205,49 @@ export default function ParallaxBackground() {
 
         window.addEventListener('mousemove', handleMouseMove);
         return () => window.removeEventListener('mousemove', handleMouseMove);
-    }, []);
+    }, [useStaticVersion]);
 
     // Animación continua para movimiento orgánico
     useEffect(() => {
+        if (useStaticVersion) return;
+
         const interval = setInterval(() => {
             setTime(t => t + 0.01);
         }, 50);
         return () => clearInterval(interval);
-    }, []);
+    }, [useStaticVersion]);
 
+    // Renderizar con AnimatePresence para transiciones suaves
     return (
-        <motion.div
-            className="flex-1 h-full relative overflow-hidden bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1 }}
-        >
-            {/* TEXTO CIRCULAR: Universidad de Antioquia */}
-            <motion.div 
+        <>
+            {/* Fondo blanco de carga durante la prueba de rendimiento */}
+            <AnimatePresence>
+                {!isPerformanceCheckComplete && (
+                    <motion.div
+                        key="loading"
+                        className="flex-1 h-full bg-white z-50 flex items-center justify-center"
+                        initial={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.6, ease: "easeInOut" }}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Contenido principal con opacidad controlada */}
+            <AnimatePresence mode="wait">
+                {useStaticVersion ? (
+                    <StaticBackground key="static" />
+                ) : (
+                    <motion.div
+                        key="animated"
+                        className="flex-1 h-full relative overflow-hidden bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-50 "
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: isPerformanceCheckComplete ? 1 : 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 1.5, ease: "easeInOut" }}
+                    >
+                        {/* TEXTO CIRCULAR: Universidad de Antioquia */}
+                        <motion.div 
                 className="absolute top-60 left-1/2 -translate-x-1/2 z-[2] pointer-events-none transition-transform duration-500 ease-out"
                 animate={{
                     x: mousePosition.x * 15,
@@ -472,5 +616,8 @@ export default function ParallaxBackground() {
             {/* Overlay sutil para el tema oscuro */}
             <div className="absolute inset-0 bg-black/0 dark:bg-black/40 pointer-events-none transition-colors duration-500" />
         </motion.div>
+            )}
+        </AnimatePresence>
+        </>
     );
 }

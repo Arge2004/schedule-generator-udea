@@ -41,3 +41,14 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Optimización de rendimiento para ParallaxBackground */
+/* Por defecto, todas las animaciones están habilitadas */
+/* Si el usuario tiene configurado prefers-reduced-motion, se desactivan automáticamente */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

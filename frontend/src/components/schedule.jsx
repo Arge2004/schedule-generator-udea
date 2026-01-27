@@ -798,7 +798,7 @@ export default function Schedule() {
       showToastMessage={showToastMessage}
     >
       <div
-        className="flex-1 flex flex-col bg-white dark:bg-background-dark relative"
+        className="flex-1 h-full flex flex-col bg-white dark:bg-background-dark relative"
         style={{
           overflow:
             draggingMateria ||

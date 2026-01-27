@@ -107,7 +107,20 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
       onMouseLeave={onLeave}
     >
       <div className='absolute h-full right-0'>
-        {/* Info icon (abre el curso en nueva pestaña si hay código) */}
+        {/* Botón de eliminar (solo para grupos manuales) - Arriba */}
+        {isManual && (
+          <button
+            onClick={handleGrupoSelect}
+            title="Eliminar del horario"
+            className="absolute -right-1 -top-0 cursor-pointer bg-red-600 w-7 h-7 rounded-sm flex items-center justify-center opacity-0 md:opacity-0 max-md:opacity-100 pointer-events-none md:pointer-events-none max-md:pointer-events-auto transition-opacity duration-150 ease-in-out group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+            </svg>
+          </button>
+        )}
+        
+        {/* Botón Ver Cursum - Abajo */}
         {codigo && (
           <a
             href={`https://ingenieria2.udea.edu.co/cursum/#/publico/materias/${codigo}/programa_curso`}
@@ -115,24 +128,14 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             title="Ver en Cursum"
-            className="absolute -right-1 -top-0 w-7 h-7 rounded-sm flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-150 ease-in-out group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+            className="absolute -right-1 -bottom-1 px-2 py-2 rounded-sm flex items-center justify-center gap-1 text-[12px] font-semibold whitespace-nowrap opacity-0 md:opacity-0 max-md:opacity-100 pointer-events-none md:pointer-events-none max-md:pointer-events-auto transition-opacity duration-150 ease-in-out group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
             style={{ backgroundColor: iconColors.bg, color: iconColors.text }}
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
             </svg>
+            <span>Ver Cursum</span>
           </a>
-        )}
-        {isManual && (
-          <button
-            onClick={handleGrupoSelect}
-            title="Eliminar del horario"
-            className="absolute -right-1 cursor-pointer bg-red-600 top-7 bottom-0 w-7 rounded-sm flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-150 ease-in-out group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-            </svg>
-          </button>
         )}
       </div>
 
