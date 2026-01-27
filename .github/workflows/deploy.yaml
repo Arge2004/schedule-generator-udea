@@ -45,4 +45,4 @@ jobs:
             cd /opt/schedule-generator
             git pull origin main
             docker pull ghcr.io/arge2004/schedule-generator-udea:latest
-            docker compose -f docker-compose.prod.yaml up -d
+            docker compose -f docker-compose.prod.yml up -d
