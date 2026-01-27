@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import Subject from './subject.jsx';
-import MobileScheduleModal from './MobileScheduleModal.jsx';
+import MobileScheduleModal from './MobileSchedule.jsx';
 import { useMateriasStore } from '../store/materiasStore.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getFacultades, getProgramas, getHorarios, generarHorarios } from '../services/horarios.js';
@@ -374,6 +374,11 @@ export default function Sidebar() {
                 toast.error('No se pudieron generar horarios válidos. Verifica las selecciones.', { duration: 8000, position: 'bottom-center', style: { background: '#ff0000ab', color: '#fff' } });
             } else {
                 setHorariosGenerados(horariosGenerados);
+                // En móvil, abrir automáticamente el modal
+                if (isMobile) {
+                    setCurrentScheduleIndex(0);
+                    setShowMobileSchedule(true);
+                }
             }
 
         } catch (error) {
@@ -584,20 +589,20 @@ export default function Sidebar() {
                             {/* Subject Search */}
                             <div className="space-y-4 flex flex-col flex-1 min-h-0">
                                 <div className="space-y-2">
-                                    <div className="flex items-center justify-between px-1">
+                                    <div className="flex items-center justify-between px-1 mr-15 md:mr-0">
                                         <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Materias</p>
                                         <div className="flex items-center gap-1.5">
                                             {materiasSeleccionadas && Object.keys(materiasSeleccionadas).length > 0 && (
                                                 <>
-                                                    <span className="text-[12px] bg-primary text-white px-2 py-0.5 rounded-full font-bold">
+                                                    <span className="text-2xs md:text-[12px] bg-primary text-white px-2 py-0.5 rounded-full font-bold">
                                                         {Object.keys(materiasSeleccionadas).length}
                                                     </span>
                                                     <span className="text-zinc-400 dark:text-zinc-600 text-[10px] font-bold">/</span>
                                                 </>
                                             )}
-                                            <span className="text-[12px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
+                                            <span className="text-2xs md:text-[12px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
                                                 {materiasFiltradas.length}
-                                            </span>
+                                            </span> 
 
                                         </div>
                                     </div>
@@ -636,7 +641,7 @@ export default function Sidebar() {
                                     onScroll={(e) => {
                                         previousScrollPos.current = e.target.scrollTop;
                                     }}
-                                    className="space-y-1 flex-1 min-h-0 overflow-y-auto scrollbar-custom"
+                                    className="space-y-1 flex-1 min-h-0 pr-3 overflow-y-auto scrollbar-custom"
                                 >
                                     <AnimatePresence>
                                         {!materias || materias.length === 0 ? (
@@ -710,7 +715,7 @@ export default function Sidebar() {
                                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                             </svg>
-                                            <span className='text-sm font-semibold'>Generar Horario</span>
+                                            <span className='text-sm font-semibold'>Generar Horarios</span>
                                         </>
                                     )}
                                 </motion.button>
@@ -820,22 +825,7 @@ export default function Sidebar() {
                 </AnimatePresence>
             </motion.aside>
 
-            {/* Botón flotante para ver horarios en móvil */}
-            {isMobile && horariosGenerados && horariosGenerados.length > 0 && (
-                <motion.button
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => setShowMobileSchedule(true)}
-                    className="fixed bottom-6 right-6 bg-primary hover:bg-primary/90 text-white rounded-full p-4 shadow-lg z-50 flex items-center gap-2"
-                >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span className="font-semibold">Ver Horarios ({horariosGenerados.length})</span>
-                </motion.button>
-            )}
+          
 
             {/* Modal de horarios para móvil */}
             <MobileScheduleModal

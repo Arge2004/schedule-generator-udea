@@ -152,7 +152,7 @@ export default function MobileScheduleModal({ isOpen, onClose, horarios, current
                             
                             <div className="flex-1 text-center">
                                 <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
-                                    Horario Generado
+                                    Horarios Generados
                                 </h2>
                                 {horarios.length > 1 && (
                                     <div className="flex items-center justify-center gap-3 mt-2">
