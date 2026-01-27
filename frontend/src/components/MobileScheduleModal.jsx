@@ -17,6 +17,21 @@ export default function MobileScheduleModal({ isOpen, onClose, horarios, current
 
     const currentSchedule = horarios[currentScheduleIndex] || horarios[0];
 
+    // Manejar swipe para cambiar de día
+    const handleDragEnd = (event, info) => {
+        const threshold = 50; // Mínimo desplazamiento para cambiar de día
+        
+        if (Math.abs(info.offset.x) > threshold) {
+            if (info.offset.x > 0 && activeDay > 0) {
+                // Swipe derecha - día anterior
+                setActiveDay(activeDay - 1);
+            } else if (info.offset.x < 0 && activeDay < DIAS.length - 1) {
+                // Swipe izquierda - día siguiente
+                setActiveDay(activeDay + 1);
+            }
+        }
+    };
+
     const handleClassHover = (clase, position) => {
         if (hideTimeoutRef.current) {
             clearTimeout(hideTimeoutRef.current);
@@ -163,7 +178,13 @@ export default function MobileScheduleModal({ isOpen, onClose, horarios, current
                         </div>
 
                         {/* Contenido del día activo */}
-                        <div className="flex-1 overflow-y-auto p-4">
+                        <motion.div 
+                            className="flex-1 overflow-y-auto p-4"
+                            drag="x"
+                            dragConstraints={{ left: 0, right: 0 }}
+                            dragElastic={0.2}
+                            onDragEnd={handleDragEnd}
+                        >
                             <AnimatePresence mode="wait">
                                 <motion.div
                                     key={activeDay}
@@ -247,7 +268,7 @@ export default function MobileScheduleModal({ isOpen, onClose, horarios, current
                                     )}
                                 </motion.div>
                             </AnimatePresence>
-                        </div>
+                        </motion.div>
                     </motion.div>
 
                     {/* Tooltip global */}
