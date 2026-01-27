@@ -67,16 +67,16 @@ export default function ParallaxBackground() {
             // Normalizar la posición del mouse a un rango de -1 a 1
             const x = (e.clientX / window.innerWidth) * 2 - 1;
             const y = (e.clientY / window.innerHeight) * 2 - 1;
-            
+
             // Calcular velocidad del mouse
             const now = Date.now();
             const dt = Math.max(now - lastTime, 1);
             const vx = Math.abs(x - lastX) / dt * 1000;
             const vy = Math.abs(y - lastY) / dt * 1000;
-            
+
             setMousePosition({ x, y });
             setMouseVelocity({ x: Math.min(vx, 5), y: Math.min(vy, 5) });
-            
+
             lastX = x;
             lastY = y;
             lastTime = now;
@@ -102,33 +102,32 @@ export default function ParallaxBackground() {
             exit={{ opacity: 0 }}
             transition={{ duration: 1 }}
         >
+            {/* Low-res background image (lightweight) */}
+            <img src="/background/lowresourcesbg.png" alt="Background low resources" className="absolute inset-0 w-full h-full object-cover pointer-events-none z-0 opacity-100" />
             {/* TEXTO CIRCULAR: Universidad de Antioquia */}
-            <motion.div 
+            <motion.div
                 className="absolute top-60 left-1/2 -translate-x-1/2 z-[2] pointer-events-none transition-transform duration-500 ease-out"
-                animate={{
-                    x: mousePosition.x * 15,
-                    y: mousePosition.y * 12,
-                    scale: 1 + Math.sin(time * 0.4) * 0.02
-                }}
                 transition={{ type: 'spring', stiffness: 40, damping: 12 }}
                 style={{
                     filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5)) drop-shadow(0 0 20px rgba(255, 255, 255, 0.5))',
                 }}
             >
-                <svg viewBox="-50 0 1000 400" className="w-[1000px] h-auto overflow-visible">
+                
+                <svg viewBox="-50 0 1000 400" className="hidden md:flex lg:w-[1000px] h-auto overflow-visible">
+                    {/*
                     <defs>
-                        {/* Filtro de difuminado intenso para efecto celestial neón */}
+                        // Filtro de difuminado intenso para efecto celestial neón
                         <filter id="glow">
-                            <feGaussianBlur stdDeviation="20" result="coloredBlur"/>
+                            <feGaussianBlur stdDeviation="20" result="coloredBlur" />
                             <feMerge>
-                                <feMergeNode in="coloredBlur"/>
-                                <feMergeNode in="coloredBlur"/>
-                                <feMergeNode in="coloredBlur"/>
-                                <feMergeNode in="coloredBlur"/>
-                                <feMergeNode in="SourceGraphic"/>
+                                <feMergeNode in="coloredBlur" />
+                                <feMergeNode in="coloredBlur" />
+                                <feMergeNode in="coloredBlur" />
+                                <feMergeNode in="coloredBlur" />
+                                <feMergeNode in="SourceGraphic" />
                             </feMerge>
                         </filter>
-                        {/* Gradiente celestial blanco-amarillo suave */}
+                        // Gradiente celestial blanco-amarillo suave
                         <linearGradient id="celestialGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                             <stop offset="0%" stopColor="rgb(255, 255, 255, 0.2)" />
                             <stop offset="30%" stopColor="rgba(255, 253, 220, 0.1)" />
@@ -136,40 +135,40 @@ export default function ParallaxBackground() {
                             <stop offset="100%" stopColor="rgba(255, 255, 230, 0.1)" />
                         </linearGradient>
                     </defs>
-                    
-                    {/* Rayos desde esquina superior derecha hacia las letras */}
+
+                    // Rayos desde esquina superior derecha hacia las letras
                     <g filter="url(#glow)">
                         {Array.from({ length: 7 }).map((_, i) => {
                             // Origen: esquina superior derecha (más a la esquina)
                             const x1 = 920;
                             const y1 = -100;
-                            
+
                             // Destino: puntos en el arco donde están las letras
                             const t = i / 6; // 0 a 1
                             const arcStartX = 150;
                             const arcEndX = 750;
                             const arcY = 270;
                             const arcRadius = 300;
-                            
+
                             // Calcular punto en el arco
                             const arcCenterX = (arcStartX + arcEndX) / 2;
                             const angle = Math.PI * (1 - t); // De PI a 0
                             const arcX = arcCenterX + Math.cos(angle) * arcRadius;
                             const arcY2 = arcY - Math.sin(angle) * arcRadius;
-                            
+
                             // Extender mucho más allá (1.2x para mayor distancia)
                             const dx = arcX - x1;
                             const dy = arcY2 - y1;
                             const x2 = arcX + dx * 1.2;
                             const y2 = arcY2 + dy * 1.2;
-                            
+
                             // Calcular distancia para variar grosor (efecto triangular más pronunciado)
                             const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
                             const maxDistance = 1800;
                             const widthFactor = distance / maxDistance;
                             // Efecto triangular más pronunciado: exponente 2.5 para mayor contraste
                             const triangleEffect = Math.pow(widthFactor, 2.5);
-                            
+
                             return (
                                 <line
                                     key={i}
@@ -185,9 +184,10 @@ export default function ParallaxBackground() {
                             );
                         })}
                     </g>
+                    */}
 
                     <path id="circlePath" d="M 120,270 A 315,300 0 0,1 750,270" fill="transparent" />
-                    <text 
+                    <text
                         className="font-black text-5xl tracking-[0.2em] uppercase"
                         fill="white"
                         stroke="rgba(255, 255, 255, 0.8)"
@@ -202,8 +202,7 @@ export default function ParallaxBackground() {
                     </text>
                 </svg>
             </motion.div>
-
-            {/* Algunas líneas duplicadas por delante de biblioteca y fuente */}
+            {/*         
             <div 
                 className="absolute top-50 left-1/2 -translate-x-1/2 z-[12] pointer-events-none transition-transform duration-500 ease-out"
                 style={{
@@ -276,7 +275,6 @@ export default function ParallaxBackground() {
                 </svg>
             </div>
             
-            {/* Fondo base (cielo) - expandido con imagen */}
             <div
                 className="absolute inset-0 transition-transform duration-700 ease-out"
                 style={{
@@ -292,7 +290,6 @@ export default function ParallaxBackground() {
                 <div className="absolute inset-0" />
             </div>
 
-            {/* Nubes - detrás de los árboles */}
             <div className="absolute inset-0 pointer-events-none z-[3]">
                 {clouds.map((cloud, i) => (
                     <motion.div
@@ -323,7 +320,6 @@ export default function ParallaxBackground() {
                 ))}
             </div>
 
-            {/* Árboles de fondo - capa lejana más grande */}
             <motion.div
                 className="absolute -top-20 lg:top-40 -left-10 -right-30 h-3/4 z-[100]"
                 initial={{ opacity: 0, scale: 1.1 }}
@@ -339,7 +335,6 @@ export default function ParallaxBackground() {
                 <img src="/background/arboles.png" alt="Árboles" className="absolute bottom-0 left-0 w-full h-auto object-cover" />
             </motion.div>
 
-            {/* Edificios - Biblioteca (izquierda) */}
             <motion.div
                 className="absolute bottom-50 left-50 z-[3]"
                 initial={{ opacity: 0, scale: 1.8 }}
@@ -356,7 +351,6 @@ export default function ParallaxBackground() {
                 <img src="/background/biblioteca.png" alt="Biblioteca" className="w-[500px] h-auto object-contain drop-shadow-2xl" />
             </motion.div>
 
-            {/* Edificios - Auditorio (derecha) */}
             <motion.div
                 className="absolute bottom-45 -right-20 z-[3]"
                 initial={{ opacity: 0, scale: 0.7 }}
@@ -373,7 +367,6 @@ export default function ParallaxBackground() {
                 <img src="/background/auditorio.png" alt="Auditorio" className="w-[500px] h-auto object-contain drop-shadow-2xl" />
             </motion.div>
 
-            {/* Fuente central */}
             <motion.div
                 className="absolute bottom-70 left-1/2 transform -translate-x-1/2 z-10"
                 initial={{ opacity: 0, scale: 2 }}
@@ -390,7 +383,6 @@ export default function ParallaxBackground() {
                 <img src="/background/fuente.png" alt="Fuente" className="w-96 h-auto object-contain z-20 drop-shadow-2xl" />
             </motion.div>
 
-            {/* Arbustos detrás de la fuente */}
             <div className="absolute inset-0 z-5 pointer-events-none">
                 {bushesBeforeBackground.map((bush, i) => (
                     <motion.div
@@ -413,7 +405,6 @@ export default function ParallaxBackground() {
                 ))}
             </div>
 
-            {/* Arbustos delante */}
             <div className="absolute inset-0 z-30 pointer-events-none">
                 {bushes.map((bush, i) => (
                     <motion.div
@@ -434,7 +425,6 @@ export default function ParallaxBackground() {
                 ))}
             </div>
 
-            {/* Árboles individuales */}
             {trees.map((tree, i) => (
                 <motion.div
                     key={i}
@@ -469,8 +459,8 @@ export default function ParallaxBackground() {
                 />
             </div>
 
-            {/* Overlay sutil para el tema oscuro */}
             <div className="absolute inset-0 bg-black/0 dark:bg-black/40 pointer-events-none transition-colors duration-500" />
+                */}
         </motion.div>
     );
 }

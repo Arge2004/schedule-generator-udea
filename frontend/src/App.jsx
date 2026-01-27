@@ -10,11 +10,15 @@ function App() {
   return (
     <div className="flex h-screen w-screen overflow-hidden">
       <Sidebar />
-      {!materias || materias.length === 0 ? (
-        <ParallaxBackground />
-      ) : (
-        <Schedule />
-      )}
+
+      {/* Main content (hidden on small screens so mobile only shows the sidebar) */}
+      <div className="hidden sm:block sm:flex-1 h-screen overflow-auto">
+        {!materias || materias.length === 0 ? (
+          <ParallaxBackground />
+        ) : (
+          <Schedule />
+        )}
+      </div>
     </div>
   )
 }

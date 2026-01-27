@@ -409,7 +409,7 @@ export default function Sidebar() {
         <>
             <Toaster />
             <motion.aside
-                className="w-80 h-full select-none border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col overflow-y-auto relative"
+                className="w-full sm:w-80 h-full select-none border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col overflow-y-auto relative"
                 initial={{ x: -80, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: -80, opacity: 0 }}
@@ -650,23 +650,6 @@ export default function Sidebar() {
                                         )}
                                     </AnimatePresence>
                                 </div>
-                                <button
-                                    onClick={handleScrapeHorarios}
-                                    disabled={isScraping}
-                                    className="w-full px-4 py-2 text-sm text-primary border-primary border-1 cursor-pointer hover:bg-primary/10 disabled:bg-primary/20 disabled:cursor-not-allowed rounded-lg transition-all flex items-center justify-center gap-2"
-                                    title="Actualizar horarios desde la UdeA"
-                                >
-                                    {isScraping ? (
-                                        <>
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                                            <span>Actualizando...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <span>Actualizar</span>
-                                        </>
-                                    )}
-                                </button>
                             </div>
                         </div>
                         {/* Botón Generar Horario - Solo en modo automático */}
