@@ -1,0 +1,22 @@
+name: Manual Deploy to VPS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Deploy en la VPS vía SSH
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/schedule-generator
+            git pull origin main
+            docker pull ghcr.io/arge2004/schedule-generator-udea:latest
+            docker compose -f docker-compose.prod.yaml up -d
