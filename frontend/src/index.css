@@ -14,6 +14,35 @@
 }
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Fallback para navegadores antiguos que no soportan @theme */
+@supports not (color: var(--color-primary)) {
+  .bg-primary { background-color: #1392ec !important; }
+  .text-primary { color: #1392ec !important; }
+  .border-primary { border-color: #1392ec !important; }
+  .bg-primary\/90 { background-color: rgba(19, 146, 236, 0.9) !important; }
+  .bg-primary\/80 { background-color: rgba(19, 146, 236, 0.8) !important; }
+  .bg-primary\/10 { background-color: rgba(19, 146, 236, 0.1) !important; }
+  .hover\:bg-primary\/90:hover { background-color: rgba(19, 146, 236, 0.9) !important; }
+  .hover\:bg-primary\/80:hover { background-color: rgba(19, 146, 236, 0.8) !important; }
+  .ring-primary\/20 { --tw-ring-color: rgba(19, 146, 236, 0.2) !important; }
+  .focus\:ring-primary\/20:focus { --tw-ring-color: rgba(19, 146, 236, 0.2) !important; }
+}
+
+/* Solución para altura en móviles con barras de navegación */
+@supports not (height: 100dvh) {
+  .h-dvh {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+}
+
+/* Prevenir problemas de altura en iOS Safari */
+@media (max-width: 768px) {
+  html, body {
+    height: -webkit-fill-available;
+  }
+}
+
 :root {
   font-family: var(--font-display), system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -53,12 +82,6 @@ h1 {
   :root {
     color: #213547;
     background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
   }
 }
 

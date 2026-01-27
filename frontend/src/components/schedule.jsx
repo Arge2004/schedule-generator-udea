@@ -38,6 +38,8 @@ export default function Schedule() {
     setShowGrupoSelector,
     clearDragState,
     setNotifier,
+    darkTheme,
+    toggleDarkTheme
   } = useMateriasStore();
 
   // Estado local para hover durante drag
@@ -46,20 +48,6 @@ export default function Schedule() {
   const [hoveredValidGroupNumbers, setHoveredValidGroupNumbers] = useState(
     new Set(),
   );
-  const [darkTheme, setDarkTheme] = useState(() => {
-    const saved = localStorage.getItem("darkTheme");
-    return saved !== null ? JSON.parse(saved) : true;
-  });
-
-  // Aplicar/remover clase dark del documento
-  useEffect(() => {
-    if (darkTheme) {
-      document.querySelector("html").classList.add("dark");
-    } else {
-      document.querySelector("html").classList.remove("dark");
-    }
-    localStorage.setItem("darkTheme", JSON.stringify(darkTheme));
-  }, [darkTheme]);
 
   // Estado global del tooltip
   const [tooltipData, setTooltipData] = useState(null);
@@ -1076,7 +1064,7 @@ export default function Schedule() {
 
               {/* Botón de tema oscuro */}
               <button
-                onClick={() => setDarkTheme(!darkTheme)}
+                onClick={toggleDarkTheme}
                 className="p-2 absolute top-4 right-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer group"
                 title={
                   darkTheme ? "Cambiar a tema claro" : "Cambiar a tema oscuro"

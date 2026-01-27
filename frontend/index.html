@@ -2,9 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" href="/background/fuente.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>schudele-generator</title>
+    <title>UdeA Horarios</title>
+    <script>
+      // Aplicar tema antes de que se cargue la app para evitar flash
+      (function() {
+        const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

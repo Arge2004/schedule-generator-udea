@@ -17,6 +17,10 @@ export const useMateriasStore = create((set) => ({
   horarioActualIndex: 0, // Índice del horario que se está visualizando
   resetKey: 0, // Incrementa cada vez que se hace reset
   
+  // Estado del tema
+  darkTheme: (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || false,
+  themeSyncEnabled: true, // Si true, sigue la preferencia del sistema; si false, usa preferencia manual
+  
   // Estados de drag and drop
   draggingMateria: null, // { codigo, nombre, grupos } - Materia que se está arrastrando
   hoveredScheduleCell: null, // { diaIndex, horaIndex } - Celda sobre la que se está hovering
@@ -28,6 +32,16 @@ export const useMateriasStore = create((set) => ({
   // Notifier para mensajes (puede ser seteado por Schedule)
   notify: (message) => { console.log('Notify:', message); },
   setNotifier: (fn) => set({ notify: fn }),
+
+  // Acciones de tema
+  setDarkTheme: (isDark) => set({ darkTheme: isDark }),
+  toggleDarkTheme: () => set((state) => ({ 
+    darkTheme: !state.darkTheme, 
+    themeSyncEnabled: false // Desactivar sincronización cuando el usuario cambia manualmente
+  })),
+  syncThemeWithSystem: (isDark) => set((state) => 
+    state.themeSyncEnabled ? { darkTheme: isDark } : {}
+  ),
 
   // Acciones
   setMateriasData: (data) => set((state) => ({

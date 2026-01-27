@@ -46,8 +46,11 @@ export default function ClassTooltip({ clase, color, position }) {
 
   const tooltipContent = (
     <div 
-      className="fixed rounded-lg shadow-2xl border-2 p-4 min-w-[280px] pointer-events-none transition-all duration-300 ease-out bg-white dark:bg-zinc-900"
-      style={getTooltipStyle()}
+      className="fixed rounded-lg shadow-2xl border-2 p-4 min-w-[280px] max-md:min-w-0 max-md:left-2 max-md:right-2 max-md:w-auto pointer-events-none transition-all duration-300 ease-out bg-white dark:bg-zinc-900"
+      style={{
+        ...getTooltipStyle(),
+        ...(window.innerWidth <= 768 ? { left: '8px', right: '8px', width: 'auto', minWidth: 'unset', transform: 'translateY(-100%)' } : {})
+      }}
     >
       {/* Header */}
       <div className="mb-3 pb-3 border-b-2 transition-colors duration-300" style={{ borderColor: solidColor }}>

@@ -333,8 +333,6 @@ export default function MobileScheduleModal({ isOpen, onClose }) {
                                                                 horaIndex: horaIndex,
                                                                 diaIndex: activeDay,
                                                             }}
-                                                            onHover={handleClassHover}
-                                                            onLeave={handleClassLeave}
                                                         />
                                                     </div>
                                                 );
