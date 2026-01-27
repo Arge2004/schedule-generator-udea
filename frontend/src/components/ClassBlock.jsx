@@ -7,11 +7,12 @@ import { useMateriasStore } from '../store/materiasStore.js';
  * Se expande verticalmente según la duración de la clase
  */
 export default function ClassBlock({ clase, onHover, onLeave }) {
-  const { materia, grupo, horaInicio, horaFin, aula, color, duracion, isPreview, codigoMateria, source } = clase;
+  const { materia, grupo, horaInicio, horaFin, aula, profesor, color, duracion, isPreview, codigoMateria, source } = clase;
   const blockRef = React.useRef(null);
   const { materias, gruposSeleccionados, selectGrupo, toggleMateriaSelected } = useMateriasStore();
 
   const isManual = source === 'manual';
+  const isMobile = window.innerWidth <= 768;
 
   // Resolver código de materia si no viene en la clase
   const codigo = useMemo(() => {
@@ -56,6 +57,9 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
   }, [color]);
 
   const handleMouseEnter = () => {
+    // No activar tooltip en móvil
+    if (isMobile) return;
+    
     if (blockRef.current && onHover) {
       const rect = blockRef.current.getBoundingClientRect();
       onHover(clase, {
@@ -176,6 +180,16 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
             {horaInicio}:00 - {horaFin}:00
           </span>
         </div>
+        {profesor && isMobile && (
+          <div className="flex items-center gap-1">
+            <svg className="w-3 h-3 text-zinc-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span className="text-[10px] text-zinc-500 font-medium truncate">
+              {profesor}
+            </span>
+          </div>
+        )}
       </div>
     </motion.div>
   );

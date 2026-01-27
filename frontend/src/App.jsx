@@ -8,11 +8,11 @@ function App() {
   const { materias } = useMateriasStore();
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
+    <div className="flex h-dvh w-screen overflow-hidden">
       <Sidebar />
 
       {/* Main content (hidden on small screens so mobile only shows the sidebar) */}
-      <div className="hidden sm:block sm:flex-1 h-screen overflow-auto">
+      <div className="hidden sm:block sm:flex-1 h-dvh overflow-auto">
         {!materias || materias.length === 0 ? (
           <ParallaxBackground />
         ) : (
