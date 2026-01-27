@@ -215,7 +215,7 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
             onDragEnd={dragEnabled && !subjectDisabled ? handleDragEnd : undefined}
             onClick={!dragEnabled ? handleItemClick : undefined}
             className={`flex items-center gap-3 p-2.5 hover:bg-zinc-200 rounded dark:hover:bg-zinc-100/10 group ${
-              dragEnabled && materia?.grupos && materia.grupos.length > 0 && !subjectDisabled ? 'cursor-move' : 'cursor-pointer'
+              dragEnabled && materia?.grupos && materia.grupos.length > 0 && !subjectDisabled ? 'cursor-move' : !dragEnabled ? 'cursor-pointer' : 'cursor-default'
             }`}
             style={subjectDisabled && !isSelected ? {
               backgroundImage: `repeating-linear-gradient(
@@ -248,7 +248,7 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
           </div>
         ) : (
           <label
-            className={`flex items-center gap-3 p-2.5 hover:bg-zinc-50 rounded-lg dark:hover:bg-zinc-100/10 cursor-pointer group ${subjectDisabled && !isSelected ? 'opacity-90' : ''}`}
+            className={`flex items-center gap-3 p-2.5 hover:bg-zinc-100 rounded-lg dark:hover:bg-zinc-100/10 group ${subjectDisabled && !isSelected ? 'opacity-90 cursor-default' : 'cursor-pointer'}`}
             style={subjectDisabled && !isSelected ? {
               backgroundImage: `repeating-linear-gradient(
                 45deg,
@@ -272,7 +272,7 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
               null
             )}
             <input
-              className={`w-5 h-5 rounded border border-zinc-300 dark:bg-zinc-900 dark:border-zinc-700 focus:ring-primary ${subjectDisabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+              className={`w-5 h-5 rounded border border-zinc-300 dark:bg-zinc-900 dark:border-zinc-700 focus:ring-primary ${subjectDisabled ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
               type="checkbox"
               checked={isSelected}
               disabled={subjectDisabled}
