@@ -42,24 +42,13 @@ export default function Schedule() {
     toggleDarkTheme,
     resetKey,
     allowManualBlocks,
+    allowManualBlocksBySchedule,
   } = useMateriasStore();
 
-  // Estado local para hover durante drag
-  const [hoveredCell, setHoveredCell] = useState(null); // { diaIndex, horaIndex }
-  const [hoveredValidKeys, setHoveredValidKeys] = useState(new Set());
-  const [hoveredValidGroupNumbers, setHoveredValidGroupNumbers] = useState(
-    new Set(),
-  );
-
-  // Estado global del tooltip
-  const [tooltipData, setTooltipData] = useState(null);
-  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
-  const hideTimeoutRef = React.useRef(null);
-
-  // Estado para el toast
-  const [toastMessage, setToastMessage] = useState("");
-  const [showToast, setShowToast] = useState(false);
-  const toastTimeoutRef = React.useRef(null);
+  // Effective permission: if showing generated schedules, use per-schedule setting; otherwise use global
+  const effectiveAllowManualBlocks = (horariosGenerados && horariosGenerados.length > 0)
+    ? !!(allowManualBlocksBySchedule && allowManualBlocksBySchedule[horarioActualIndex])
+    : !!allowManualBlocks;
 
   const showToastMessage = (message) => {
     setToastMessage(message);
@@ -73,6 +62,16 @@ export default function Schedule() {
       setShowToast(false);
     }, 3000);
   };
+
+  // Estado global del tooltip (datos + posición) y timeout de ocultación
+  const [tooltipData, setTooltipData] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const hideTimeoutRef = React.useRef(null);
+
+  // Estado para los toasts locales
+  const [toastMessage, setToastMessage] = useState("");
+  const [showToast, setShowToast] = useState(false);
+  const toastTimeoutRef = React.useRef(null);
 
   // Registrar el notifier en el store para que otros componentes (ej. Subject) puedan usarlo
   useEffect(() => {
@@ -178,6 +177,16 @@ export default function Schedule() {
         if (pulseTimersRef.current) {
           pulseTimersRef.current.forEach((t) => clearTimeout(t));
           pulseTimersRef.current.clear();
+        }
+      } catch (err) {
+        // ignore
+      }
+
+      // cleanup any pending toast timer
+      try {
+        if (toastTimeoutRef.current) {
+          clearTimeout(toastTimeoutRef.current);
+          toastTimeoutRef.current = null;
         }
       } catch (err) {
         // ignore
@@ -384,6 +393,12 @@ export default function Schedule() {
     // Include manual blocks created via click+drag selection
     if (manualBlocks && manualBlocks.length > 0) {
       manualBlocks.forEach((b) => {
+        // Only include blocks that are global (no scheduleIndex) or that belong to the currently visible generated schedule
+        const belongsToCurrentSchedule = (horariosGenerados && horariosGenerados.length > 0)
+          ? (typeof b.scheduleIndex === 'number' ? b.scheduleIndex === horarioActualIndex : false)
+          : true;
+        if (!belongsToCurrentSchedule) return;
+
         gruposParaProcesar.push({
           nombreMateria: b.name || 'Bloque manual',
           numeroGrupo: null,
@@ -739,10 +754,15 @@ export default function Schedule() {
 
   // Helper: restringe la selección para que no cruce celdas ocupadas
   const clampPreviewToFree = (startDia, startHora, targetHora) => {
-    // Build occupied set (classes + manualBlocks)
+    // Build occupied set (classes + manualBlocks only for this schedule)
     const occupied = new Set();
     celdasOcupadas.forEach((v, k) => occupied.add(k));
+    const belongsToCurrent = (b) => {
+      if (!(horariosGenerados && horariosGenerados.length > 0)) return true;
+      return (typeof b.scheduleIndex === 'number') ? b.scheduleIndex === horarioActualIndex : false;
+    };
     manualBlocks.forEach((b) => {
+      if (!belongsToCurrent(b)) return;
       for (let i = 0; i < b.duracion; i++) {
         occupied.add(`${b.diaIndex}-${b.horaIndex + i}`);
       }
@@ -772,10 +792,15 @@ export default function Schedule() {
     // Prevent duplicate long-press actions
     if (hasLongPressedRef.current) return;
 
-    // Build occupied set (classes + manualBlocks)
+    // Build occupied set (classes + manualBlocks — only those that belong to current schedule)
     const occupied = new Set();
     celdasOcupadas.forEach((v, k) => occupied.add(k));
+    const belongsToCurrent = (b) => {
+      if (!(horariosGenerados && horariosGenerados.length > 0)) return true;
+      return (typeof b.scheduleIndex === 'number') ? b.scheduleIndex === horarioActualIndex : false;
+    };
     manualBlocks.forEach((b) => {
+      if (!belongsToCurrent(b)) return;
       for (let i = 0; i < b.duracion; i++) {
         occupied.add(`${b.diaIndex}-${b.horaIndex + i}`);
       }
@@ -884,10 +909,15 @@ export default function Schedule() {
     const minRow = Math.min(start.horaIndex, current.horaIndex);
     const span = Math.abs(start.horaIndex - current.horaIndex) + 1;
 
-    // Build occupied map: schedule classes + manual blocks (existing)
+    // Build occupied map: schedule classes + manual blocks (existing) — only those that belong to current schedule
     const occupied = new Set();
     celdasOcupadas.forEach((v, k) => occupied.add(k));
+    const belongsToCurrent = (b) => {
+      if (!(horariosGenerados && horariosGenerados.length > 0)) return true;
+      return (typeof b.scheduleIndex === 'number') ? b.scheduleIndex === horarioActualIndex : false;
+    };
     manualBlocks.forEach((b) => {
+      if (!belongsToCurrent(b)) return;
       for (let i = 0; i < b.duracion; i++) {
         occupied.add(`${b.diaIndex}-${b.horaIndex + i}`);
       }
@@ -943,6 +973,7 @@ export default function Schedule() {
           duracion: targetSpan,
           color: '#3b82f6',
           pulsing: true,
+          scheduleIndex: (horariosGenerados && horariosGenerados.length > 0) ? horarioActualIndex : null,
         });
         setEditingManualId(newId);
         try { startPulse(newId); } catch (e) {}
@@ -974,6 +1005,7 @@ export default function Schedule() {
           duracion: targetSpan,
           color: '#3b82f6',
           pulsing: true,
+          scheduleIndex: (horariosGenerados && horariosGenerados.length > 0) ? horarioActualIndex : null,
         });
         setEditingManualId(newId);
         try { startPulse(newId); } catch (e) {}
@@ -996,6 +1028,7 @@ export default function Schedule() {
         duracion: span,
         color: '#3b82f6',
         pulsing: true,
+        scheduleIndex: (horariosGenerados && horariosGenerados.length > 0) ? horarioActualIndex : null,
       });
       setEditingManualId(newId);
       try { startPulse(newId); } catch (e) {}
@@ -1017,7 +1050,7 @@ export default function Schedule() {
     if (target && target.closest && target.closest('[data-no-select]')) return;
 
     // if creating manual blocks is disabled, ignore and notify
-    if (!allowManualBlocks) {
+    if (!effectiveAllowManualBlocks) {
       return;
     }
 
@@ -1060,7 +1093,7 @@ export default function Schedule() {
     if (target && target.closest && target.closest('[data-no-select]')) return;
 
     // if creating manual blocks is disabled, ignore and notify
-    if (!allowManualBlocks) {
+    if (!effectiveAllowManualBlocks) {
       return;
     }
 
@@ -1490,7 +1523,7 @@ export default function Schedule() {
                 {clasesParaRenderizar.map((clase, idx) => (
                   <div
                     data-manual-id={clase.manualId || undefined}
-                    key={clase.manualId ? `manual-${clase.manualId}` : `${clase.materia}-${clase.grupo}-${clase.diaIndex}-${clase.horaIndex}-${clase.isPreview ? "preview" : "permanent"}`}
+                    key={clase.manualId ? `manual-${clase.manualId}` : `class-${idx}-${clase.diaIndex}-${clase.horaIndex}-${clase.isPreview ? "preview" : "permanent"}`}
                     className="relative"
                     style={{
                       gridColumn: clase.diaIndex + 2, // +2 porque la primera columna es la de horas

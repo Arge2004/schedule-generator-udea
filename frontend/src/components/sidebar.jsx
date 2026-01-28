@@ -31,7 +31,7 @@ export default function Sidebar() {
 
     // Track menu open to temporarily reduce effects if needed
     const [menuOpen, setMenuOpen] = useState(false);
-    
+
     // Detectar si es móvil
     const [isMobile, setIsMobile] = useState(false);
     const [showMobileSchedule, setShowMobileSchedule] = useState(false);
@@ -40,15 +40,15 @@ export default function Sidebar() {
     // Escuchar cambios en la preferencia del sistema en tiempo real
     useEffect(() => {
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        
+
         const handleChange = (e) => {
             // Solo actualizar si la sincronización está habilitada
             syncThemeWithSystem(e.matches);
         };
-        
+
         // Agregar listener
         mediaQuery.addEventListener('change', handleChange);
-        
+
         // Cleanup
         return () => mediaQuery.removeEventListener('change', handleChange);
     }, []);
@@ -58,10 +58,10 @@ export default function Sidebar() {
             const mobile = window.innerWidth <= 768;
             setIsMobile(mobile);
         };
-        
+
         checkMobile();
         window.addEventListener('resize', checkMobile);
-        
+
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
@@ -77,6 +77,8 @@ export default function Sidebar() {
         setHorariosGenerados,
         clearHorariosGenerados,
         horariosGenerados,
+        horarioActualIndex,
+        manualBlocks,
         clearMaterias,
         clearRemovedGroups,
         darkTheme,
@@ -86,7 +88,15 @@ export default function Sidebar() {
         allowManualBlocksLocked,
         lockAllowManualBlocks,
         unlockAllowManualBlocks,
+        allowManualBlocksBySchedule,
+        setAllowManualBlocksForSchedule,
+        clearAllowManualBlocksBySchedule,
+        updateManualBlock,
     } = useMateriasStore();
+
+    // For automatic-mode toggle: consider existing manual blocks when no per-schedule pref is set
+    const hasBlocksThisSchedule = manualBlocks && manualBlocks.some(b => typeof b.scheduleIndex === 'number' && b.scheduleIndex === horarioActualIndex);
+    const currentAllowManualBlocksForCurrentSchedule = (allowManualBlocksBySchedule && typeof allowManualBlocksBySchedule[horarioActualIndex] !== 'undefined') ? allowManualBlocksBySchedule[horarioActualIndex] : !!hasBlocksThisSchedule;
 
     // Memoized styles and theme for react-select
     const selectStyles = useMemo(() => ({
@@ -422,11 +432,9 @@ export default function Sidebar() {
 
         // Aplicar cambio y limpiar después de una pequeña espera para que la animación del toggle se complete
         setGenerationMode(targetMode);
-        // Lock/unlock manual-blocks preference according to mode
+        // Cuando se cambia a automático, desactivar la preferencia (pero no bloquearla permanentemente)
         if (targetMode === 'automatico') {
-            lockAllowManualBlocks();
-        } else {
-            unlockAllowManualBlocks();
+            setAllowManualBlocks(false);
         }
         setTimeout(() => {
             resetMateriasSeleccionadas();
@@ -437,11 +445,9 @@ export default function Sidebar() {
     const handleConfirmModeChange = () => {
         if (!pendingMode) return;
         setGenerationMode(pendingMode);
-        // Lock/unlock manual-blocks preference according to mode
+        // Cuando confirmamos cambio a automático, desactivar la preferencia (se podrá activar solo si hay horarios generados)
         if (pendingMode === 'automatico') {
-            lockAllowManualBlocks();
-        } else {
-            unlockAllowManualBlocks();
+            setAllowManualBlocks(false);
         }
         // Close modal immediately so user sees change, but delay heavy cleanup to let animation run
         setShowConfirmModeModal(false);
@@ -625,7 +631,7 @@ export default function Sidebar() {
                                             )}
                                             <span className="text-2xs md:text-[12px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
                                                 {materiasFiltradas.length}
-                                            </span> 
+                                            </span>
 
                                         </div>
                                     </div>
@@ -651,6 +657,11 @@ export default function Sidebar() {
                                             onClick={() => {
                                                 resetMateriasSeleccionadas();
                                                 clearHorariosGenerados();
+                                                // Ensure manual-blocks preference resets to false on global reset
+                                                setAllowManualBlocks(false);
+                                                // Clear any per-schedule flags and any lock so UI is consistent
+                                                clearAllowManualBlocksBySchedule();
+                                                unlockAllowManualBlocks();
                                             }}
                                             className="px-3 py-2 cursor-pointer bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-100/10 rounded-lg text-primary text-xs font-bold focus:outline-none"
                                             title="Deseleccionar todas"
@@ -744,7 +755,7 @@ export default function Sidebar() {
                                 </motion.button>
                             </div>
                         )}
-                        
+
                         {/* Botón Visualizar Horario - Solo en modo manual y móvil */}
                         {generationMode === 'manual' && isMobile && gruposSeleccionados && Object.keys(gruposSeleccionados).length > 0 && (
                             <div className="px-4 pb-4">
@@ -811,6 +822,33 @@ export default function Sidebar() {
                                                 <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${evitarHuecos ? 'right-0.5' : 'left-0.5'}`}></div>
                                             </button>
                                         </div>
+                                        {!isMobile && (
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Permitir crear bloques manuales (por horario)</span>
+                                                <button
+                                                    onClick={() => {
+                                                        if (!(horariosGenerados && horariosGenerados.length > 0)) return;
+                                                        const enable = !currentAllowManualBlocksForCurrentSchedule;
+                                                        setAllowManualBlocksForSchedule(horarioActualIndex, enable);
+                                                        // If enabling per-schedule manual blocks, migrate any global blocks to this schedule
+                                                        if (enable && manualBlocks && manualBlocks.length > 0) {
+                                                            try {
+                                                                manualBlocks.forEach((b) => {
+                                                                    if (typeof b.scheduleIndex === 'undefined' || b.scheduleIndex === null) {
+                                                                        updateManualBlock(b.id, { scheduleIndex: horarioActualIndex });
+                                                                    }
+                                                                });
+                                                            } catch (e) {
+                                                                console.error('Error migrating global manual blocks:', e);
+                                                            }
+                                                        }
+                                                    }}
+                                                    className={`w-8 h-4 outline-none rounded-full relative transition-colors ${currentAllowManualBlocksForCurrentSchedule ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'} ${!(horariosGenerados && horariosGenerados.length > 0) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                >
+                                                    <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${currentAllowManualBlocksForCurrentSchedule ? 'right-0.5' : 'left-0.5'}`}></div>
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </motion.div>
                             )}
@@ -879,7 +917,7 @@ export default function Sidebar() {
                 </AnimatePresence>
             </motion.aside>
 
-          
+
 
             {/* Modal de horarios para móvil */}
             <MobileScheduleModal
