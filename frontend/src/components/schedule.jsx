@@ -91,6 +91,9 @@ export default function Schedule() {
   const selectionStartRef = React.useRef(null); // { diaIndex, horaIndex }
   const selectionCurrentRef = React.useRef(null);
   const isSelectingRef = React.useRef(false);
+  const hasDraggedRef = React.useRef(false); // only commit if the user actually dragged (vertical expansion)
+  const hasLongPressedRef = React.useRef(false); // whether long-press already created a block
+  const longPressTimerRef = React.useRef(null); // timeout id for long-press
   const previewRef = React.useRef(null); // DOM node for the single preview block
   const rafRef = React.useRef(null);
   const gridRectRef = React.useRef(null);
@@ -762,6 +765,46 @@ export default function Schedule() {
     return current;
   };
 
+  // Handle long-press (hold) to show a 1-hour preview; actual creation happens on release
+  const handleLongPress = (startCell) => {
+    if (!startCell) return;
+
+    // Prevent duplicate long-press actions
+    if (hasLongPressedRef.current) return;
+
+    // Build occupied set (classes + manualBlocks)
+    const occupied = new Set();
+    celdasOcupadas.forEach((v, k) => occupied.add(k));
+    manualBlocks.forEach((b) => {
+      for (let i = 0; i < b.duracion; i++) {
+        occupied.add(`${b.diaIndex}-${b.horaIndex + i}`);
+      }
+    });
+
+    const key = `${startCell.diaIndex}-${startCell.horaIndex}`;
+    if (occupied.has(key)) {
+      toast.error('No se pudo colocar: el espacio está ocupado.');
+      // cleanup selection state
+      if (previewRef.current) previewRef.current.style.display = 'none';
+      selectionStartRef.current = null;
+      selectionCurrentRef.current = null;
+      isSelectingRef.current = false;
+      if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
+      return;
+    }
+
+    // Show a 1-hour preview at the start cell. The block will be created when the user releases.
+    selectionStartRef.current = { diaIndex: startCell.diaIndex, horaIndex: startCell.horaIndex };
+    selectionCurrentRef.current = { ...selectionStartRef.current };
+    isSelectingRef.current = true;
+    hasLongPressedRef.current = true;
+
+    // Ensure preview is rendered
+    try { updatePreviewDOM(); } catch (e) {}
+
+    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
+  };
+
   // Helper to start a temporary pulse on a manual block (defined early so it can be called from commit paths)
   const startPulse = (id, duration = 700) => {
     // mark pulsing true immediately
@@ -796,8 +839,19 @@ export default function Schedule() {
 
     selectionCurrentRef.current = { diaIndex: start.diaIndex, horaIndex: adjustedHora };
 
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(updatePreviewDOM);
+    // If user moved to a different row (span > 1), start dragging; otherwise keep quiet (no preview)
+    if (adjustedHora !== start.horaIndex || hasDraggedRef.current) {
+      // clear long-press if any movement occured
+      if (adjustedHora !== start.horaIndex && longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+
+      if (adjustedHora !== start.horaIndex) hasDraggedRef.current = true;
+
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(updatePreviewDOM);
+    }
   };
 
   const endSelection = () => {
@@ -808,10 +862,22 @@ export default function Schedule() {
       rafRef.current = null;
     }
 
+    // clear any pending long press timer
+    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
+
     const start = selectionStartRef.current;
     const current = selectionCurrentRef.current || start;
     if (!start) {
       if (previewRef.current) previewRef.current.style.display = 'none';
+      return;
+    }
+
+    // If the user never moved/dragged (pure click) and also didn't long-press, do not create a manual block
+    if (!hasDraggedRef.current && !hasLongPressedRef.current) {
+      if (previewRef.current) previewRef.current.style.display = 'none';
+      selectionStartRef.current = null;
+      selectionCurrentRef.current = null;
+      isSelectingRef.current = false;
       return;
     }
 
@@ -881,6 +947,9 @@ export default function Schedule() {
         setEditingManualId(newId);
         try { startPulse(newId); } catch (e) {}
 
+        // reset long-press state if any
+        hasLongPressedRef.current = false;
+
         if (previewRef.current) previewRef.current.style.display = 'none';
 
         selectionStartRef.current = null;
@@ -908,6 +977,10 @@ export default function Schedule() {
         });
         setEditingManualId(newId);
         try { startPulse(newId); } catch (e) {}
+
+        // reset long-press state if any
+        hasLongPressedRef.current = false;
+
         if (previewRef.current) previewRef.current.style.display = 'none';
         selectionStartRef.current = null;
         selectionCurrentRef.current = null;
@@ -927,6 +1000,9 @@ export default function Schedule() {
       setEditingManualId(newId);
       try { startPulse(newId); } catch (e) {}
 
+      // reset long-press state if any
+      hasLongPressedRef.current = false;
+
       // hide preview
       if (previewRef.current) previewRef.current.style.display = 'none';
 
@@ -945,6 +1021,11 @@ export default function Schedule() {
       return;
     }
 
+    // If an input is being edited for a manual block, force blur to commit/save it
+    if (editingManualId && typeof document !== 'undefined' && document.activeElement && document.activeElement.tagName === 'INPUT') {
+      try { document.activeElement.blur(); } catch (e) {}
+    }
+
     // only left click
     if (e.button !== 0) return;
 
@@ -957,8 +1038,14 @@ export default function Schedule() {
     selectionStartRef.current = { diaIndex: cell.diaIndex, horaIndex: cell.horaIndex };
     selectionCurrentRef.current = { ...selectionStartRef.current };
     isSelectingRef.current = true;
+    hasDraggedRef.current = false;
+    hasLongPressedRef.current = false;
 
-    updatePreviewDOM();
+    // Start long-press timer (2 seconds) to create a 1-hour block when holding in place
+    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
+    longPressTimerRef.current = setTimeout(() => {
+      handleLongPress(selectionStartRef.current);
+    }, 200);
 
     window.addEventListener('mousemove', onPointerMove);
     window.addEventListener('mouseup', () => {
@@ -977,6 +1064,11 @@ export default function Schedule() {
       return;
     }
 
+    // If an input is being edited for a manual block, force blur to commit/save it
+    if (editingManualId && typeof document !== 'undefined' && document.activeElement && document.activeElement.tagName === 'INPUT') {
+      try { document.activeElement.blur(); } catch (e) {}
+    }
+
     // prevent native scrolling/gestures that interfere with selection
     e.preventDefault();
 
@@ -988,8 +1080,14 @@ export default function Schedule() {
     selectionStartRef.current = { diaIndex: cell.diaIndex, horaIndex: cell.horaIndex };
     selectionCurrentRef.current = { ...selectionStartRef.current };
     isSelectingRef.current = true;
+    hasDraggedRef.current = false;
+    hasLongPressedRef.current = false;
 
-    updatePreviewDOM();
+    // Start long-press timer (2 seconds) to create a 1-hour block when holding in place
+    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
+    longPressTimerRef.current = setTimeout(() => {
+      handleLongPress(selectionStartRef.current);
+    }, 2000);
 
     // Ensure selection commits to a block with id/name when finished via touch
     window.addEventListener('touchend', () => {

@@ -134,17 +134,18 @@ export default function ClassBlock({ clase, onHover, onLeave, onDelete, onRename
 
   const commitEdit = () => {
     const newName = editText?.trim();
-    if (newName && onRename) {
-      // call parent-provided bound callback
-      onRename(newName);
+    const finalName = newName && newName.length > 0 ? newName : 'Bloque manual';
+    if (onRename) {
+      // call parent-provided bound callback with finalName
+      try { onRename(finalName); } catch (err) {}
     }
     // update local display immediately and close editor (optimistic)
-    setEditText(newName || '');
-    setDisplayName(newName || '');
+    setEditText(finalName);
+    setDisplayName(finalName);
     setIsEditing(false);
 
     // notify parent that edit completed (useful to trigger confetti)
-    try { if (onEditComplete) onEditComplete(newName); } catch (err) {}
+    try { if (onEditComplete) onEditComplete(finalName); } catch (err) {}
   };
 
   const handleKeyDown = (e) => {
