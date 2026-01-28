@@ -720,6 +720,34 @@ export default function Schedule() {
     previewRef.current.style.display = 'block';
   };
 
+  // Helper: restringe la selección para que no cruce celdas ocupadas
+  const clampPreviewToFree = (startDia, startHora, targetHora) => {
+    // Build occupied set (classes + manualBlocks)
+    const occupied = new Set();
+    celdasOcupadas.forEach((v, k) => occupied.add(k));
+    manualBlocks.forEach((b) => {
+      for (let i = 0; i < b.duracion; i++) {
+        occupied.add(`${b.diaIndex}-${b.horaIndex + i}`);
+      }
+    });
+
+    const dir = targetHora >= startHora ? 1 : -1;
+    let current = startHora;
+
+    // include start cell (should be free by construction), then attempt to expand step-by-step
+    while (true) {
+      const next = current + dir;
+      if (dir === 1 && next > targetHora) break;
+      if (dir === -1 && next < targetHora) break;
+
+      const key = `${startDia}-${next}`;
+      if (occupied.has(key)) break; // stop before occupied
+      current = next;
+    }
+
+    return current;
+  };
+
   const onPointerMove = (ev) => {
     const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
     const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
@@ -730,7 +758,10 @@ export default function Schedule() {
     const start = selectionStartRef.current;
     if (!start) return;
 
-    selectionCurrentRef.current = { diaIndex: start.diaIndex, horaIndex: cell.horaIndex };
+    // Clamp target hora to not cross occupied cells
+    const adjustedHora = clampPreviewToFree(start.diaIndex, start.horaIndex, cell.horaIndex);
+
+    selectionCurrentRef.current = { diaIndex: start.diaIndex, horaIndex: adjustedHora };
 
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(updatePreviewDOM);
@@ -754,28 +785,122 @@ export default function Schedule() {
     const minRow = Math.min(start.horaIndex, current.horaIndex);
     const span = Math.abs(start.horaIndex - current.horaIndex) + 1;
 
-    // commit block (include id and editable name)
+    // Build occupied map: schedule classes + manual blocks (existing)
+    const occupied = new Set();
+    celdasOcupadas.forEach((v, k) => occupied.add(k));
+    manualBlocks.forEach((b) => {
+      for (let i = 0; i < b.duracion; i++) {
+        occupied.add(`${b.diaIndex}-${b.horaIndex + i}`);
+      }
+    });
+
+    const checkConflict = (diaIdx, startHoraIdx, checkSpan) => {
+      for (let i = 0; i < checkSpan; i++) {
+        if (occupied.has(`${diaIdx}-${startHoraIdx + i}`)) return true;
+      }
+      return false;
+    };
+
+    // Try to fit by shrinking if necessary (reduce until fits or reaches 0)
+    let targetSpan = span;
+    while (targetSpan > 0 && checkConflict(start.diaIndex, minRow, targetSpan)) {
+      targetSpan -= 1;
+    }
+
+    if (targetSpan <= 0) {
+      // Could not fit anywhere in this column
+      toast.error('No se pudo colocar: el espacio está ocupado.');
+      if (previewRef.current) previewRef.current.style.display = 'none';
+      selectionStartRef.current = null;
+      selectionCurrentRef.current = null;
+      isSelectingRef.current = false;
+      return;
+    }
+
     const newId = Date.now() + Math.round(Math.random() * 1000);
-    setManualBlocks((prev) => [
-      ...prev,
-      {
-        id: newId,
-        name: 'Bloque manual',
-        diaIndex: start.diaIndex,
-        horaIndex: minRow,
-        duracion: span,
-        color: '#3b82f6',
-      },
-    ]);
 
-    // Automatically enter edit mode for the new block
-    setEditingManualId(newId);
+    // If we need to shrink, animate the preview height to the new size before committing
+    if (targetSpan < span && previewRef.current) {
+      // compute new height in px using cell element if available
+      const startCellSelector = `[data-cell="${start.diaIndex}-${minRow}"]`;
+      const cellEl = gridRef.current && gridRef.current.querySelector(startCellSelector);
+      const cellH = cellEl ? cellEl.getBoundingClientRect().height : (gridRectRef.current?.cellHeight || (gridRef.current?.getBoundingClientRect().height / horas.length));
+      const newHeightPx = Math.round(cellH * targetSpan);
 
-    // hide preview
-    if (previewRef.current) previewRef.current.style.display = 'none';
+      // animate preview to new height
+      previewRef.current.style.height = `${newHeightPx}px`;
 
-    selectionStartRef.current = null;
-    selectionCurrentRef.current = null;
+      // small toast to indicate adjustment
+      toast('Ajustado para evitar solapamiento', { icon: '⚠️' });
+
+      // after transition ends (or fallback timeout) commit the smaller block
+      const onTransitionEnd = () => {
+        // commit
+        setManualBlocks((prev) => [
+          ...prev,
+          {
+            id: newId,
+            name: 'Bloque manual',
+            diaIndex: start.diaIndex,
+            horaIndex: minRow,
+            duracion: targetSpan,
+            color: '#3b82f6',
+          },
+        ]);
+        setEditingManualId(newId);
+
+        if (previewRef.current) previewRef.current.style.display = 'none';
+
+        selectionStartRef.current = null;
+        selectionCurrentRef.current = null;
+
+        previewRef.current.removeEventListener('transitionend', onTransitionEnd);
+      };
+
+      previewRef.current.addEventListener('transitionend', onTransitionEnd);
+
+      // Fallback in case transitionend doesn't fire
+      setTimeout(() => {
+        try { previewRef.current && previewRef.current.removeEventListener('transitionend', onTransitionEnd); } catch(e) {}
+        // ensure committed
+        setManualBlocks((prev) => [
+          ...prev.filter((p) => p.id !== newId),
+          {
+            id: newId,
+            name: 'Bloque manual',
+            diaIndex: start.diaIndex,
+            horaIndex: minRow,
+            duracion: targetSpan,
+            color: '#3b82f6',
+          },
+        ]);
+        setEditingManualId(newId);
+        if (previewRef.current) previewRef.current.style.display = 'none';
+        selectionStartRef.current = null;
+        selectionCurrentRef.current = null;
+      }, 350);
+
+    } else {
+      // No conflict or fits as requested — commit directly
+      setManualBlocks((prev) => [
+        ...prev,
+        {
+          id: newId,
+          name: 'Bloque manual',
+          diaIndex: start.diaIndex,
+          horaIndex: minRow,
+          duracion: span,
+          color: '#3b82f6',
+        },
+      ]);
+      setEditingManualId(newId);
+
+      // hide preview
+      if (previewRef.current) previewRef.current.style.display = 'none';
+
+      selectionStartRef.current = null;
+      selectionCurrentRef.current = null;
+    }
   };
 
   const handleMouseDown = (e) => {
@@ -872,13 +997,6 @@ export default function Schedule() {
       return next;
     });
 
-    // Show toast outside of setState to avoid React warning
-    if (removed) {
-      toast.success('Bloque eliminado');
-    } else {
-      toast.error('No se encontró el bloque a eliminar');
-    }
-
     // Ensure preview/selection cleared when deleting
     if (previewRef.current) previewRef.current.style.display = 'none';
     isSelectingRef.current = false;
@@ -894,57 +1012,10 @@ export default function Schedule() {
     setManualBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, name: newName } : b)));
     // hide preview if any
     if (previewRef.current) previewRef.current.style.display = 'none';
-    toast.success('Nombre actualizado');
   };
 
-  // Confetti (simple DOM implementation, lightweight)
-  const ensureConfettiStyles = () => {
-    if (document.getElementById('schedule-confetti-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'schedule-confetti-styles';
-    style.innerHTML = `
-      @keyframes confetti-fall { 0% { transform: translateY(0) rotate(0deg); opacity: 1 } 100% { transform: translateY(160px) rotate(360deg); opacity: 0 } }
-      .schedule-confetti-piece { position: fixed; width: 10px; height: 14px; opacity: 0; will-change: transform, opacity; border-radius: 2px; }
-    `;
-    document.head.appendChild(style);
-  };
+  // Confetti removed — intentionally disabled
 
-  const launchConfettiForManual = (manualId) => {
-    ensureConfettiStyles();
-    // find element by data attribute
-    const target = document.querySelector(`[data-manual-id="${manualId}"]`);
-    const rect = target ? target.getBoundingClientRect() : { left: window.innerWidth/2, top: window.innerHeight/4, width: 40, height: 20 };
-    const container = document.createElement('div');
-    container.className = 'schedule-confetti-container';
-    document.body.appendChild(container);
-
-    const colors = ['#ef4444','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899','#06b6d4'];
-    const count = 24;
-    for (let i = 0; i < count; i++) {
-      const piece = document.createElement('div');
-      piece.className = 'schedule-confetti-piece';
-      piece.style.left = `${rect.left + rect.width/2}px`;
-      piece.style.top = `${rect.top + rect.height/2}px`;
-      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
-      const angle = (Math.random() - 0.5) * Math.PI; // -pi/2..pi/2
-      const vx = Math.cos(angle) * (80 + Math.random() * 120);
-      const vy = - (120 + Math.random() * 160);
-      const duration = 800 + Math.random() * 800;
-      piece.style.transition = `transform ${duration}ms cubic-bezier(0.2,0.8,0.2,1), opacity ${duration}ms linear`;
-      document.body.appendChild(piece);
-      // trigger animation next tick
-      requestAnimationFrame(() => {
-        piece.style.opacity = '1';
-        piece.style.transform = `translate(${vx}px, ${-vy}px) rotate(${(Math.random()*360)}deg)`;
-      });
-      // cleanup
-      setTimeout(() => {
-        try { document.body.removeChild(piece); } catch (e) {}
-      }, duration + 50);
-    }
-    // remove container after a while
-    setTimeout(() => { try { if (container.parentNode) container.parentNode.removeChild(container); } catch (e) {} }, 1800);
-  };
 
   const handleDragEnter = (e) => {
     e.preventDefault();
@@ -1276,9 +1347,8 @@ export default function Schedule() {
                       onRename={clase.manualId ? (name) => renameManualBlock(clase.manualId, name) : undefined}
                       autoEdit={editingManualId === clase.manualId}
                       onEditComplete={(newName) => {
-                        // clear editing state and trigger confetti when a non-empty name was provided
+                        // clear editing state
                         setEditingManualId(null);
-                        if (newName) launchConfettiForManual(clase.manualId);
                       }}
                     />
                   </div>
