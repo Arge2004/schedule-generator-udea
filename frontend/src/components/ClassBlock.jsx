@@ -21,18 +21,19 @@ export default function ClassBlock({ clase, onHover, onLeave, onDelete, onRename
     setDisplayName(materia || '');
   }, [materia]);
 
-  // If parent requests autoEdit, enter edit mode and focus input
+  // Solo considerar como 'manual' los bloques creados manualmente (tienen manualId)
+  const isManual = source === 'manual' && !!manualId;
+
+  // If parent requests autoEdit, enter edit mode and focus input (only for manual blocks)
   React.useEffect(() => {
-    if (autoEdit) {
+    if (autoEdit && source === 'manual' && !!manualId) {
       setIsEditing(true);
       // focus on next tick when input renders
       setTimeout(() => {
         try { inputRef.current && inputRef.current.focus(); } catch (e) {}
       }, 0);
     }
-  }, [autoEdit]);
-
-  const isManual = source === 'manual';
+  }, [autoEdit, source, manualId]);
   const isMobile = window.innerWidth <= 768;
 
   // Resolver código de materia si no viene en la clase
@@ -223,7 +224,7 @@ export default function ClassBlock({ clase, onHover, onLeave, onDelete, onRename
             PREVIEW
           </span>
         )}
-        {isEditing ? (
+        {isEditing && isManual ? (
           <input
             ref={inputRef}
             value={editText}
