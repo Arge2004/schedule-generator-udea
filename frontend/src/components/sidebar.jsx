@@ -80,7 +80,9 @@ export default function Sidebar() {
         clearMaterias,
         clearRemovedGroups,
         darkTheme,
-        syncThemeWithSystem
+        syncThemeWithSystem,
+        allowManualBlocks,
+        setAllowManualBlocks,
     } = useMateriasStore();
 
     // Memoized styles and theme for react-select
@@ -818,6 +820,16 @@ export default function Sidebar() {
                                                 className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${dragEnabled ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
                                             >
                                                 <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${dragEnabled ? 'right-0.5' : 'left-0.5'}`}></div>
+                                            </button>
+                                        </div>
+
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Permitir crear bloques manuales</span>
+                                            <button
+                                                onClick={() => setAllowManualBlocks(!allowManualBlocks)}
+                                                className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${allowManualBlocks ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                                            >
+                                                <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${allowManualBlocks ? 'right-0.5' : 'left-0.5'}`}></div>
                                             </button>
                                         </div>
                                     </div>

@@ -17,6 +17,12 @@ export const useMateriasStore = create((set) => ({
   horarioActualIndex: 0, // Índice del horario que se está visualizando
   resetKey: 0, // Incrementa cada vez que se hace reset
   
+  // Preferencias del usuario
+  // Permitir crear bloques manuales en el horario (click+drag)
+  allowManualBlocks: (() => {
+    try { const v = localStorage.getItem('allowManualBlocks'); return v === null ? true : JSON.parse(v); } catch (e) { return true; }
+  })(),
+
   // Estado del tema
   darkTheme: (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || false,
   themeSyncEnabled: true, // Si true, sigue la preferencia del sistema; si false, usa preferencia manual
@@ -150,6 +156,17 @@ export const useMateriasStore = create((set) => ({
 
   setPreviewGrupo: (preview) => set({
     previewGrupo: preview,
+  }),
+
+  // Preferencias: permitir crear bloques manuales
+  setAllowManualBlocks: (value) => {
+    try { localStorage.setItem('allowManualBlocks', JSON.stringify(value)); } catch (e) {}
+    set({ allowManualBlocks: !!value });
+  },
+  toggleAllowManualBlocks: () => set((state) => {
+    const next = !state.allowManualBlocks;
+    try { localStorage.setItem('allowManualBlocks', JSON.stringify(next)); } catch (e) {}
+    return { allowManualBlocks: next };
   }),
 
   clearDragState: () => set((state) => {

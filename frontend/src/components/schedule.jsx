@@ -41,6 +41,7 @@ export default function Schedule() {
     darkTheme,
     toggleDarkTheme,
     resetKey,
+    allowManualBlocks,
   } = useMateriasStore();
 
   // Estado local para hover durante drag
@@ -945,6 +946,11 @@ export default function Schedule() {
     const target = e.target;
     if (target && target.closest && target.closest('[data-no-select]')) return;
 
+    // if creating manual blocks is disabled, ignore and notify
+    if (!allowManualBlocks) {
+      return;
+    }
+
     // only left click
     if (e.button !== 0) return;
 
@@ -971,6 +977,11 @@ export default function Schedule() {
     // ignore touches coming from elements that opt-out of selection
     const target = e.target;
     if (target && target.closest && target.closest('[data-no-select]')) return;
+
+    // if creating manual blocks is disabled, ignore and notify
+    if (!allowManualBlocks) {
+      return;
+    }
 
     // prevent native scrolling/gestures that interfere with selection
     e.preventDefault();
