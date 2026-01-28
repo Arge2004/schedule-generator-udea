@@ -23,7 +23,7 @@ export const useMateriasStore = create((set) => ({
   // Preferencias del usuario
   // Permitir crear bloques manuales en el horario (click+drag)
   allowManualBlocks: (() => {
-    try { const v = localStorage.getItem('allowManualBlocks'); return v === null ? true : JSON.parse(v); } catch (e) { return true; }
+    try { const v = localStorage.getItem('allowManualBlocks'); return v === null ? false : JSON.parse(v); } catch (e) { return false; }
   })(),
 
   // Estado del tema
