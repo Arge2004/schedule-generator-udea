@@ -82,6 +82,22 @@ export default function Schedule() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  // Ref al grid principal (necesario para cálculo de celdas al hacer click+drag)
+  const gridRef = React.useRef(null);
+
+  // Click + drag selection refs. Most state lives in refs and DOM to avoid re-renders.
+  const selectionStartRef = React.useRef(null); // { diaIndex, horaIndex }
+  const selectionCurrentRef = React.useRef(null);
+  const isSelectingRef = React.useRef(false);
+  const previewRef = React.useRef(null); // DOM node for the single preview block
+  const rafRef = React.useRef(null);
+  const gridRectRef = React.useRef(null);
+
+  // Permanent manual blocks created via click+drag selection (committed on mouseup)
+  const [manualBlocks, setManualBlocks] = useState([]); // { diaIndex, horaIndex, duracion, color }
+  const [editingManualId, setEditingManualId] = useState(null);
+
+
   // Refs para el botón y el menú de export, para cerrar al click fuera
   const exportButtonRef = React.useRef(null);
   const exportMenuRef = React.useRef(null);
@@ -136,6 +152,21 @@ export default function Schedule() {
       window.removeEventListener("scroll", compute, true);
     };
   }, [exportMenuOpen]);
+
+  // Cleanup selection listeners and rAF on unmount
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      try {
+        window.removeEventListener('mousemove', onPointerMove);
+        window.removeEventListener('mouseup', endSelection);
+        window.removeEventListener('touchmove', onPointerMove);
+        window.removeEventListener('touchend', endSelection);
+      } catch (err) {
+        // ignore if handlers not attached
+      }
+    };
+  }, []);
 
   const handleExportPNG = async () => {
     try {
@@ -284,6 +315,7 @@ export default function Schedule() {
   const clasesParaRenderizar = useMemo(() => {
     const clases = [];
     let gruposParaProcesar = [];
+    let colorIndex = 0; // índice para asignar colores cuando agregamos bloques manuales o seleccionados
 
     // Priorizar grupos seleccionados manualmente si existen (para evitar mostrar un horario generado que no coincide)
     const anyManualSelected = gruposSeleccionados && Object.values(gruposSeleccionados).some(v => v !== null && v !== undefined);
@@ -330,6 +362,25 @@ export default function Schedule() {
           color: colores[idx % colores.length],
         }));
       }
+    }
+
+    // Include manual blocks created via click+drag selection
+    if (manualBlocks && manualBlocks.length > 0) {
+      manualBlocks.forEach((b) => {
+        gruposParaProcesar.push({
+          nombreMateria: b.name || 'Bloque manual',
+          numeroGrupo: null,
+          horarios: [
+            { dias: [dias[b.diaIndex]], horaInicio: horas[b.horaIndex], horaFin: horas[b.horaIndex] + b.duracion }
+          ],
+          profesor: '',
+          codigoMateria: null,
+          source: 'manual',
+          manualId: b.id,
+          color: b.color || colores[colorIndex % colores.length],
+        });
+        colorIndex++;
+      });
     }
 
     // Agregar preview si existe y no está ya seleccionado
@@ -390,6 +441,8 @@ export default function Schedule() {
               horaIndex: horas.indexOf(horario.horaInicio), // posición en el array de horas
               isPreview: grupo.isPreview || false,
               source: grupo.source || (grupo.isPreview ? 'preview' : 'manual'),
+              // Preserve manual block identifier so parent can operate on it
+              manualId: grupo.manualId,
             });
           }
         });
@@ -403,6 +456,7 @@ export default function Schedule() {
     gruposSeleccionados,
     materias,
     previewGrupo,
+    manualBlocks,
   ]);
 
   // Crear un mapa de celdas ocupadas por clases (con información de qué materia las ocupa)
@@ -576,6 +630,213 @@ export default function Schedule() {
     setHoveredValidGroupNumbers(validGroupNums);
   };
 
+  // Click + drag selection (mouse & touch) - minimal state in refs + DOM updates for smoothness
+  const getCellFromClient = (clientX, clientY) => {
+    if (!gridRef.current) return null;
+    const rect = gridRef.current.getBoundingClientRect();
+    const leftDays = rect.left + 80; // primera columna fija 80px
+    const widthDays = rect.width - 80;
+    const cellWidth = widthDays / 7;
+    const cellHeight = rect.height / horas.length;
+    const x = clientX - leftDays;
+    const y = clientY - rect.top;
+    let diaIndex = Math.floor(x / cellWidth);
+    let horaIndex = Math.floor(y / cellHeight);
+
+    // Clamp indices to valid ranges to avoid off-by-one from rounding
+    diaIndex = Math.max(0, Math.min(6, isNaN(diaIndex) ? -1 : diaIndex));
+    horaIndex = Math.max(0, Math.min(horas.length - 1, isNaN(horaIndex) ? -1 : horaIndex));
+
+    if (
+      isNaN(diaIndex) ||
+      isNaN(horaIndex) ||
+      diaIndex < 0 ||
+      diaIndex > 6 ||
+      horaIndex < 0 ||
+      horaIndex >= horas.length
+    ) {
+      return null;
+    }
+
+    // cache rect and sizes (store leftDays as absolute, we'll derive local offset later)
+    gridRectRef.current = { rect, cellWidth, cellHeight, leftDays };
+    return { diaIndex, horaIndex, rect, cellWidth, cellHeight, leftDays };
+  };
+
+  const updatePreviewDOM = () => {
+    if (!previewRef.current) return;
+    const start = selectionStartRef.current;
+    const current = selectionCurrentRef.current;
+    if (!start || !current) return;
+
+    const minRow = Math.min(start.horaIndex, current.horaIndex);
+    const maxRow = Math.max(start.horaIndex, current.horaIndex);
+    const span = maxRow - minRow + 1;
+
+    const gridRectData = gridRectRef.current || {};
+    const cellH = gridRectData.cellHeight || (gridRef.current?.getBoundingClientRect().height / horas.length);
+    const cellW = gridRectData.cellWidth || ((gridRef.current?.getBoundingClientRect().width - 80) / 7);
+
+    // Prefer measuring the actual starting cell for exact dimensions
+    let left, top, width, height;
+    try {
+      const startCellSelector = `[data-cell="${start.diaIndex}-${minRow}"]`;
+      const cellEl = gridRef.current && gridRef.current.querySelector(startCellSelector);
+      if (cellEl) {
+        const cellRect = cellEl.getBoundingClientRect();
+        const gridRect = gridRectData.rect || gridRef.current.getBoundingClientRect();
+        left = Math.round(cellRect.left - gridRect.left);
+        top = Math.round(cellRect.top - gridRect.top);
+        width = Math.round(cellRect.width);
+        height = Math.round(span * cellRect.height);
+      } else {
+        // fallback to computed cell sizes
+        const leftDaysLocal = (gridRectData.leftDays || (gridRef.current?.getBoundingClientRect().left + 80)) - (gridRectData.rect ? gridRectData.rect.left : gridRef.current?.getBoundingClientRect().left);
+        left = Math.round(leftDaysLocal + start.diaIndex * cellW);
+        top = Math.round(minRow * cellH);
+        width = Math.round(cellW);
+        height = Math.round(span * cellH);
+      }
+    } catch (err) {
+      // if anything goes wrong, fallback gracefully
+      const leftDaysLocal = (gridRectData.leftDays || (gridRef.current?.getBoundingClientRect().left + 80)) - (gridRectData.rect ? gridRectData.rect.left : gridRef.current?.getBoundingClientRect().left);
+      left = Math.round(leftDaysLocal + start.diaIndex * cellW);
+      top = Math.round(minRow * cellH);
+      width = Math.round(cellW);
+      height = Math.round(span * cellH);
+    }
+
+    // Clamp left/width to grid bounds
+    const gridWidth = gridRectData.rect ? gridRectData.rect.width : gridRef.current?.getBoundingClientRect().width || 0;
+    if (left + width > gridWidth) {
+      left = Math.max(0, gridWidth - width - 1);
+    }
+
+    previewRef.current.style.left = `${left}px`;
+    previewRef.current.style.top = `${top}px`;
+    previewRef.current.style.width = `${width}px`;
+    previewRef.current.style.height = `${height}px`;
+    // ensure visible
+    previewRef.current.style.display = 'block';
+  };
+
+  const onPointerMove = (ev) => {
+    const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+    const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+    const cell = getCellFromClient(clientX, clientY);
+    if (!cell) return;
+
+    // enforce vertical selection (same column as start)
+    const start = selectionStartRef.current;
+    if (!start) return;
+
+    selectionCurrentRef.current = { diaIndex: start.diaIndex, horaIndex: cell.horaIndex };
+
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(updatePreviewDOM);
+  };
+
+  const endSelection = () => {
+    if (!isSelectingRef.current) return;
+    isSelectingRef.current = false;
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+
+    const start = selectionStartRef.current;
+    const current = selectionCurrentRef.current || start;
+    if (!start) {
+      if (previewRef.current) previewRef.current.style.display = 'none';
+      return;
+    }
+
+    const minRow = Math.min(start.horaIndex, current.horaIndex);
+    const span = Math.abs(start.horaIndex - current.horaIndex) + 1;
+
+    // commit block (include id and editable name)
+    const newId = Date.now() + Math.round(Math.random() * 1000);
+    setManualBlocks((prev) => [
+      ...prev,
+      {
+        id: newId,
+        name: 'Bloque manual',
+        diaIndex: start.diaIndex,
+        horaIndex: minRow,
+        duracion: span,
+        color: '#3b82f6',
+      },
+    ]);
+
+    // Automatically enter edit mode for the new block
+    setEditingManualId(newId);
+
+    // hide preview
+    if (previewRef.current) previewRef.current.style.display = 'none';
+
+    selectionStartRef.current = null;
+    selectionCurrentRef.current = null;
+  };
+
+  const handleMouseDown = (e) => {
+    // ignore clicks coming from elements that opt-out of selection
+    const target = e.target;
+    if (target && target.closest && target.closest('[data-no-select]')) return;
+
+    // only left click
+    if (e.button !== 0) return;
+
+    // Prevent native browser drag/selection which can interfere with multi-cell selection
+    e.preventDefault();
+
+    const cell = getCellFromClient(e.clientX, e.clientY);
+    if (!cell) return;
+
+    selectionStartRef.current = { diaIndex: cell.diaIndex, horaIndex: cell.horaIndex };
+    selectionCurrentRef.current = { ...selectionStartRef.current };
+    isSelectingRef.current = true;
+
+    updatePreviewDOM();
+
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', () => {
+      window.removeEventListener('mousemove', onPointerMove);
+      endSelection();
+    }, { once: true });
+  }; 
+
+  const handleTouchStart = (e) => {
+    // ignore touches coming from elements that opt-out of selection
+    const target = e.target;
+    if (target && target.closest && target.closest('[data-no-select]')) return;
+
+    // prevent native scrolling/gestures that interfere with selection
+    e.preventDefault();
+
+    const touch = e.touches[0];
+    if (!touch) return;
+    const cell = getCellFromClient(touch.clientX, touch.clientY);
+    if (!cell) return;
+
+    selectionStartRef.current = { diaIndex: cell.diaIndex, horaIndex: cell.horaIndex };
+    selectionCurrentRef.current = { ...selectionStartRef.current };
+    isSelectingRef.current = true;
+
+    updatePreviewDOM();
+
+    // Ensure selection commits to a block with id/name when finished via touch
+    window.addEventListener('touchend', () => {
+      window.removeEventListener('touchmove', onPointerMove);
+      endSelection();
+    }, { once: true });
+
+    window.addEventListener('touchmove', onPointerMove, { passive: false });
+    window.addEventListener('touchend', () => {
+      window.removeEventListener('touchmove', onPointerMove);
+      endSelection();
+    }, { once: true });
+  };
+
   // Helper: verifica si un grupo TIENE conflicto con el schedule actual (celdasMateria)
   const groupHasConflict = (grupo) => {
     for (const horario of grupo.horarios) {
@@ -598,6 +859,91 @@ export default function Schedule() {
       }
     }
     return false;
+  };
+
+  // Manual block helpers (delete / rename)
+  const deleteManualBlock = (id) => {
+
+    // Determine if the block exists now (avoid side-effects inside setState updater)
+    const removed = manualBlocks.find((b) => b.id === id);
+
+    setManualBlocks((prev) => {
+      const next = prev.filter((b) => b.id !== id);
+      return next;
+    });
+
+    // Show toast outside of setState to avoid React warning
+    if (removed) {
+      toast.success('Bloque eliminado');
+    } else {
+      toast.error('No se encontró el bloque a eliminar');
+    }
+
+    // Ensure preview/selection cleared when deleting
+    if (previewRef.current) previewRef.current.style.display = 'none';
+    isSelectingRef.current = false;
+    selectionStartRef.current = null;
+    selectionCurrentRef.current = null;
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }; 
+
+  const renameManualBlock = (id, newName) => {
+    setManualBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, name: newName } : b)));
+    // hide preview if any
+    if (previewRef.current) previewRef.current.style.display = 'none';
+    toast.success('Nombre actualizado');
+  };
+
+  // Confetti (simple DOM implementation, lightweight)
+  const ensureConfettiStyles = () => {
+    if (document.getElementById('schedule-confetti-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'schedule-confetti-styles';
+    style.innerHTML = `
+      @keyframes confetti-fall { 0% { transform: translateY(0) rotate(0deg); opacity: 1 } 100% { transform: translateY(160px) rotate(360deg); opacity: 0 } }
+      .schedule-confetti-piece { position: fixed; width: 10px; height: 14px; opacity: 0; will-change: transform, opacity; border-radius: 2px; }
+    `;
+    document.head.appendChild(style);
+  };
+
+  const launchConfettiForManual = (manualId) => {
+    ensureConfettiStyles();
+    // find element by data attribute
+    const target = document.querySelector(`[data-manual-id="${manualId}"]`);
+    const rect = target ? target.getBoundingClientRect() : { left: window.innerWidth/2, top: window.innerHeight/4, width: 40, height: 20 };
+    const container = document.createElement('div');
+    container.className = 'schedule-confetti-container';
+    document.body.appendChild(container);
+
+    const colors = ['#ef4444','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899','#06b6d4'];
+    const count = 24;
+    for (let i = 0; i < count; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'schedule-confetti-piece';
+      piece.style.left = `${rect.left + rect.width/2}px`;
+      piece.style.top = `${rect.top + rect.height/2}px`;
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      const angle = (Math.random() - 0.5) * Math.PI; // -pi/2..pi/2
+      const vx = Math.cos(angle) * (80 + Math.random() * 120);
+      const vy = - (120 + Math.random() * 160);
+      const duration = 800 + Math.random() * 800;
+      piece.style.transition = `transform ${duration}ms cubic-bezier(0.2,0.8,0.2,1), opacity ${duration}ms linear`;
+      document.body.appendChild(piece);
+      // trigger animation next tick
+      requestAnimationFrame(() => {
+        piece.style.opacity = '1';
+        piece.style.transform = `translate(${vx}px, ${-vy}px) rotate(${(Math.random()*360)}deg)`;
+      });
+      // cleanup
+      setTimeout(() => {
+        try { document.body.removeChild(piece); } catch (e) {}
+      }, duration + 50);
+    }
+    // remove container after a while
+    setTimeout(() => { try { if (container.parentNode) container.parentNode.removeChild(container); } catch (e) {} }, 1800);
   };
 
   const handleDragEnter = (e) => {
@@ -829,14 +1175,19 @@ export default function Schedule() {
           {/* Grid de horarios con posicionamiento explícito */}
           <div className="flex-1 min-h-0 overflow-hidden">
             <div
+              ref={gridRef}
               className="grid h-full w-full relative"
               style={{
                 gridTemplateColumns: "80px repeat(7, minmax(140px, 1fr))",
                 gridTemplateRows: `repeat(${horas.length}, 1fr)`,
+                userSelect: 'none', // prevent native text selection while selecting cells
               }}
+              onDragStart={(e) => e.preventDefault()} /* prevent native element dragging */
               onDragOver={handleDragOver}
               onDragEnter={handleDragEnter}
               onDragLeave={handleDragLeave}
+              onMouseDown={handleMouseDown}
+              onTouchStart={handleTouchStart}
             >
               {/* Generar todas las celdas del grid */}
               {horas.map((hora, horaIdx) => (
@@ -860,6 +1211,9 @@ export default function Schedule() {
                     return (
                       <div
                         key={`${dia}-${hora}`}
+                        data-cell={`${diaIdx}-${horaIdx}`}
+                        data-day={diaIdx}
+                        data-hour={horaIdx}
                         className={`bg-white dark:bg-background-dark ${
                           tieneClase
                             ? ""
@@ -878,15 +1232,34 @@ export default function Schedule() {
                         }}
                       />
                     );
-                  })}
+                  })} 
                 </React.Fragment>
               ))}
+
+              {/* Selection preview (single element updated during click+drag) */}
+              <div
+                ref={previewRef}
+                style={{
+                  position: 'absolute',
+                  zIndex: 999,
+                  pointerEvents: 'none',
+                  display: 'none',
+                  background: 'rgba(59,130,246,0.12)',
+                  border: '1px solid rgba(59,130,246,0.6)',
+                  borderRadius: 8,
+                  transition: 'top 80ms linear, height 80ms linear',
+                  boxSizing: 'border-box',
+                  willChange: 'top, height',
+                }}
+                data-selection-preview
+              />
 
               {/* Renderizar las clases sobre el grid */}
               <AnimatePresence mode="popLayout">
                 {clasesParaRenderizar.map((clase, idx) => (
                   <div
-                    key={`${clase.materia}-${clase.grupo}-${clase.diaIndex}-${clase.horaIndex}-${clase.isPreview ? "preview" : "permanent"}`}
+                    data-manual-id={clase.manualId || undefined}
+                    key={clase.manualId ? `manual-${clase.manualId}` : `${clase.materia}-${clase.grupo}-${clase.diaIndex}-${clase.horaIndex}-${clase.isPreview ? "preview" : "permanent"}`}
                     className="relative"
                     style={{
                       gridColumn: clase.diaIndex + 2, // +2 porque la primera columna es la de horas
@@ -899,6 +1272,14 @@ export default function Schedule() {
                       clase={clase}
                       onHover={handleClassHover}
                       onLeave={handleClassLeave}
+                      onDelete={clase.manualId ? () => deleteManualBlock(clase.manualId) : undefined}
+                      onRename={clase.manualId ? (name) => renameManualBlock(clase.manualId, name) : undefined}
+                      autoEdit={editingManualId === clase.manualId}
+                      onEditComplete={(newName) => {
+                        // clear editing state and trigger confetti when a non-empty name was provided
+                        setEditingManualId(null);
+                        if (newName) launchConfettiForManual(clase.manualId);
+                      }}
                     />
                   </div>
                 ))}
