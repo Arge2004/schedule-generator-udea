@@ -17,6 +17,9 @@ export const useMateriasStore = create((set) => ({
   horarioActualIndex: 0, // Índice del horario que se está visualizando
   resetKey: 0, // Incrementa cada vez que se hace reset
   
+  // Bloques manuales creados por el usuario (click+drag)
+  manualBlocks: [], // { id, name, diaIndex, horaIndex, duracion, color, pulsing }
+  
   // Preferencias del usuario
   // Permitir crear bloques manuales en el horario (click+drag)
   allowManualBlocks: (() => {
@@ -157,6 +160,13 @@ export const useMateriasStore = create((set) => ({
   setPreviewGrupo: (preview) => set({
     previewGrupo: preview,
   }),
+
+  // Acciones para manejar bloques manuales
+  addManualBlock: (block) => set((state) => ({ manualBlocks: [...(state.manualBlocks || []), block] })),
+  removeManualBlock: (id) => set((state) => ({ manualBlocks: (state.manualBlocks || []).filter(b => b.id !== id) })),
+  renameManualBlock: (id, name) => set((state) => ({ manualBlocks: (state.manualBlocks || []).map(b => b.id === id ? { ...b, name } : b) })),
+  updateManualBlock: (id, props) => set((state) => ({ manualBlocks: (state.manualBlocks || []).map(b => b.id === id ? { ...b, ...props } : b) })),
+  clearManualBlocks: () => set({ manualBlocks: [] }),
 
   // Preferencias: permitir crear bloques manuales
   setAllowManualBlocks: (value) => {

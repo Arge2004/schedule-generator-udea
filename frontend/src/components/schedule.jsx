@@ -97,7 +97,8 @@ export default function Schedule() {
   const pulseTimersRef = React.useRef(new Map());
 
   // Permanent manual blocks created via click+drag selection (committed on mouseup)
-  const [manualBlocks, setManualBlocks] = useState([]); // { diaIndex, horaIndex, duracion, color }
+  // Moved to global store so other components can see conflicts
+  const { manualBlocks, addManualBlock, removeManualBlock, renameManualBlock, updateManualBlock, clearManualBlocks } = useMateriasStore();
   const [editingManualId, setEditingManualId] = useState(null);
 
 
@@ -764,7 +765,7 @@ export default function Schedule() {
   // Helper to start a temporary pulse on a manual block (defined early so it can be called from commit paths)
   const startPulse = (id, duration = 700) => {
     // mark pulsing true immediately
-    setManualBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, pulsing: true } : b)));
+    try { updateManualBlock(id, { pulsing: true }); } catch (err) { }
 
     try {
       if (!pulseTimersRef.current) pulseTimersRef.current = new Map();
@@ -774,7 +775,7 @@ export default function Schedule() {
     } catch (err) {}
 
     const t = setTimeout(() => {
-      setManualBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, pulsing: false } : b)));
+      try { updateManualBlock(id, { pulsing: false }); } catch (err) {}
       try { pulseTimersRef.current.delete(id); } catch (err) {}
     }, duration);
     try { pulseTimersRef.current.set(id, t); } catch (err) {}
@@ -868,18 +869,15 @@ export default function Schedule() {
       // after transition ends (or fallback timeout) commit the smaller block
       const onTransitionEnd = () => {
         // commit
-        setManualBlocks((prev) => [
-          ...prev,
-          {
-            id: newId,
-            name: 'Bloque manual',
-            diaIndex: start.diaIndex,
-            horaIndex: minRow,
-            duracion: targetSpan,
-            color: '#3b82f6',
-            pulsing: true,
-          },
-        ]);
+        addManualBlock({
+          id: newId,
+          name: 'Bloque manual',
+          diaIndex: start.diaIndex,
+          horaIndex: minRow,
+          duracion: targetSpan,
+          color: '#3b82f6',
+          pulsing: true,
+        });
         setEditingManualId(newId);
         try { startPulse(newId); } catch (e) {}
 
@@ -897,18 +895,17 @@ export default function Schedule() {
       setTimeout(() => {
         try { previewRef.current && previewRef.current.removeEventListener('transitionend', onTransitionEnd); } catch(e) {}
         // ensure committed
-        setManualBlocks((prev) => [
-          ...prev.filter((p) => p.id !== newId),
-          {
-            id: newId,
-            name: 'Bloque manual',
-            diaIndex: start.diaIndex,
-            horaIndex: minRow,
-            duracion: targetSpan,
-            color: '#3b82f6',
-            pulsing: true,
-          },
-        ]);
+        // Ensure no duplicate and then add
+        removeManualBlock(newId);
+        addManualBlock({
+          id: newId,
+          name: 'Bloque manual',
+          diaIndex: start.diaIndex,
+          horaIndex: minRow,
+          duracion: targetSpan,
+          color: '#3b82f6',
+          pulsing: true,
+        });
         setEditingManualId(newId);
         try { startPulse(newId); } catch (e) {}
         if (previewRef.current) previewRef.current.style.display = 'none';
@@ -918,18 +915,15 @@ export default function Schedule() {
 
     } else {
       // No conflict or fits as requested — commit directly
-      setManualBlocks((prev) => [
-        ...prev,
-        {
-          id: newId,
-          name: 'Bloque manual',
-          diaIndex: start.diaIndex,
-          horaIndex: minRow,
-          duracion: span,
-          color: '#3b82f6',
-          pulsing: true,
-        },
-      ]);
+      addManualBlock({
+        id: newId,
+        name: 'Bloque manual',
+        diaIndex: start.diaIndex,
+        horaIndex: minRow,
+        duracion: span,
+        color: '#3b82f6',
+        pulsing: true,
+      });
       setEditingManualId(newId);
       try { startPulse(newId); } catch (e) {}
 
@@ -1036,14 +1030,10 @@ export default function Schedule() {
 
   // Manual block helpers (delete / rename)
   const deleteManualBlock = (id) => {
-
     // Determine if the block exists now (avoid side-effects inside setState updater)
-    const removed = manualBlocks.find((b) => b.id === id);
+    const removed = (manualBlocks || []).find((b) => b.id === id);
 
-    setManualBlocks((prev) => {
-      const next = prev.filter((b) => b.id !== id);
-      return next;
-    });
+    removeManualBlock(id);
 
     // Ensure preview/selection cleared when deleting
     if (previewRef.current) previewRef.current.style.display = 'none';
@@ -1056,8 +1046,9 @@ export default function Schedule() {
     }
   }; 
 
-  const renameManualBlock = (id, newName) => {
-    setManualBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, name: newName } : b)));
+  const renameManualBlockLocal = (id, newName) => {
+    // call store action
+    renameManualBlock(id, newName);
     // hide preview if any
     if (previewRef.current) previewRef.current.style.display = 'none';
   };
@@ -1068,9 +1059,10 @@ export default function Schedule() {
   // Cuando se hace un reset global desde la barra lateral, eliminar también los bloques manuales
   useEffect(() => {
     if (typeof resetKey === 'undefined') return;
-    if (!manualBlocks || manualBlocks.length === 0) return;
 
-    setManualBlocks([]);
+    // Clear manual blocks via store
+    try { clearManualBlocks(); } catch (err) {}
+
     setEditingManualId(null);
     if (previewRef.current) previewRef.current.style.display = 'none';
     isSelectingRef.current = false;
