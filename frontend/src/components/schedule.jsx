@@ -39,7 +39,8 @@ export default function Schedule() {
     clearDragState,
     setNotifier,
     darkTheme,
-    toggleDarkTheme
+    toggleDarkTheme,
+    resetKey,
   } = useMateriasStore();
 
   // Estado local para hover durante drag
@@ -92,6 +93,7 @@ export default function Schedule() {
   const previewRef = React.useRef(null); // DOM node for the single preview block
   const rafRef = React.useRef(null);
   const gridRectRef = React.useRef(null);
+  const pulseTimersRef = React.useRef(new Map());
 
   // Permanent manual blocks created via click+drag selection (committed on mouseup)
   const [manualBlocks, setManualBlocks] = useState([]); // { diaIndex, horaIndex, duracion, color }
@@ -153,7 +155,7 @@ export default function Schedule() {
     };
   }, [exportMenuOpen]);
 
-  // Cleanup selection listeners and rAF on unmount
+  // Cleanup selection listeners, rAF and any pulse timers on unmount
   useEffect(() => {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -164,6 +166,16 @@ export default function Schedule() {
         window.removeEventListener('touchend', endSelection);
       } catch (err) {
         // ignore if handlers not attached
+      }
+
+      // cleanup any pending pulse timers
+      try {
+        if (pulseTimersRef.current) {
+          pulseTimersRef.current.forEach((t) => clearTimeout(t));
+          pulseTimersRef.current.clear();
+        }
+      } catch (err) {
+        // ignore
       }
     };
   }, []);
@@ -748,6 +760,25 @@ export default function Schedule() {
     return current;
   };
 
+  // Helper to start a temporary pulse on a manual block (defined early so it can be called from commit paths)
+  const startPulse = (id, duration = 700) => {
+    // mark pulsing true immediately
+    setManualBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, pulsing: true } : b)));
+
+    try {
+      if (!pulseTimersRef.current) pulseTimersRef.current = new Map();
+      if (pulseTimersRef.current.has(id)) {
+        clearTimeout(pulseTimersRef.current.get(id));
+      }
+    } catch (err) {}
+
+    const t = setTimeout(() => {
+      setManualBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, pulsing: false } : b)));
+      try { pulseTimersRef.current.delete(id); } catch (err) {}
+    }, duration);
+    try { pulseTimersRef.current.set(id, t); } catch (err) {}
+  };
+
   const onPointerMove = (ev) => {
     const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
     const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
@@ -845,9 +876,11 @@ export default function Schedule() {
             horaIndex: minRow,
             duracion: targetSpan,
             color: '#3b82f6',
+            pulsing: true,
           },
         ]);
         setEditingManualId(newId);
+        try { startPulse(newId); } catch (e) {}
 
         if (previewRef.current) previewRef.current.style.display = 'none';
 
@@ -872,9 +905,11 @@ export default function Schedule() {
             horaIndex: minRow,
             duracion: targetSpan,
             color: '#3b82f6',
+            pulsing: true,
           },
         ]);
         setEditingManualId(newId);
+        try { startPulse(newId); } catch (e) {}
         if (previewRef.current) previewRef.current.style.display = 'none';
         selectionStartRef.current = null;
         selectionCurrentRef.current = null;
@@ -891,9 +926,11 @@ export default function Schedule() {
           horaIndex: minRow,
           duracion: span,
           color: '#3b82f6',
+          pulsing: true,
         },
       ]);
       setEditingManualId(newId);
+      try { startPulse(newId); } catch (e) {}
 
       // hide preview
       if (previewRef.current) previewRef.current.style.display = 'none';
@@ -1014,7 +1051,29 @@ export default function Schedule() {
     if (previewRef.current) previewRef.current.style.display = 'none';
   };
 
+  // startPulse is defined earlier (near clampPreviewToFree) to avoid redeclaration
   // Confetti removed — intentionally disabled
+
+  // Cuando se hace un reset global desde la barra lateral, eliminar también los bloques manuales
+  useEffect(() => {
+    if (typeof resetKey === 'undefined') return;
+    if (!manualBlocks || manualBlocks.length === 0) return;
+
+    setManualBlocks([]);
+    setEditingManualId(null);
+    if (previewRef.current) previewRef.current.style.display = 'none';
+    isSelectingRef.current = false;
+    selectionStartRef.current = null;
+    selectionCurrentRef.current = null;
+
+    // clear pulse timers
+    try {
+      if (pulseTimersRef.current) {
+        pulseTimersRef.current.forEach((t) => clearTimeout(t));
+        pulseTimersRef.current.clear();
+      }
+    } catch (err) {}
+  }, [resetKey]);
 
 
   const handleDragEnter = (e) => {
@@ -1349,6 +1408,10 @@ export default function Schedule() {
                       onEditComplete={(newName) => {
                         // clear editing state
                         setEditingManualId(null);
+                        // pulse visual feedback on edit
+                        if (clase.manualId) {
+                          try { startPulse(clase.manualId); } catch (e) {}
+                        }
                       }}
                     />
                   </div>

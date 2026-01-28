@@ -52,3 +52,14 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Pulse animation for manual blocks (on create / after edit) */
+@keyframes pulseBlock {
+  0% { transform: scale(1); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  50% { transform: scale(1.03); box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
+  100% { transform: scale(1); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+}
+.pulse-animate {
+  animation: pulseBlock 680ms cubic-bezier(.22,.9,.26,1);
+  transform-origin: center;
+}

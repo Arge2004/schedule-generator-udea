@@ -7,7 +7,7 @@ import { useMateriasStore } from '../store/materiasStore.js';
  * Se expande verticalmente según la duración de la clase
  */
 export default function ClassBlock({ clase, onHover, onLeave, onDelete, onRename, autoEdit, onEditComplete }) {
-  const { materia, grupo, horaInicio, horaFin, aula, profesor, color, duracion, isPreview, codigoMateria, source, manualId } = clase;
+  const { materia, grupo, horaInicio, horaFin, aula, profesor, color, duracion, isPreview, codigoMateria, source, manualId, pulsing } = clase;
   const blockRef = React.useRef(null);
   const inputRef = React.useRef(null);
   const { materias, gruposSeleccionados, selectGrupo, toggleMateriaSelected } = useMateriasStore();
@@ -173,8 +173,7 @@ export default function ClassBlock({ clase, onHover, onLeave, onDelete, onRename
         y: -2,
         transition: { duration: 0.15 }
       }}
-      className={`absolute select-none inset-1 rounded-lg border-2 border-l-[6px] flex flex-col justify-center p-2.5 overflow-hidden hover:shadow-lg hover:z-20 cursor-pointer group ${isPreview ? 'border-dashed' : ''
-        }`}
+      className={`absolute select-none inset-1 rounded-lg border-2 border-l-[6px] flex flex-col justify-center p-2.5 overflow-hidden hover:shadow-lg hover:z-20 cursor-pointer group ${isPreview ? 'border-dashed' : ''} ${pulsing ? 'pulse-animate' : ''}`}
       data-no-select
       style={{
         backgroundColor: color ? `${color}15` : '#3b82f615',
