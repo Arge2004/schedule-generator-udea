@@ -25,6 +25,9 @@ export const useMateriasStore = create((set) => ({
   allowManualBlocks: (() => {
     try { const v = localStorage.getItem('allowManualBlocks'); return v === null ? false : JSON.parse(v); } catch (e) { return false; }
   })(),
+  // Estado para bloquear la preferencia temporalmente (ej. al pasar a modo automático)
+  allowManualBlocksLocked: false,
+  previousAllowManualBlocks: null, // almacena valor previo cuando se bloquea la preferencia
 
   // Estado del tema
   darkTheme: (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || false,
@@ -174,10 +177,26 @@ export const useMateriasStore = create((set) => ({
     set({ allowManualBlocks: !!value });
   },
   toggleAllowManualBlocks: () => set((state) => {
+    // No permitir toggle si la preferencia está bloqueada
+    if (state.allowManualBlocksLocked) return state;
     const next = !state.allowManualBlocks;
     try { localStorage.setItem('allowManualBlocks', JSON.stringify(next)); } catch (e) {}
     return { allowManualBlocks: next };
   }),
+
+  // Bloquear temporalmente la preferencia (p. ej. al pasar a modo automático)
+  lockAllowManualBlocks: () => set((state) => ({
+    previousAllowManualBlocks: state.allowManualBlocks,
+    allowManualBlocks: false,
+    allowManualBlocksLocked: true,
+  })),
+
+  // Desbloquear y restaurar el valor previo
+  unlockAllowManualBlocks: () => set((state) => ({
+    allowManualBlocks: state.previousAllowManualBlocks !== null ? state.previousAllowManualBlocks : false,
+    allowManualBlocksLocked: false,
+    previousAllowManualBlocks: null,
+  })),
 
   clearDragState: () => set((state) => {
     // Si hay un modal pendiente, NO limpiar nada todavía

@@ -83,6 +83,9 @@ export default function Sidebar() {
         syncThemeWithSystem,
         allowManualBlocks,
         setAllowManualBlocks,
+        allowManualBlocksLocked,
+        lockAllowManualBlocks,
+        unlockAllowManualBlocks,
     } = useMateriasStore();
 
     // Memoized styles and theme for react-select
@@ -419,6 +422,12 @@ export default function Sidebar() {
 
         // Aplicar cambio y limpiar después de una pequeña espera para que la animación del toggle se complete
         setGenerationMode(targetMode);
+        // Lock/unlock manual-blocks preference according to mode
+        if (targetMode === 'automatico') {
+            lockAllowManualBlocks();
+        } else {
+            unlockAllowManualBlocks();
+        }
         setTimeout(() => {
             resetMateriasSeleccionadas();
             clearHorariosGenerados();
@@ -428,6 +437,12 @@ export default function Sidebar() {
     const handleConfirmModeChange = () => {
         if (!pendingMode) return;
         setGenerationMode(pendingMode);
+        // Lock/unlock manual-blocks preference according to mode
+        if (pendingMode === 'automatico') {
+            lockAllowManualBlocks();
+        } else {
+            unlockAllowManualBlocks();
+        }
         // Close modal immediately so user sees change, but delay heavy cleanup to let animation run
         setShowConfirmModeModal(false);
         setTimeout(() => {
@@ -826,8 +841,8 @@ export default function Sidebar() {
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Permitir crear bloques manuales</span>
                                             <button
-                                                onClick={() => setAllowManualBlocks(!allowManualBlocks)}
-                                                className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${allowManualBlocks ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                                                onClick={() => { if (!allowManualBlocksLocked) setAllowManualBlocks(!allowManualBlocks) }}
+                                                className={`w-8 h-4 outline-none rounded-full relative transition-colors ${allowManualBlocks ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'} ${allowManualBlocksLocked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
                                             >
                                                 <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${allowManualBlocks ? 'right-0.5' : 'left-0.5'}`}></div>
                                             </button>
