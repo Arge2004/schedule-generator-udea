@@ -6,12 +6,34 @@ import { useMateriasStore } from '../store/materiasStore.js';
  * Componente que representa una clase/materia dentro de una celda del grid
  * Se expande verticalmente según la duración de la clase
  */
-export default function ClassBlock({ clase, onHover, onLeave }) {
-  const { materia, grupo, horaInicio, horaFin, aula, profesor, color, duracion, isPreview, codigoMateria, source } = clase;
+export default function ClassBlock({ clase, onHover, onLeave, onDelete, onRename, autoEdit, onEditComplete }) {
+  const { materia, grupo, horaInicio, horaFin, aula, profesor, color, duracion, isPreview, codigoMateria, source, manualId, pulsing } = clase;
   const blockRef = React.useRef(null);
+  const inputRef = React.useRef(null);
   const { materias, gruposSeleccionados, selectGrupo, toggleMateriaSelected } = useMateriasStore();
 
-  const isManual = source === 'manual';
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [editText, setEditText] = React.useState(materia || '');
+  const [displayName, setDisplayName] = React.useState(materia || '');
+
+  React.useEffect(() => {
+    setEditText(materia || '');
+    setDisplayName(materia || '');
+  }, [materia]);
+
+  // Solo considerar como 'manual' los bloques creados manualmente (tienen manualId)
+  const isManual = source === 'manual' && !!manualId;
+
+  // If parent requests autoEdit, enter edit mode and focus input (only for manual blocks)
+  React.useEffect(() => {
+    if (autoEdit && source === 'manual' && !!manualId) {
+      setIsEditing(true);
+      // focus on next tick when input renders
+      setTimeout(() => {
+        try { inputRef.current && inputRef.current.focus(); } catch (e) {}
+      }, 0);
+    }
+  }, [autoEdit, source, manualId]);
   const isMobile = window.innerWidth <= 768;
 
   // Resolver código de materia si no viene en la clase
@@ -83,6 +105,59 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
     }
   };
 
+  // Handlers for manual block actions
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    // If this block corresponds to a materia (has codigoMateria), treat delete as deselecting the group
+    if (codigoMateria) {
+      handleGrupoSelect();
+      return;
+    }
+
+    // Otherwise (manual block), call parent-provided delete callback if available
+    if (onDelete) {
+      onDelete();
+      return;
+    }
+
+    // Fallback: if we somehow have manualId and onDelete expects id, try that
+    if (manualId && onDelete) {
+      onDelete(manualId);
+      return;
+    }
+
+    // Last resort, deselect group behavior
+    handleGrupoSelect();
+  };
+
+  const commitEdit = () => {
+    const newName = editText?.trim();
+    const finalName = newName && newName.length > 0 ? newName : 'Bloque manual';
+    if (onRename) {
+      // call parent-provided bound callback with finalName
+      try { onRename(finalName); } catch (err) {}
+    }
+    // update local display immediately and close editor (optimistic)
+    setEditText(finalName);
+    setDisplayName(finalName);
+    setIsEditing(false);
+
+    // notify parent that edit completed (useful to trigger confetti)
+    try { if (onEditComplete) onEditComplete(finalName); } catch (err) {}
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      commitEdit();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+      setEditText(materia || '');
+    }
+  };
+
+
   return (
     <motion.div
       ref={blockRef}
@@ -100,8 +175,8 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
         y: -2,
         transition: { duration: 0.15 }
       }}
-      className={`absolute select-none inset-1 rounded-lg border-2 border-l-[6px] flex flex-col justify-center p-2.5 overflow-hidden hover:shadow-lg hover:z-20 cursor-pointer group ${isPreview ? 'border-dashed' : ''
-        }`}
+      className={`absolute select-none inset-1 rounded-lg border-2 border-l-[6px] flex flex-col justify-center p-2.5 overflow-hidden hover:shadow-lg hover:z-20 cursor-pointer group ${isPreview ? 'border-dashed' : ''} ${pulsing ? 'pulse-animate' : ''}`}
+      data-no-select
       style={{
         backgroundColor: color ? `${color}15` : '#3b82f615',
         borderColor: color || '#3b82f6',
@@ -114,9 +189,10 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
         {/* Botón de eliminar (solo para grupos manuales) - Arriba */}
         {isManual && (
           <button
-            onClick={handleGrupoSelect}
+            onClick={handleDelete}
             title="Eliminar del horario"
-            className="absolute -right-1 -top-0 cursor-pointer bg-red-600 w-7 h-7 rounded-sm flex items-center justify-center opacity-0 md:opacity-0 max-md:opacity-100 pointer-events-none md:pointer-events-none max-md:pointer-events-auto transition-opacity duration-150 ease-in-out group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+            className="absolute -right-1 -top-0 cursor-pointer bg-red-600 w-7 h-7 rounded-sm flex items-center justify-center opacity-0 transition-opacity duration-150 ease-in-out group-hover:opacity-100 hover:opacity-100"
+            onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-4">
               <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
@@ -149,15 +225,32 @@ export default function ClassBlock({ clase, onHover, onLeave }) {
             PREVIEW
           </span>
         )}
-        <p
-          className="font-bold text-xs leading-tight mb-0.5 line-clamp-2"
-          style={{ color: color || '#3b82f6' }}
-        >
-          {materia}
-        </p>
-        <p className="text-[10px] text-zinc-600 dark:text-zinc-400 font-medium">
-          Grupo {grupo}
-        </p>
+        {isEditing && isManual ? (
+          <input
+            ref={inputRef}
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={handleKeyDown}
+            className="w-full text-xs font-bold p-1 rounded border border-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500 bg-white dark:bg-zinc-800"
+            style={{ color: (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) ? '#ffffff' : '#111827', caretColor: (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) ? '#ffffff' : '#111827' }}
+            onMouseDown={(e) => e.stopPropagation()}
+            aria-label="Editar nombre del bloque"
+          />
+        ) : (
+          <p
+            onDoubleClick={() => isManual && setIsEditing(true)}
+            className="font-bold text-xs leading-tight mb-0.5 line-clamp-2 cursor-text"
+            style={{ color: color || '#3b82f6' }}
+          >
+            {displayName}
+          </p>
+        )}
+        {grupo ? (
+          <p className="text-[10px] text-zinc-600 dark:text-zinc-400 font-medium">
+            Grupo {grupo}
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-0.5 mt-2 flex-shrink-0">

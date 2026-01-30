@@ -17,6 +17,18 @@ export const useMateriasStore = create((set) => ({
   horarioActualIndex: 0, // Índice del horario que se está visualizando
   resetKey: 0, // Incrementa cada vez que se hace reset
   
+  // Bloques manuales creados por el usuario (click+drag)
+  manualBlocks: [], // { id, name, diaIndex, horaIndex, duracion, color, pulsing }
+  
+  // Preferencias del usuario
+  // Permitir crear bloques manuales en el horario (click+drag)
+  allowManualBlocks: (() => {
+    try { const v = localStorage.getItem('allowManualBlocks'); return v === null ? false : JSON.parse(v); } catch (e) { return false; }
+  })(),
+  // Estado para bloquear la preferencia temporalmente (ej. al pasar a modo automático)
+  allowManualBlocksLocked: false,
+  previousAllowManualBlocks: null, // almacena valor previo cuando se bloquea la preferencia
+
   // Estado del tema
   darkTheme: (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || false,
   themeSyncEnabled: true, // Si true, sigue la preferencia del sistema; si false, usa preferencia manual
@@ -109,10 +121,31 @@ export const useMateriasStore = create((set) => ({
   },
 
   // Guardar horarios generados automáticamente
-  setHorariosGenerados: (horarios) => set({
-    horariosGenerados: horarios,
-    horarioActualIndex: 0,
+  setHorariosGenerados: (horarios) => set((state) => {
+    // Prepare per-schedule preference map: prefer existing per-schedule settings, otherwise inherit global setting
+    const allowMap = {};
+    if (horarios && horarios.length > 0) {
+      for (let i = 0; i < horarios.length; i++) {
+        if (state.allowManualBlocksBySchedule && typeof state.allowManualBlocksBySchedule[i] !== 'undefined') {
+          allowMap[i] = !!state.allowManualBlocksBySchedule[i];
+        } else {
+          allowMap[i] = !!state.allowManualBlocks;
+        }
+      }
+    }
+
+    return {
+      horariosGenerados: horarios,
+      horarioActualIndex: 0,
+      allowManualBlocksBySchedule: allowMap,
+      // Migrate any global manual blocks (created before generation) to schedule index 0 so they remain visible
+      manualBlocks: (state.manualBlocks || []).map((b) => ({
+        ...b,
+        scheduleIndex: (horarios && horarios.length > 0) ? (typeof b.scheduleIndex === 'number' ? b.scheduleIndex : 0) : b.scheduleIndex,
+      })),
+    };
   }),
+
 
   // Cambiar el horario que se está visualizando
   setHorarioActualIndex: (index) => set({
@@ -123,6 +156,7 @@ export const useMateriasStore = create((set) => ({
   clearHorariosGenerados: () => set({
     horariosGenerados: [],
     horarioActualIndex: 0,
+    allowManualBlocksBySchedule: {},
   }),
 
   // Acciones de drag and drop
@@ -151,6 +185,47 @@ export const useMateriasStore = create((set) => ({
   setPreviewGrupo: (preview) => set({
     previewGrupo: preview,
   }),
+
+  // Acciones para manejar bloques manuales
+  addManualBlock: (block) => set((state) => ({ manualBlocks: [...(state.manualBlocks || []), block] })),
+  removeManualBlock: (id) => set((state) => ({ manualBlocks: (state.manualBlocks || []).filter(b => b.id !== id) })),
+  renameManualBlock: (id, name) => set((state) => ({ manualBlocks: (state.manualBlocks || []).map(b => b.id === id ? { ...b, name } : b) })),
+  updateManualBlock: (id, props) => set((state) => ({ manualBlocks: (state.manualBlocks || []).map(b => b.id === id ? { ...b, ...props } : b) })),
+  clearManualBlocks: () => set({ manualBlocks: [] }),
+
+  // Preferencias: permitir crear bloques manuales
+  setAllowManualBlocks: (value) => {
+    try { localStorage.setItem('allowManualBlocks', JSON.stringify(value)); } catch (e) {}
+    set({ allowManualBlocks: !!value });
+  },
+  toggleAllowManualBlocks: () => set((state) => {
+    // No permitir toggle si la preferencia está bloqueada
+    if (state.allowManualBlocksLocked) return state;
+    const next = !state.allowManualBlocks;
+    try { localStorage.setItem('allowManualBlocks', JSON.stringify(next)); } catch (e) {}
+    return { allowManualBlocks: next };
+  }),
+
+  // Bloquear temporalmente la preferencia (p. ej. al pasar a modo automático)
+  lockAllowManualBlocks: () => set((state) => ({
+    previousAllowManualBlocks: state.allowManualBlocks,
+    allowManualBlocks: false,
+    allowManualBlocksLocked: true,
+  })),
+
+  // Desbloquear y restaurar el valor previo
+  unlockAllowManualBlocks: () => set((state) => ({
+    allowManualBlocks: state.previousAllowManualBlocks !== null ? state.previousAllowManualBlocks : false,
+    allowManualBlocksLocked: false,
+    previousAllowManualBlocks: null,
+  })),
+
+  // Per-schedule preference map for automatic mode (index => boolean)
+  allowManualBlocksBySchedule: {},
+  setAllowManualBlocksForSchedule: (index, value) => set((state) => ({
+    allowManualBlocksBySchedule: { ...(state.allowManualBlocksBySchedule || {}), [index]: !!value }
+  })),
+  clearAllowManualBlocksBySchedule: () => set({ allowManualBlocksBySchedule: {} }),
 
   clearDragState: () => set((state) => {
     // Si hay un modal pendiente, NO limpiar nada todavía

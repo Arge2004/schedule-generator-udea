@@ -13,6 +13,7 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
     setDraggingMateria,
     clearDragState,
     materias,
+    manualBlocks,
   } = useMateriasStore();
   const isSelected = !!materiasSeleccionadas[materia?.codigo];
   const [isExpanded, setIsExpanded] = useState(false);
@@ -87,6 +88,16 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
     const grupo = materia.grupos.find(g => g.numero === numeroGrupo);
     let tieneConflicto = false;
     if (grupo) {
+      // Build occupied set from manualBlocks for quick lookup
+      const occupiedManual = new Set();
+      if (manualBlocks && manualBlocks.length > 0) {
+        manualBlocks.forEach((b) => {
+          for (let k = 0; k < b.duracion; k++) {
+            occupiedManual.add(`${b.diaIndex}-${b.horaIndex + k}`);
+          }
+        });
+      }
+
       grupo.horarios.forEach(horario => {
         horario.dias.forEach(dia => {
           const diaIndex = dias.indexOf(dia);
@@ -96,7 +107,7 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
             for (let i = 0; i < duracion; i++) {
               const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
               const materiaEnCeldaCodigo = celdasMateria.get(celdaKey);
-              if (materiaEnCeldaCodigo && materiaEnCeldaCodigo !== materia.codigo) {
+              if ((materiaEnCeldaCodigo && materiaEnCeldaCodigo !== materia.codigo) || occupiedManual.has(celdaKey)) {
                 tieneConflicto = true;
                 break;
               }
@@ -145,7 +156,17 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
       // Si el grupo no tiene horarios, considerarlo disponible
       if (!gr.horarios || gr.horarios.length === 0) return false;
       // Verificar si alguno de sus horarios choca con el mapa de celdas
-      for (const horario of gr.horarios) {
+      // Build occupied set from manualBlocks for this check
+    const occupiedManual = new Set();
+    if (manualBlocks && manualBlocks.length > 0) {
+      manualBlocks.forEach((b) => {
+        for (let k = 0; k < b.duracion; k++) {
+          occupiedManual.add(`${b.diaIndex}-${b.horaIndex + k}`);
+        }
+      });
+    }
+
+    for (const horario of gr.horarios) {
         for (const dia of horario.dias) {
           const diaIndex = diasArr.indexOf(dia);
           if (diaIndex === -1) continue;
@@ -154,7 +175,7 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
           for (let i = 0; i < duracion; i++) {
             const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
             const materiaEnCeldaCodigo = celdasMateriaHorario.get(celdaKey);
-            if (materiaEnCeldaCodigo && materiaEnCeldaCodigo !== materia.codigo) {
+            if ((materiaEnCeldaCodigo && materiaEnCeldaCodigo !== materia.codigo) || occupiedManual.has(celdaKey)) {
               // Tiene conflicto, este grupo no está disponible
               return false;
             }
@@ -317,9 +338,20 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
               {materia.grupos.map((grupo, idx) => {
                 const sinCupos = grupo.cupoDisponible === 0;
                 const isGrupoSelected = grupoSeleccionado === grupo.numero;
-                // Validar conflicto para este grupo
+                // Validar conflicto para este grupo (incluye bloques manuales)
                 let tieneConflicto = false;
                 let noTieneHorarios = !grupo.horarios || grupo.horarios.length === 0;
+
+                // Build occupied set from manualBlocks for quick lookup
+                const occupiedManual = new Set();
+                if (manualBlocks && manualBlocks.length > 0) {
+                  manualBlocks.forEach((b) => {
+                    for (let k = 0; k < b.duracion; k++) {
+                      occupiedManual.add(`${b.diaIndex}-${b.horaIndex + k}`);
+                    }
+                  });
+                }
+
                 if (grupo) {
                   grupo.horarios.forEach(horario => {
                     horario.dias.forEach(dia => {
@@ -332,7 +364,7 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
                         for (let i = 0; i < duracion; i++) {
                           const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
                           const materiaEnCeldaCodigo = celdasMateriaHorario.get(celdaKey);
-                          if (materiaEnCeldaCodigo && materiaEnCeldaCodigo !== materia.codigo) {
+                          if ((materiaEnCeldaCodigo && materiaEnCeldaCodigo !== materia.codigo) || occupiedManual.has(celdaKey)) {
                             tieneConflicto = true;
                             break;
                           }
