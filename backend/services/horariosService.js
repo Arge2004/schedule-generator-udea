@@ -5,28 +5,11 @@
 import { cargarScriptFacultades, cargarScriptProgramas, obtenerHorariosHTML } from '../utils/scraper.js';
 import { extraerFacultades, extraerProgramas, parsearHorariosHTML } from '../utils/parser.js';
 import DatosCompletos from '../models/DatosCompletos.js';
-import * as cache from '../utils/cache.js';
-
-const CACHE_TTL = {
-  FACULTADES: 86400,  // 24 horas
-  PROGRAMAS: 43200,   // 12 horas
-  HORARIOS: 21600,    // 6 horas
-};
 
 async function obtenerFacultades() {
   try {
-    const cacheKey = 'facultades';
-    const cached = await cache.get(cacheKey);
-    
-    if (cached) {
-      return cached;
-    }
-
     const scriptFacultades = await cargarScriptFacultades();
     const facultades = extraerFacultades(scriptFacultades);
-    
-    await cache.set(cacheKey, facultades, CACHE_TTL.FACULTADES);
-    
     return facultades;
   } catch (error) {
     throw new Error(`Error al obtener facultades: ${error.message}`);
@@ -39,18 +22,8 @@ async function obtenerProgramas(facultadId) {
       throw new Error('El ID de facultad es requerido');
     }
 
-    const cacheKey = `programas:${facultadId}`;
-    const cached = await cache.get(cacheKey);
-    
-    if (cached) {
-      return cached;
-    }
-
     const scriptProgramas = await cargarScriptProgramas(facultadId);
     const programas = extraerProgramas(scriptProgramas);
-    
-    await cache.set(cacheKey, programas, CACHE_TTL.PROGRAMAS);
-    
     return programas;
   } catch (error) {
     throw new Error(`Error al obtener programas: ${error.message}`);
@@ -63,13 +36,6 @@ async function obtenerHorarios(facultadId, programaId, nombreFacultad, nombrePro
       throw new Error('Los IDs de facultad y programa son requeridos');
     }
 
-    const cacheKey = `horarios:${facultadId}:${programaId}`;
-    const cached = await cache.get(cacheKey);
-    
-    if (cached) {
-      return DatosCompletos.fromObject(cached);
-    }
-
     const htmlHorarios = await obtenerHorariosHTML(
       facultadId,
       programaId,
@@ -78,9 +44,6 @@ async function obtenerHorarios(facultadId, programaId, nombreFacultad, nombrePro
     );
 
     const datosCompletos = parsearHorariosHTML(htmlHorarios);
-    
-    await cache.set(cacheKey, datosCompletos.toJSON(), CACHE_TTL.HORARIOS);
-    
     return datosCompletos;
   } catch (error) {
     throw new Error(`Error al obtener horarios: ${error.message}`);
