@@ -15,7 +15,11 @@ const PORT = process.env.PORT || 3001;
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
 // Middlewares
-app.use(cors());
+const corsOrigin = process.env.CORS_ORIGIN || '*';
+app.use(cors({
+  origin: corsOrigin,
+  credentials: true
+}));
 app.use(express.json({ limit: '10mb' }));
 
 // Logging middleware

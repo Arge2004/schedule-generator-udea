@@ -9,6 +9,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - CORS_ORIGIN=*
     restart: unless-stopped
     networks:
       - app-network
