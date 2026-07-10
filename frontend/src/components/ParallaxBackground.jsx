@@ -14,7 +14,7 @@ function StaticBackground() {
             {/* Imagen estática de bajo rendimiento */}
             <div className="absolute inset-0">
                 <img
-                    src="/background/lowresourcesbg.png"
+                    src="/background/lowresourcesbg.webp"
                     alt="Universidad de Antioquia"
                     className="absolute inset-0 w-full h-full object-cover"
                 />
@@ -61,10 +61,6 @@ export default function ParallaxBackground() {
     // Detectar dispositivos móviles y no renderizar nada
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                      (window.innerWidth <= 768);
-    
-    if (isMobile) {
-        return null;
-    }
 
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
     const [mouseVelocity, setMouseVelocity] = useState({ x: 0, y: 0 });
@@ -216,6 +212,10 @@ export default function ParallaxBackground() {
         }, 50);
         return () => clearInterval(interval);
     }, [useStaticVersion]);
+
+    if (isMobile) {
+        return null;
+    }
 
     // Renderizar con AnimatePresence para transiciones suaves
     return (
