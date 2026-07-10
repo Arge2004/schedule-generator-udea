@@ -68,6 +68,11 @@ export default function Schedule() {
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const hideTimeoutRef = React.useRef(null);
 
+  // Estados para drag and drop overlay cell hover
+  const [hoveredCell, setHoveredCell] = useState(null);
+  const [hoveredValidKeys, setHoveredValidKeys] = useState(new Set());
+  const [hoveredValidGroupNumbers, setHoveredValidGroupNumbers] = useState(new Set());
+
   // Estado para los toasts locales
   const [toastMessage, setToastMessage] = useState("");
   const [showToast, setShowToast] = useState(false);
