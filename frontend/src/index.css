@@ -17,16 +17,16 @@
 
 /* Fallback para navegadores antiguos que no soportan @theme */
 @supports not (color: var(--color-primary)) {
-  .bg-primary { background-color: #1392ec !important; }
-  .text-primary { color: #1392ec !important; }
-  .border-primary { border-color: #1392ec !important; }
-  .bg-primary\/90 { background-color: rgba(19, 146, 236, 0.9) !important; }
-  .bg-primary\/80 { background-color: rgba(19, 146, 236, 0.8) !important; }
-  .bg-primary\/10 { background-color: rgba(19, 146, 236, 0.1) !important; }
-  .hover\:bg-primary\/90:hover { background-color: rgba(19, 146, 236, 0.9) !important; }
-  .hover\:bg-primary\/80:hover { background-color: rgba(19, 146, 236, 0.8) !important; }
-  .ring-primary\/20 { --tw-ring-color: rgba(19, 146, 236, 0.2) !important; }
-  .focus\:ring-primary\/20:focus { --tw-ring-color: rgba(19, 146, 236, 0.2) !important; }
+  .bg-primary { background-color: var(--color-primary) !important; }
+  .text-primary { color: var(--color-primary) !important; }
+  .border-primary { border-color: var(--color-primary) !important; }
+  .bg-primary\/90 { background-color: rgba(var(--color-primary), 0.9) !important; }
+  .bg-primary\/80 { background-color: rgba(var(--color-primary), 0.8) !important; }
+  .bg-primary\/10 { background-color: rgba(var(--color-primary), 0.1) !important; }
+  .hover\:bg-primary\/90:hover { background-color: rgba(var(--color-primary), 0.9) !important; }
+  .hover\:bg-primary\/80:hover { background-color: rgba(var(--color-primary), 0.8) !important; }
+  .ring-primary\/20 { --tw-ring-color: rgba(var(--color-primary), 0.2) !important; }
+  .focus\:ring-primary\/20:focus { --tw-ring-color: rgba(var(--color-primary), 0.2) !important; }
 }
 
 /* Solución para altura en móviles con barras de navegación */

@@ -3,9 +3,9 @@ import toast, { Toaster } from "react-hot-toast";
 import { useMateriasStore } from "../store/materiasStore.js";
 import { generarHorarios } from "../services/horarios.js";
 import MobileScheduleModal from "./MobileSchedule.jsx";
+import { GENERATION_MODES } from "../constants/sidebar.js";
 
-// Subcomponentes modulares del sidebar
-import ProgramSelector from "./sidebar/ProgramSelector.jsx";
+// Subcomponentes del sidebar de la aplicación
 import ModeToggle from "./sidebar/ModeToggle.jsx";
 import SubjectList from "./sidebar/SubjectList.jsx";
 import GenerateAction from "./sidebar/GenerateAction.jsx";
@@ -16,7 +16,7 @@ export default function Sidebar() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
-  const [generationMode, setGenerationMode] = useState("manual"); // 'manual' o 'automatico'
+  const [generationMode, setGenerationMode] = useState(GENERATION_MODES.MANUAL);
   const [dragEnabled, setDragEnabled] = useState(false);
   const [horaMinima, setHoraMinima] = useState(6);
   const [evitarHuecos, setEvitarHuecos] = useState(false);
@@ -92,8 +92,7 @@ export default function Sidebar() {
       );
     }
 
-    // En modo automático, mostrar materias seleccionadas primero
-    if (generationMode !== "manual") {
+    if (generationMode === GENERATION_MODES.AUTOMATICO) {
       const seleccionadas = [];
       const noSeleccionadas = [];
 
@@ -192,8 +191,6 @@ export default function Sidebar() {
 
     const scheduleCount = horariosGenerados ? horariosGenerados.length : 0;
     if (
-      generationMode === "automatico" &&
-      targetMode === "manual" &&
       scheduleCount > 0
     ) {
       setPendingMode(targetMode);
@@ -206,8 +203,6 @@ export default function Sidebar() {
       : 0;
 
     if (
-      generationMode === "manual" &&
-      targetMode === "automatico" &&
       seleccionCount >= 1
     ) {
       setPendingMode(targetMode);
@@ -216,7 +211,7 @@ export default function Sidebar() {
     }
 
     setGenerationMode(targetMode);
-    if (targetMode === "automatico") {
+    if (targetMode === GENERATION_MODES.AUTOMATICO) {
       setAllowManualBlocks(false);
     }
     resetMateriasSeleccionadas();
@@ -226,7 +221,7 @@ export default function Sidebar() {
   const handleConfirmModeChange = () => {
     if (!pendingMode) return;
     setGenerationMode(pendingMode);
-    if (pendingMode === "automatico") {
+    if (pendingMode === GENERATION_MODES.AUTOMATICO) {
       setAllowManualBlocks(false);
     }
     setShowConfirmModeModal(false);
@@ -254,71 +249,62 @@ export default function Sidebar() {
     }
   };
 
-  const isInitialState = !materias || materias.length === 0;
-
   return (
     <>
       <Toaster />
-      <aside className="w-lg h-full select-none md:border-r border-zinc-200 bg-white flex flex-col relative overflow-hidden">
+      <aside className="w-full sm:w-80 h-full select-none md:border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col relative overflow-hidden">
         {/* Botón: Volver al menú principal */}
-        {!isInitialState && (
-          <div className="absolute top-3 right-3 z-50">
-            <button
-              onClick={handleResetToMenu}
-              className="px-3 py-1 cursor-pointer rounded-md text-sm font-medium dark:bg-zinc-900 dark:text-white dark:border-zinc-800 dark:hover:bg-zinc-800 bg-white/80 text-zinc-900 border-zinc-200 hover:bg-zinc-100"
-              title="Volver al menú principal"
-            >
-              Menú
-            </button>
-          </div>
-        )}
+        <div className="absolute top-3 right-3 z-50">
+          <button
+            onClick={handleResetToMenu}
+            className="px-3 py-1 cursor-pointer rounded-md text-sm font-medium dark:bg-zinc-900 dark:text-white dark:border-zinc-800 dark:hover:bg-zinc-800 bg-white/80 text-zinc-900 border-zinc-200 hover:bg-zinc-100"
+            title="Volver al menú principal"
+          >
+            Menú
+          </button>
+        </div>
 
-        {/* Vista Inicial (Selección de Facultad y Programa) o Vista Principal */}
-        {isInitialState ? (
-          <ProgramSelector />
-        ) : (
-          <div className="flex flex-col h-full overflow-hidden">
-            <div className="p-4 space-y-6 flex flex-col flex-1 min-h-0 overflow-hidden">
-              {/* Selector de modo */}
-              <ModeToggle
-                generationMode={generationMode}
-                onRequestModeChange={requestModeChange}
-              />
-
-              {/* Búsqueda y lista de materias */}
-              <SubjectList
-                materiasFiltradas={materiasFiltradas}
-                searchTerm={searchTerm}
-                onSearchChange={(e) => setSearchTerm(e.target.value)}
-                onClearSearch={() => setSearchTerm("")}
-                debouncedSearchTerm={debouncedSearchTerm}
-                generationMode={generationMode}
-                dragEnabled={dragEnabled}
-              />
-            </div>
-
-            {/* Acciones principales de generación / visualización */}
-            <GenerateAction
+        <div className="flex flex-col h-full overflow-hidden">
+          <div className="p-4 space-y-6 flex flex-col flex-1 min-h-0 overflow-hidden">
+            {/* Selector de modo */}
+            <ModeToggle
               generationMode={generationMode}
-              isGenerating={isGenerating}
-              onGenerate={handleGenerate}
-              isMobile={isMobile}
-              onShowMobileSchedule={() => setShowMobileSchedule(true)}
+              onRequestModeChange={requestModeChange}
             />
 
-            {/* Preferencias de configuración */}
-            <SidebarPreferences
+            {/* Búsqueda y lista de materias */}
+            <SubjectList
+              materiasFiltradas={materiasFiltradas}
+              searchTerm={searchTerm}
+              onSearchChange={(e) => setSearchTerm(e.target.value)}
+              onClearSearch={() => setSearchTerm("")}
+              debouncedSearchTerm={debouncedSearchTerm}
               generationMode={generationMode}
-              horaMinima={horaMinima}
-              setHoraMinima={setHoraMinima}
-              evitarHuecos={evitarHuecos}
-              setEvitarHuecos={setEvitarHuecos}
               dragEnabled={dragEnabled}
-              setDragEnabled={setDragEnabled}
-              isMobile={isMobile}
             />
           </div>
-        )}
+
+          {/* Acciones principales de generación / visualización */}
+          <GenerateAction
+            generationMode={generationMode}
+            isGenerating={isGenerating}
+            onGenerate={handleGenerate}
+            isMobile={isMobile}
+            onShowMobileSchedule={() => setShowMobileSchedule(true)}
+          />
+
+          {/* Preferencias de configuración */}
+          <SidebarPreferences
+            generationMode={generationMode}
+            horaMinima={horaMinima}
+            setHoraMinima={setHoraMinima}
+            evitarHuecos={evitarHuecos}
+            setEvitarHuecos={setEvitarHuecos}
+            dragEnabled={dragEnabled}
+            setDragEnabled={setDragEnabled}
+            isMobile={isMobile}
+          />
+        </div>
 
         {/* Modal de confirmación de cambio de modo */}
         <ConfirmModeModal

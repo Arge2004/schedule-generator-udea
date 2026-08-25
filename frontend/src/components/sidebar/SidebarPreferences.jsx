@@ -1,5 +1,7 @@
-import React from "react";
+import { useMemo, useCallback } from "react";
 import { useMateriasStore } from "../../store/materiasStore.js";
+import Switch from "../Switch.jsx";
+import { HORA_OPTIONS, GENERATION_MODES } from "../../constants/sidebar.js";
 
 export default function SidebarPreferences({
   generationMode,
@@ -12,9 +14,9 @@ export default function SidebarPreferences({
   isMobile,
 }) {
   const {
-    horariosGenerados,
+    horariosGenerados = [],
     horarioActualIndex,
-    manualBlocks,
+    manualBlocks = [],
     allowManualBlocks,
     setAllowManualBlocks,
     allowManualBlocksLocked,
@@ -23,29 +25,60 @@ export default function SidebarPreferences({
     updateManualBlock,
   } = useMateriasStore();
 
-  const hasBlocksThisSchedule =
-    manualBlocks &&
-    manualBlocks.some(
-      (b) =>
-        typeof b.scheduleIndex === "number" &&
-        b.scheduleIndex === horarioActualIndex,
-    );
-  const currentAllowManualBlocksForCurrentSchedule =
-    allowManualBlocksBySchedule &&
-    typeof allowManualBlocksBySchedule[horarioActualIndex] !== "undefined"
-      ? allowManualBlocksBySchedule[horarioActualIndex]
-      : !!hasBlocksThisSchedule;
+  // Comprobar si hay bloques manuales en el horario actual
+  const hasBlocksThisSchedule = useMemo(() => {
+    return manualBlocks.some((b) => b.scheduleIndex === horarioActualIndex);
+  }, [manualBlocks, horarioActualIndex]);
 
-  // Preferencias de Generación Automática
-  if (generationMode === "automatico") {
+  // Estado del switch para bloques manuales por horario
+  const currentAllowManualBlocksForCurrentSchedule = useMemo(() => {
+    if (
+      allowManualBlocksBySchedule &&
+      typeof allowManualBlocksBySchedule[horarioActualIndex] !== "undefined"
+    ) {
+      return allowManualBlocksBySchedule[horarioActualIndex];
+    }
+    return hasBlocksThisSchedule;
+  }, [allowManualBlocksBySchedule, horarioActualIndex, hasBlocksThisSchedule]);
+
+  // Manejar el toggle de bloques en modo automático
+  const handleToggleManualBlocksSchedule = useCallback(() => {
+    const hasHorarios = horariosGenerados.length > 0;
+    if (!hasHorarios) return;
+
+    const nextState = !currentAllowManualBlocksForCurrentSchedule;
+    setAllowManualBlocksForSchedule(horarioActualIndex, nextState);
+
+    // Migrar bloques globales al horario actual si se activa
+    if (nextState && manualBlocks.length > 0) {
+      manualBlocks.forEach((b) => {
+        if (b.scheduleIndex === undefined || b.scheduleIndex === null) {
+          updateManualBlock(b.id, { scheduleIndex: horarioActualIndex });
+        }
+      });
+    }
+  }, [
+    horariosGenerados,
+    currentAllowManualBlocksForCurrentSchedule,
+    horarioActualIndex,
+    manualBlocks,
+    setAllowManualBlocksForSchedule,
+    updateManualBlock,
+  ]);
+
+  const isAutomaticMode = generationMode === GENERATION_MODES.AUTOMATICO;
+  const isManualMode = generationMode === GENERATION_MODES.MANUAL && !isMobile;
+
+  if (isAutomaticMode) {
+    const hasHorarios = horariosGenerados.length > 0;
     return (
       <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-            Preferencias
-          </p>
-        </div>
+        <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-4">
+          Preferencias
+        </p>
+
         <div className="space-y-3">
+          {/* Selector de Hora Mínima */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
@@ -55,91 +88,43 @@ export default function SidebarPreferences({
                 {horaMinima}:00
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <select
-                value={horaMinima}
-                onChange={(e) => setHoraMinima(Number(e.target.value))}
-                className="flex-1 px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
-              >
-                <option value={6}>6:00 AM</option>
-                <option value={7}>7:00 AM</option>
-                <option value={8}>8:00 AM</option>
-                <option value={9}>9:00 AM</option>
-                <option value={10}>10:00 AM</option>
-                <option value={11}>11:00 AM</option>
-                <option value={12}>12:00 PM</option>
-                <option value={13}>1:00 PM</option>
-                <option value={14}>2:00 PM</option>
-              </select>
-            </div>
+            <select
+              value={horaMinima}
+              onChange={(e) => setHoraMinima(Number(e.target.value))}
+              className="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+            >
+              {HORA_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
-          <div className="flex items-center justify-between">
+
+          {/* Toggle Evitar Huecos */}
+          <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
               Evitar horarios con huecos extensos
             </span>
-            <button
-              onClick={() => setEvitarHuecos(!evitarHuecos)}
-              className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${
-                evitarHuecos ? "bg-primary" : "bg-zinc-300 dark:bg-zinc-700"
-              }`}
-            >
-              <div
-                className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${
-                  evitarHuecos ? "right-0.5" : "left-0.5"
-                }`}
-              ></div>
-            </button>
+            <Switch
+              checked={evitarHuecos}
+              onChange={() => setEvitarHuecos(!evitarHuecos)}
+              label="Evitar horarios con huecos extensos"
+            />
           </div>
+
+          {/* Toggle Bloques Manuales (Desktop) */}
           {!isMobile && (
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
                 Permitir crear bloques manuales (por horario)
               </span>
-              <button
-                onClick={() => {
-                  if (!(horariosGenerados && horariosGenerados.length > 0))
-                    return;
-                  const enable = !currentAllowManualBlocksForCurrentSchedule;
-                  setAllowManualBlocksForSchedule(horarioActualIndex, enable);
-                  // If enabling per-schedule manual blocks, migrate any global blocks to this schedule
-                  if (enable && manualBlocks && manualBlocks.length > 0) {
-                    try {
-                      manualBlocks.forEach((b) => {
-                        if (
-                          typeof b.scheduleIndex === "undefined" ||
-                          b.scheduleIndex === null
-                        ) {
-                          updateManualBlock(b.id, {
-                            scheduleIndex: horarioActualIndex,
-                          });
-                        }
-                      });
-                    } catch (e) {
-                      console.error(
-                        "Error migrating global manual blocks:",
-                        e,
-                      );
-                    }
-                  }
-                }}
-                className={`w-8 h-4 outline-none rounded-full relative transition-colors ${
-                  currentAllowManualBlocksForCurrentSchedule
-                    ? "bg-primary"
-                    : "bg-zinc-300 dark:bg-zinc-700"
-                } ${
-                  !(horariosGenerados && horariosGenerados.length > 0)
-                    ? "opacity-60 cursor-not-allowed"
-                    : "cursor-pointer"
-                }`}
-              >
-                <div
-                  className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${
-                    currentAllowManualBlocksForCurrentSchedule
-                      ? "right-0.5"
-                      : "left-0.5"
-                  }`}
-                ></div>
-              </button>
+              <Switch
+                checked={currentAllowManualBlocksForCurrentSchedule}
+                onChange={handleToggleManualBlocksSchedule}
+                disabled={!hasHorarios}
+                label="Permitir crear bloques manuales por horario"
+              />
             </div>
           )}
         </div>
@@ -147,55 +132,39 @@ export default function SidebarPreferences({
     );
   }
 
-  // Preferencias de Generación Manual
-  if (generationMode === "manual" && !isMobile) {
+  if (isManualMode) {
     return (
       <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-            Preferencias
-          </p>
-        </div>
+        <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-4">
+          Preferencias
+        </p>
+
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          {/* Toggle Drag & Drop */}
+          <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
               Permitir arrastrar materias al horario
             </span>
-            <button
-              onClick={() => {
-                setDragEnabled(!dragEnabled);
-              }}
-              className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${
-                dragEnabled ? "bg-primary" : "bg-zinc-300 dark:bg-zinc-700"
-              }`}
-            >
-              <div
-                className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${
-                  dragEnabled ? "right-0.5" : "left-0.5"
-                }`}
-              ></div>
-            </button>
+            <Switch
+              checked={dragEnabled}
+              onChange={() => setDragEnabled(!dragEnabled)}
+              label="Permitir arrastrar materias al horario"
+            />
           </div>
 
-          <div className="flex items-center justify-between">
+          {/* Toggle Bloques Manuales */}
+          <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
               Permitir crear bloques manuales
             </span>
-            <button
-              onClick={() => {
-                if (!allowManualBlocksLocked)
-                  setAllowManualBlocks(!allowManualBlocks);
-              }}
-              className={`w-8 h-4 outline-none rounded-full relative transition-colors ${
-                allowManualBlocks ? "bg-primary" : "bg-zinc-300 dark:bg-zinc-700"
-              } ${allowManualBlocksLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
-            >
-              <div
-                className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${
-                  allowManualBlocks ? "right-0.5" : "left-0.5"
-                }`}
-              ></div>
-            </button>
+            <Switch
+              checked={allowManualBlocks}
+              onChange={() =>
+                !allowManualBlocksLocked && setAllowManualBlocks(!allowManualBlocks)
+              }
+              disabled={allowManualBlocksLocked}
+              label="Permitir crear bloques manuales"
+            />
           </div>
         </div>
       </div>

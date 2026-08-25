@@ -1,5 +1,5 @@
-import React from "react";
 import { useMateriasStore } from "../../store/materiasStore.js";
+import { MODES } from "../../constants/sidebar.js";
 
 export default function ConfirmModeModal({
   isOpen,
@@ -7,61 +7,57 @@ export default function ConfirmModeModal({
   onConfirm,
   onCancel,
 }) {
-  const { materiasSeleccionadas, horariosGenerados } = useMateriasStore();
-
   if (!isOpen) return null;
 
-  const scheduleCount = horariosGenerados ? horariosGenerados.length : 0;
-  const subjectsCount = materiasSeleccionadas
-    ? Object.keys(materiasSeleccionadas).length
-    : 0;
+  const { materiasSeleccionadas = {}, horariosGenerados = [] } = useMateriasStore();
+
+  const scheduleCount = horariosGenerados.length;
+  const count = scheduleCount > 0 ? scheduleCount : Object.keys(materiasSeleccionadas).length;
+  const unitLabel = scheduleCount > 0 ? "horarios generados" : "materias seleccionadas";
+  const targetMode = MODES.find((m) => m.id === pendingMode)?.label || "";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
-      <div className="bg-white dark:bg-zinc-900 rounded-lg p-6 z-10 w-full max-w-md">
-        <h3 className="text-lg mb-2 text-primary">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+    >
+      {/* Overlay para cerrar al hacer clic afuera */}
+      <div className="absolute inset-0" onClick={onCancel} aria-hidden="true" />
+
+      {/* Tarjeta Modal */}
+      <div className="relative bg-white dark:bg-zinc-900 rounded-xl p-6 shadow-xl z-10 w-full max-w-md border border-zinc-200 dark:border-zinc-800">
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-2">
           Cambiar modo de generación
         </h3>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
-          <span className="block">
-            ¿Estás seguro? Esto puede borrar tu horario actual.
-          </span>
-          <span className="block mt-1 text-white dark:text-zinc-900">.</span>
-          {scheduleCount > 0 ? (
-            <span>
-              <span className="text-red-600">
-                {scheduleCount} horarios{" "}
-              </span>
-              generados serán eliminados al cambiar a{" "}
-              <span className="font-bold text-primary/80">
-                {pendingMode === "manual" ? "Manual" : "Automático"}
-              </span>
-              .
-            </span>
-          ) : (
-            <span>
-              <span className="text-red-600">
-                {subjectsCount} materias{" "}
-              </span>
-              seleccionadas serán eliminadas al cambiar a{" "}
-              <span className="font-bold text-primary/80">
-                {pendingMode === "manual" ? "Manual" : "Automático"}
-              </span>
-              .
-            </span>
-          )}
-        </p>
-        <div className="flex justify-center gap-2">
+
+        <div className="text-sm text-zinc-600 dark:text-zinc-400 space-y-2 mb-6">
+          <p>¿Estás seguro? Esto puede borrar tu configuración actual.</p>
+          <p>
+            <span className="font-semibold text-red-500 dark:text-red-400">
+              {count} {unitLabel}
+            </span>{" "}
+            se eliminarán al cambiar al modo{" "}
+            <span className="font-bold text-primary">{targetMode}</span>.
+          </p>
+        </div>
+
+        {/* Acciones */}
+        <div className="flex items-center gap-3">
           <button
             onClick={onCancel}
-            className="px-4 py-2 w-[125px] rounded-md bg-zinc-300 text-zinc-900 hover:bg-zinc-300/80 cursor-pointer dark:text-white dark:bg-zinc-800 dark:hover:bg-zinc-700"
+            type="button"
+            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors
+                       bg-zinc-100 text-zinc-700 hover:bg-zinc-200 
+                       dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 cursor-pointer"
           >
             Cancelar
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 w-[125px] rounded-md bg-primary hover:bg-primary/80 cursor-pointer text-white"
+            type="button"
+            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-colors
+                       bg-primary hover:bg-primary/90 shadow-sm cursor-pointer"
           >
             Sí, cambiar
           </button>

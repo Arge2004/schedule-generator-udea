@@ -1725,9 +1725,6 @@ export default function Schedule() {
                   onBlockDrop={handleDrop}
                   showToastMessage={showToastMessage}
                   celdasMateria={celdasMateria}
-                  hoveredCell={hoveredCell}
-                  hoveredValidKeys={hoveredValidKeys}
-                  hoveredValidGroupNumbers={hoveredValidGroupNumbers}
                 />
               )}
             </div>

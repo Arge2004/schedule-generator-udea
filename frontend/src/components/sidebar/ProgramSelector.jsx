@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Select from "react-select";
 import toast from "react-hot-toast";
 import {
@@ -9,10 +9,16 @@ import {
 import { useMateriasStore } from "../../store/materiasStore.js";
 
 export default function ProgramSelector({ onMenuOpenChange }) {
+  // Inicializar estado directamente desde localStorage si existe
   const [facultades, setFacultades] = useState([]);
   const [programas, setProgramas] = useState([]);
-  const [selectedFacultad, setSelectedFacultad] = useState("");
-  const [selectedPrograma, setSelectedPrograma] = useState("");
+  const [selectedFacultad, setSelectedFacultad] = useState(
+    () => localStorage.getItem("selectedFacultad") || ""
+  );
+  const [selectedPrograma, setSelectedPrograma] = useState(
+    () => localStorage.getItem("selectedPrograma") || ""
+  );
+
   const [isLoadingFacultades, setIsLoadingFacultades] = useState(false);
   const [isLoadingProgramas, setIsLoadingProgramas] = useState(false);
   const [isScraping, setIsScraping] = useState(false);
@@ -24,119 +30,62 @@ export default function ProgramSelector({ onMenuOpenChange }) {
     darkTheme,
   } = useMateriasStore();
 
-  // Cargar facultades al montar el componente
+  // 1. Cargar facultades al montar el componente
   useEffect(() => {
+    let isMounted = true;
     const loadFacultades = async () => {
       try {
         setIsLoadingFacultades(true);
         const data = await getFacultades();
-        setFacultades(data);
+        if (isMounted) setFacultades(data || []);
       } catch (error) {
         toast.error("Error al cargar facultades");
       } finally {
-        setIsLoadingFacultades(false);
+        if (isMounted) setIsLoadingFacultades(false);
       }
     };
     loadFacultades();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Cargar programas cuando cambia la facultad
+  // 2. Cargar programas cuando cambia la facultad
   useEffect(() => {
-    const loadProgramas = async () => {
-      if (!selectedFacultad) {
-        setProgramas([]);
-        setSelectedPrograma("");
-        return;
-      }
+    if (!selectedFacultad) {
+      setProgramas([]);
+      setSelectedPrograma("");
+      localStorage.removeItem("selectedPrograma");
+      return;
+    }
 
+    let isMounted = true;
+    const loadProgramas = async () => {
       try {
         setIsLoadingProgramas(true);
         const data = await getProgramas(selectedFacultad);
-        setProgramas(data);
-        setSelectedPrograma("");
+        if (isMounted) setProgramas(data || []);
       } catch (error) {
         toast.error("Error al cargar programas");
-        setProgramas([]);
+        if (isMounted) setProgramas([]);
       } finally {
-        setIsLoadingProgramas(false);
+        if (isMounted) setIsLoadingProgramas(false);
       }
     };
+
     loadProgramas();
+    return () => {
+      isMounted = false;
+    };
   }, [selectedFacultad]);
 
-  const lightSelectStyles = useMemo(
-    () => ({
-      control: (base) => ({
-        ...base,
-        minHeight: "40px",
-        borderRadius: "0.5rem",
-        background: "#ffffff",
-        borderColor: "#e6e6e9",
-        boxShadow: "none",
-        color: "#111827",
-      }),
-      placeholder: (base) => ({ ...base, color: "#6b7280" }),
-      option: (base, state) => ({
-        ...base,
-        color: "#111827",
-        backgroundColor: state.isFocused ? "#f8fafc" : "#ffffff",
-      }),
-      singleValue: (base) => ({ ...base, color: "#111827" }),
-      menu: (base) => ({ ...base, background: "#ffffff" }),
-      menuList: (base) => ({ ...base, maxHeight: "240px" }),
-    }),
-    [],
-  );
-
-  const lightSelectTheme = useMemo(
-    () => (t) => ({
-      ...t,
-      colors: {
-        ...t.colors,
-        primary25: "rgba(19,146,236,0.06)",
-        primary: "#1392ec",
-        neutral80: "#111827",
-      },
-    }),
-    [],
-  );
-
-  const lightWatermarkStyles = useMemo(
-    () => ({
-      fontSize: "clamp(5rem, 7vw, 15rem)",
-      fontWeight: 900,
-      lineHeight: 1,
-      backgroundImage: `
-      linear-gradient(
-        to top,
-        #c4c4c4 0%,
-        #c4c4c4 35%,
-        color-mix(in srgb, #c4c4c4 65%, transparent) 45%,
-        color-mix(in srgb, #c4c4c4 15%, transparent) 65%,
-        transparent 70%
-      )
-    `,
-      opacity: 0.3,
-      backgroundClip: "text",
-      WebkitBackgroundClip: "text",
-      color: "transparent",
-      position: "absolute",
-      bottom: "-2.5%",
-      left: "0",
-      right: "0",
-      zIndex: 0,
-      pointerEvents: "none",
-    }),
-    [],
-  );
-
-  const memoFacultades = useMemo(() => facultades || [], [facultades]);
-  const memoProgramas = useMemo(() => programas || [], [programas]);
-
+  // Handlers con persistencia sincronizada
   const handleFacultadChange = useCallback((option) => {
     const value = option ? option.value : "";
     setSelectedFacultad(value);
+    setSelectedPrograma(""); // Limpiar programa al cambiar facultad
     localStorage.setItem("selectedFacultad", value);
+    localStorage.removeItem("selectedPrograma");
   }, []);
 
   const handleProgramaChange = useCallback((option) => {
@@ -145,45 +94,34 @@ export default function ProgramSelector({ onMenuOpenChange }) {
     localStorage.setItem("selectedPrograma", value);
   }, []);
 
+  // Petición de obtención de horarios
   const handleScrapeHorarios = async () => {
-    const facultadLS = localStorage.getItem("selectedFacultad");
-    const programaLS = localStorage.getItem("selectedPrograma");
-    const facultadToUse = facultadLS || selectedFacultad;
-    const programaToUse = programaLS || selectedPrograma;
-
-    if (!facultadToUse || !programaToUse) {
+    if (!selectedFacultad || !selectedPrograma) {
       toast.error("Por favor selecciona una facultad y un programa", {
-        duration: 3000,
         position: "top-center",
       });
       return;
     }
 
-    setSelectedFacultad(facultadToUse);
-    setSelectedPrograma(programaToUse);
-
     try {
       setIsScraping(true);
 
-      const facultadObj = facultades.find((f) => f.value === facultadToUse);
-      const programaObj = programas.find((p) => p.value === programaToUse);
+      const facultadObj = facultades.find((f) => f.value === selectedFacultad);
+      const programaObj = programas.find((p) => p.value === selectedPrograma);
 
       const data = await getHorarios(
-        facultadToUse,
-        programaToUse,
+        selectedFacultad,
+        selectedPrograma,
         facultadObj?.label || "",
-        programaObj?.label || "",
+        programaObj?.label || ""
       );
 
-      if (!data.materias || data.materias.length === 0) {
+      if (!data?.materias || data.materias.length === 0) {
         toast("No hay horarios disponibles para la selección actual", {
           icon: "ℹ️",
           duration: 4000,
           position: "top-center",
-          style: {
-            background: "#3b82f6",
-            color: "#fff",
-          },
+          style: { background: "#3b82f6", color: "#fff" },
         });
         return;
       }
@@ -192,12 +130,16 @@ export default function ProgramSelector({ onMenuOpenChange }) {
       resetMateriasSeleccionadas();
       clearHorariosGenerados();
 
-      const successStyle = darkTheme
-        ? { background: "#065f46", color: "#fff" }
-        : { background: "#16a34a", color: "#fff" };
       toast.success(
         `Se actualizaron ${data.materias.length} materias y se reiniciaron las selecciones`,
-        { duration: 5000, position: "bottom-center", style: successStyle },
+        {
+          duration: 5000,
+          position: "bottom-center",
+          style: {
+            background: darkTheme ? "#065f46" : "#16a34a",
+            color: "#fff",
+          },
+        }
       );
     } catch (error) {
       toast.error(`Error al obtener horarios: ${error.message}`, {
@@ -209,36 +151,72 @@ export default function ProgramSelector({ onMenuOpenChange }) {
     }
   };
 
+  // Adaptación dinámica de react-select según Dark Theme
+  const customSelectStyles = useMemo(
+    () => ({
+      control: (base) => ({
+        ...base,
+        minHeight: "40px",
+        borderRadius: "0.5rem",
+        backgroundColor: darkTheme ? "#18181b" : "#ffffff",
+        borderColor: darkTheme ? "#27272a" : "#e4e4e7",
+        boxShadow: "none",
+        color: darkTheme ? "#f4f4f5" : "#111827",
+      }),
+      placeholder: (base) => ({
+        ...base,
+        color: darkTheme ? "#a1a1aa" : "#6b7280",
+      }),
+      option: (base, state) => ({
+        ...base,
+        color: darkTheme ? "#f4f4f5" : "#111827",
+        backgroundColor: state.isFocused
+          ? darkTheme
+            ? "#27272a"
+            : "#f4f4f5"
+          : darkTheme
+          ? "#18181b"
+          : "#ffffff",
+      }),
+      singleValue: (base) => ({
+        ...base,
+        color: darkTheme ? "#f4f4f5" : "#111827",
+      }),
+      menu: (base) => ({
+        ...base,
+        backgroundColor: darkTheme ? "#18181b" : "#ffffff",
+        borderColor: darkTheme ? "#27272a" : "#e4e4e7",
+      }),
+      menuList: (base) => ({ ...base, maxHeight: "240px" }),
+    }),
+    [darkTheme]
+  );
+
   return (
-    <div className="h-full w-full flex flex-col items-center justify-center px-14 overflow-hidden relative select-none">
+    <div className="h-full w-full flex flex-col items-center justify-center px-6 sm:px-14 overflow-hidden relative select-none">
       <div className="w-full h-full max-w-md flex flex-col relative justify-center overflow-hidden">
-        {/* Formulario de selección */}
+        {/* Formulario */}
         <div className="relative z-10 space-y-4">
           <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider text-center">
             Obtener Horarios UdeA
           </h3>
 
           {/* Selector de Facultad */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
               Facultad
             </label>
             <Select
-              options={memoFacultades}
-              value={
-                memoFacultades.find((f) => f.value === selectedFacultad) || null
-              }
+              options={facultades}
+              value={facultades.find((f) => f.value === selectedFacultad) || null}
               onChange={handleFacultadChange}
               isDisabled={isScraping || isLoadingFacultades}
               placeholder={
-                isLoadingFacultades
-                  ? "Cargando facultades..."
-                  : "Selecciona una facultad..."
+                isLoadingFacultades ? "Cargando facultades..." : "Selecciona una facultad..."
               }
-              className="w-full text-start text-sm border-1 border-zinc-300 rounded-lg"
+              className="w-full text-start text-sm"
               classNamePrefix="rs"
-              styles={lightSelectStyles}
-              theme={lightSelectTheme}
+              styles={customSelectStyles}
               onMenuOpen={() => onMenuOpenChange?.(true)}
               onMenuClose={() => onMenuOpenChange?.(false)}
               menuShouldScrollIntoView={false}
@@ -247,28 +225,25 @@ export default function ProgramSelector({ onMenuOpenChange }) {
           </div>
 
           {/* Selector de Programa */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
               Programa
             </label>
             <Select
-              options={memoProgramas}
-              value={
-                memoProgramas.find((p) => p.value === selectedPrograma) || null
-              }
+              options={programas}
+              value={programas.find((p) => p.value === selectedPrograma) || null}
               onChange={handleProgramaChange}
               isDisabled={!selectedFacultad || isScraping || isLoadingProgramas}
               placeholder={
                 !selectedFacultad
                   ? "Primero selecciona una facultad..."
                   : isLoadingProgramas
-                    ? "Cargando programas..."
-                    : "Selecciona un programa..."
+                  ? "Cargando programas..."
+                  : "Selecciona un programa..."
               }
-              className="w-full text-start text-sm border-1 border-zinc-300 rounded-lg"
+              className="w-full text-start text-sm"
               classNamePrefix="rs"
-              styles={lightSelectStyles}
-              theme={lightSelectTheme}
+              styles={customSelectStyles}
               onMenuOpen={() => onMenuOpenChange?.(true)}
               onMenuClose={() => onMenuOpenChange?.(false)}
               menuShouldScrollIntoView={false}
@@ -278,13 +253,17 @@ export default function ProgramSelector({ onMenuOpenChange }) {
 
           {/* Botón de obtención */}
           <button
+            type="button"
             onClick={handleScrapeHorarios}
             disabled={!selectedFacultad || !selectedPrograma || isScraping}
-            className="w-full px-4 text-sm py-3 mt-10 bg-primary cursor-pointer hover:bg-primary/90 disabled:bg-zinc-300 disabled:cursor-not-allowed text-white rounded-lg transition-all flex items-center justify-center gap-2"
+            className="w-full px-4 text-sm py-3 mt-6 bg-primary hover:bg-primary/90 
+                       disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:text-zinc-500
+                       disabled:cursor-not-allowed text-white font-semibold rounded-lg 
+                       transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             {isScraping ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
                 <span>Obteniendo horarios...</span>
               </>
             ) : (
@@ -292,9 +271,6 @@ export default function ProgramSelector({ onMenuOpenChange }) {
             )}
           </button>
         </div>
-
-        {/* Marca de agua UdeA */}
-        <span style={lightWatermarkStyles}>UdeA</span>
       </div>
     </div>
   );
