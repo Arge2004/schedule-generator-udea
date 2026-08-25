@@ -3,13 +3,13 @@ import { createPortal } from "react-dom";
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 import ColorBlobs from "./ColorBlobs.jsx";
-import { ScheduleProvider } from "./ScheduleContext";
+import { ScheduleProvider } from "./ScheduleContext.jsx";
 import { AnimatePresence } from "framer-motion";
-import ClassBlock from "./ClassBlock";
-import ClassTooltip from "./ClassTooltip";
-import ScheduleDropOverlay from "./ScheduleDropOverlay";
-import GrupoSelectorModal from "./GrupoSelectorModal";
-import { useMateriasStore } from "../store/materiasStore";
+import ClassBlock from "./ClassBlock.jsx";
+import ClassTooltip from "./ClassTooltip.jsx";
+import ScheduleDropOverlay from "./ScheduleDropOverlay.jsx";
+import GrupoSelectorModal from "./GrupoSelectorModal.jsx";
+import { useMateriasStore } from "../store/materiasStore.js";
 import toast, { Toaster } from "react-hot-toast";
 
 export default function Schedule() {
@@ -46,9 +46,13 @@ export default function Schedule() {
   } = useMateriasStore();
 
   // Effective permission: if showing generated schedules, use per-schedule setting; otherwise use global
-  const effectiveAllowManualBlocks = (horariosGenerados && horariosGenerados.length > 0)
-    ? !!(allowManualBlocksBySchedule && allowManualBlocksBySchedule[horarioActualIndex])
-    : !!allowManualBlocks;
+  const effectiveAllowManualBlocks =
+    horariosGenerados && horariosGenerados.length > 0
+      ? !!(
+          allowManualBlocksBySchedule &&
+          allowManualBlocksBySchedule[horarioActualIndex]
+        )
+      : !!allowManualBlocks;
 
   const showToastMessage = (message) => {
     setToastMessage(message);
@@ -100,9 +104,15 @@ export default function Schedule() {
 
   // Permanent manual blocks created via click+drag selection (committed on mouseup)
   // Moved to global store so other components can see conflicts
-  const { manualBlocks, addManualBlock, removeManualBlock, renameManualBlock, updateManualBlock, clearManualBlocks } = useMateriasStore();
+  const {
+    manualBlocks,
+    addManualBlock,
+    removeManualBlock,
+    renameManualBlock,
+    updateManualBlock,
+    clearManualBlocks,
+  } = useMateriasStore();
   const [editingManualId, setEditingManualId] = useState(null);
-
 
   // Refs para el botón y el menú de export, para cerrar al click fuera
   const exportButtonRef = React.useRef(null);
@@ -164,10 +174,10 @@ export default function Schedule() {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       try {
-        window.removeEventListener('mousemove', onPointerMove);
-        window.removeEventListener('mouseup', endSelection);
-        window.removeEventListener('touchmove', onPointerMove);
-        window.removeEventListener('touchend', endSelection);
+        window.removeEventListener("mousemove", onPointerMove);
+        window.removeEventListener("mouseup", endSelection);
+        window.removeEventListener("touchmove", onPointerMove);
+        window.removeEventListener("touchend", endSelection);
       } catch (err) {
         // ignore if handlers not attached
       }
@@ -344,14 +354,20 @@ export default function Schedule() {
     let colorIndex = 0; // índice para asignar colores cuando agregamos bloques manuales o seleccionados
 
     // Priorizar grupos seleccionados manualmente si existen (para evitar mostrar un horario generado que no coincide)
-    const anyManualSelected = gruposSeleccionados && Object.values(gruposSeleccionados).some(v => v !== null && v !== undefined);
+    const anyManualSelected =
+      gruposSeleccionados &&
+      Object.values(gruposSeleccionados).some(
+        (v) => v !== null && v !== undefined,
+      );
 
     if (anyManualSelected && gruposSeleccionados && materias) {
       let colorIndex = 0;
       Object.entries(gruposSeleccionados).forEach(
         ([codigoMateria, numeroGrupo]) => {
           if (numeroGrupo !== null) {
-            const materia = materias.find((m) => String(m.codigo) === String(codigoMateria));
+            const materia = materias.find(
+              (m) => String(m.codigo) === String(codigoMateria),
+            );
             if (materia) {
               const grupo = materia.grupos.find(
                 (g) => g.numero === numeroGrupo,
@@ -363,7 +379,7 @@ export default function Schedule() {
                   horarios: grupo.horarios,
                   profesor: grupo.profesor,
                   codigoMateria: materia.codigo,
-                  source: 'manual',
+                  source: "manual",
                   color: colores[colorIndex % colores.length],
                 });
                 colorIndex++;
@@ -384,7 +400,7 @@ export default function Schedule() {
           horarios: g.horarios,
           profesor: g.profesor,
           codigoMateria: g.codigoMateria,
-          source: 'automatico',
+          source: "automatico",
           color: colores[idx % colores.length],
         }));
       }
@@ -394,20 +410,27 @@ export default function Schedule() {
     if (manualBlocks && manualBlocks.length > 0) {
       manualBlocks.forEach((b) => {
         // Only include blocks that are global (no scheduleIndex) or that belong to the currently visible generated schedule
-        const belongsToCurrentSchedule = (horariosGenerados && horariosGenerados.length > 0)
-          ? (typeof b.scheduleIndex === 'number' ? b.scheduleIndex === horarioActualIndex : false)
-          : true;
+        const belongsToCurrentSchedule =
+          horariosGenerados && horariosGenerados.length > 0
+            ? typeof b.scheduleIndex === "number"
+              ? b.scheduleIndex === horarioActualIndex
+              : false
+            : true;
         if (!belongsToCurrentSchedule) return;
 
         gruposParaProcesar.push({
-          nombreMateria: b.name || 'Bloque manual',
+          nombreMateria: b.name || "Bloque manual",
           numeroGrupo: null,
           horarios: [
-            { dias: [dias[b.diaIndex]], horaInicio: horas[b.horaIndex], horaFin: horas[b.horaIndex] + b.duracion }
+            {
+              dias: [dias[b.diaIndex]],
+              horaInicio: horas[b.horaIndex],
+              horaFin: horas[b.horaIndex] + b.duracion,
+            },
           ],
-          profesor: '',
+          profesor: "",
           codigoMateria: null,
-          source: 'manual',
+          source: "manual",
           manualId: b.id,
           color: b.color || colores[colorIndex % colores.length],
         });
@@ -423,7 +446,7 @@ export default function Schedule() {
         horarios: previewGrupo.horarios,
         profesor: previewGrupo.profesor,
         codigoMateria: previewGrupo.codigo,
-        source: 'manual',
+        source: "manual",
         color: previewGrupo.color.bg.includes("blue")
           ? "#3b82f6"
           : previewGrupo.color.bg.includes("emerald")
@@ -451,7 +474,7 @@ export default function Schedule() {
         codigoMateria = grupo.codigoMateria;
       } else if (materias) {
         const materiaObj = materias.find(
-          (m) => m.nombre === grupo.nombreMateria
+          (m) => m.nombre === grupo.nombreMateria,
         );
         if (materiaObj) codigoMateria = materiaObj.codigo;
       }
@@ -472,7 +495,7 @@ export default function Schedule() {
               diaIndex: diaIndex, // 0-6
               horaIndex: horas.indexOf(horario.horaInicio), // posición en el array de horas
               isPreview: grupo.isPreview || false,
-              source: grupo.source || (grupo.isPreview ? 'preview' : 'manual'),
+              source: grupo.source || (grupo.isPreview ? "preview" : "manual"),
               // Preserve manual block identifier so parent can operate on it
               manualId: grupo.manualId,
             });
@@ -677,7 +700,10 @@ export default function Schedule() {
 
     // Clamp indices to valid ranges to avoid off-by-one from rounding
     diaIndex = Math.max(0, Math.min(6, isNaN(diaIndex) ? -1 : diaIndex));
-    horaIndex = Math.max(0, Math.min(horas.length - 1, isNaN(horaIndex) ? -1 : horaIndex));
+    horaIndex = Math.max(
+      0,
+      Math.min(horas.length - 1, isNaN(horaIndex) ? -1 : horaIndex),
+    );
 
     if (
       isNaN(diaIndex) ||
@@ -706,24 +732,35 @@ export default function Schedule() {
     const span = maxRow - minRow + 1;
 
     const gridRectData = gridRectRef.current || {};
-    const cellH = gridRectData.cellHeight || (gridRef.current?.getBoundingClientRect().height / horas.length);
-    const cellW = gridRectData.cellWidth || ((gridRef.current?.getBoundingClientRect().width - 80) / 7);
+    const cellH =
+      gridRectData.cellHeight ||
+      gridRef.current?.getBoundingClientRect().height / horas.length;
+    const cellW =
+      gridRectData.cellWidth ||
+      (gridRef.current?.getBoundingClientRect().width - 80) / 7;
 
     // Prefer measuring the actual starting cell for exact dimensions
     let left, top, width, height;
     try {
       const startCellSelector = `[data-cell="${start.diaIndex}-${minRow}"]`;
-      const cellEl = gridRef.current && gridRef.current.querySelector(startCellSelector);
+      const cellEl =
+        gridRef.current && gridRef.current.querySelector(startCellSelector);
       if (cellEl) {
         const cellRect = cellEl.getBoundingClientRect();
-        const gridRect = gridRectData.rect || gridRef.current.getBoundingClientRect();
+        const gridRect =
+          gridRectData.rect || gridRef.current.getBoundingClientRect();
         left = Math.round(cellRect.left - gridRect.left);
         top = Math.round(cellRect.top - gridRect.top);
         width = Math.round(cellRect.width);
         height = Math.round(span * cellRect.height);
       } else {
         // fallback to computed cell sizes
-        const leftDaysLocal = (gridRectData.leftDays || (gridRef.current?.getBoundingClientRect().left + 80)) - (gridRectData.rect ? gridRectData.rect.left : gridRef.current?.getBoundingClientRect().left);
+        const leftDaysLocal =
+          (gridRectData.leftDays ||
+            gridRef.current?.getBoundingClientRect().left + 80) -
+          (gridRectData.rect
+            ? gridRectData.rect.left
+            : gridRef.current?.getBoundingClientRect().left);
         left = Math.round(leftDaysLocal + start.diaIndex * cellW);
         top = Math.round(minRow * cellH);
         width = Math.round(cellW);
@@ -731,7 +768,12 @@ export default function Schedule() {
       }
     } catch (err) {
       // if anything goes wrong, fallback gracefully
-      const leftDaysLocal = (gridRectData.leftDays || (gridRef.current?.getBoundingClientRect().left + 80)) - (gridRectData.rect ? gridRectData.rect.left : gridRef.current?.getBoundingClientRect().left);
+      const leftDaysLocal =
+        (gridRectData.leftDays ||
+          gridRef.current?.getBoundingClientRect().left + 80) -
+        (gridRectData.rect
+          ? gridRectData.rect.left
+          : gridRef.current?.getBoundingClientRect().left);
       left = Math.round(leftDaysLocal + start.diaIndex * cellW);
       top = Math.round(minRow * cellH);
       width = Math.round(cellW);
@@ -739,7 +781,9 @@ export default function Schedule() {
     }
 
     // Clamp left/width to grid bounds
-    const gridWidth = gridRectData.rect ? gridRectData.rect.width : gridRef.current?.getBoundingClientRect().width || 0;
+    const gridWidth = gridRectData.rect
+      ? gridRectData.rect.width
+      : gridRef.current?.getBoundingClientRect().width || 0;
     if (left + width > gridWidth) {
       left = Math.max(0, gridWidth - width - 1);
     }
@@ -749,7 +793,7 @@ export default function Schedule() {
     previewRef.current.style.width = `${width}px`;
     previewRef.current.style.height = `${height}px`;
     // ensure visible
-    previewRef.current.style.display = 'block';
+    previewRef.current.style.display = "block";
   };
 
   // Helper: restringe la selección para que no cruce celdas ocupadas
@@ -759,7 +803,9 @@ export default function Schedule() {
     celdasOcupadas.forEach((v, k) => occupied.add(k));
     const belongsToCurrent = (b) => {
       if (!(horariosGenerados && horariosGenerados.length > 0)) return true;
-      return (typeof b.scheduleIndex === 'number') ? b.scheduleIndex === horarioActualIndex : false;
+      return typeof b.scheduleIndex === "number"
+        ? b.scheduleIndex === horarioActualIndex
+        : false;
     };
     manualBlocks.forEach((b) => {
       if (!belongsToCurrent(b)) return;
@@ -797,7 +843,9 @@ export default function Schedule() {
     celdasOcupadas.forEach((v, k) => occupied.add(k));
     const belongsToCurrent = (b) => {
       if (!(horariosGenerados && horariosGenerados.length > 0)) return true;
-      return (typeof b.scheduleIndex === 'number') ? b.scheduleIndex === horarioActualIndex : false;
+      return typeof b.scheduleIndex === "number"
+        ? b.scheduleIndex === horarioActualIndex
+        : false;
     };
     manualBlocks.forEach((b) => {
       if (!belongsToCurrent(b)) return;
@@ -808,32 +856,45 @@ export default function Schedule() {
 
     const key = `${startCell.diaIndex}-${startCell.horaIndex}`;
     if (occupied.has(key)) {
-      toast.error('No se pudo colocar: el espacio está ocupado.');
+      toast.error("No se pudo colocar: el espacio está ocupado.");
       // cleanup selection state
-      if (previewRef.current) previewRef.current.style.display = 'none';
+      if (previewRef.current) previewRef.current.style.display = "none";
       selectionStartRef.current = null;
       selectionCurrentRef.current = null;
       isSelectingRef.current = false;
-      if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
       return;
     }
 
     // Show a 1-hour preview at the start cell. The block will be created when the user releases.
-    selectionStartRef.current = { diaIndex: startCell.diaIndex, horaIndex: startCell.horaIndex };
+    selectionStartRef.current = {
+      diaIndex: startCell.diaIndex,
+      horaIndex: startCell.horaIndex,
+    };
     selectionCurrentRef.current = { ...selectionStartRef.current };
     isSelectingRef.current = true;
     hasLongPressedRef.current = true;
 
     // Ensure preview is rendered
-    try { updatePreviewDOM(); } catch (e) {}
+    try {
+      updatePreviewDOM();
+    } catch (e) {}
 
-    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
   };
 
   // Helper to start a temporary pulse on a manual block (defined early so it can be called from commit paths)
   const startPulse = (id, duration = 700) => {
     // mark pulsing true immediately
-    try { updateManualBlock(id, { pulsing: true }); } catch (err) { }
+    try {
+      updateManualBlock(id, { pulsing: true });
+    } catch (err) {}
 
     try {
       if (!pulseTimersRef.current) pulseTimersRef.current = new Map();
@@ -843,10 +904,16 @@ export default function Schedule() {
     } catch (err) {}
 
     const t = setTimeout(() => {
-      try { updateManualBlock(id, { pulsing: false }); } catch (err) {}
-      try { pulseTimersRef.current.delete(id); } catch (err) {}
+      try {
+        updateManualBlock(id, { pulsing: false });
+      } catch (err) {}
+      try {
+        pulseTimersRef.current.delete(id);
+      } catch (err) {}
     }, duration);
-    try { pulseTimersRef.current.set(id, t); } catch (err) {}
+    try {
+      pulseTimersRef.current.set(id, t);
+    } catch (err) {}
   };
 
   const onPointerMove = (ev) => {
@@ -860,9 +927,16 @@ export default function Schedule() {
     if (!start) return;
 
     // Clamp target hora to not cross occupied cells
-    const adjustedHora = clampPreviewToFree(start.diaIndex, start.horaIndex, cell.horaIndex);
+    const adjustedHora = clampPreviewToFree(
+      start.diaIndex,
+      start.horaIndex,
+      cell.horaIndex,
+    );
 
-    selectionCurrentRef.current = { diaIndex: start.diaIndex, horaIndex: adjustedHora };
+    selectionCurrentRef.current = {
+      diaIndex: start.diaIndex,
+      horaIndex: adjustedHora,
+    };
 
     // If user moved to a different row (span > 1), start dragging; otherwise keep quiet (no preview)
     if (adjustedHora !== start.horaIndex || hasDraggedRef.current) {
@@ -888,18 +962,21 @@ export default function Schedule() {
     }
 
     // clear any pending long press timer
-    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
 
     const start = selectionStartRef.current;
     const current = selectionCurrentRef.current || start;
     if (!start) {
-      if (previewRef.current) previewRef.current.style.display = 'none';
+      if (previewRef.current) previewRef.current.style.display = "none";
       return;
     }
 
     // If the user never moved/dragged (pure click) and also didn't long-press, do not create a manual block
     if (!hasDraggedRef.current && !hasLongPressedRef.current) {
-      if (previewRef.current) previewRef.current.style.display = 'none';
+      if (previewRef.current) previewRef.current.style.display = "none";
       selectionStartRef.current = null;
       selectionCurrentRef.current = null;
       isSelectingRef.current = false;
@@ -914,7 +991,9 @@ export default function Schedule() {
     celdasOcupadas.forEach((v, k) => occupied.add(k));
     const belongsToCurrent = (b) => {
       if (!(horariosGenerados && horariosGenerados.length > 0)) return true;
-      return (typeof b.scheduleIndex === 'number') ? b.scheduleIndex === horarioActualIndex : false;
+      return typeof b.scheduleIndex === "number"
+        ? b.scheduleIndex === horarioActualIndex
+        : false;
     };
     manualBlocks.forEach((b) => {
       if (!belongsToCurrent(b)) return;
@@ -932,14 +1011,17 @@ export default function Schedule() {
 
     // Try to fit by shrinking if necessary (reduce until fits or reaches 0)
     let targetSpan = span;
-    while (targetSpan > 0 && checkConflict(start.diaIndex, minRow, targetSpan)) {
+    while (
+      targetSpan > 0 &&
+      checkConflict(start.diaIndex, minRow, targetSpan)
+    ) {
       targetSpan -= 1;
     }
 
     if (targetSpan <= 0) {
       // Could not fit anywhere in this column
-      toast.error('No se pudo colocar: el espacio está ocupado.');
-      if (previewRef.current) previewRef.current.style.display = 'none';
+      toast.error("No se pudo colocar: el espacio está ocupado.");
+      if (previewRef.current) previewRef.current.style.display = "none";
       selectionStartRef.current = null;
       selectionCurrentRef.current = null;
       isSelectingRef.current = false;
@@ -952,92 +1034,119 @@ export default function Schedule() {
     if (targetSpan < span && previewRef.current) {
       // compute new height in px using cell element if available
       const startCellSelector = `[data-cell="${start.diaIndex}-${minRow}"]`;
-      const cellEl = gridRef.current && gridRef.current.querySelector(startCellSelector);
-      const cellH = cellEl ? cellEl.getBoundingClientRect().height : (gridRectRef.current?.cellHeight || (gridRef.current?.getBoundingClientRect().height / horas.length));
+      const cellEl =
+        gridRef.current && gridRef.current.querySelector(startCellSelector);
+      const cellH = cellEl
+        ? cellEl.getBoundingClientRect().height
+        : gridRectRef.current?.cellHeight ||
+          gridRef.current?.getBoundingClientRect().height / horas.length;
       const newHeightPx = Math.round(cellH * targetSpan);
 
       // animate preview to new height
       previewRef.current.style.height = `${newHeightPx}px`;
 
       // small toast to indicate adjustment
-      toast('Ajustado para evitar solapamiento', { icon: '⚠️' });
+      toast("Ajustado para evitar solapamiento", { icon: "⚠️" });
 
       // after transition ends (or fallback timeout) commit the smaller block
       const onTransitionEnd = () => {
         // commit
         addManualBlock({
           id: newId,
-          name: 'Bloque manual',
+          name: "Bloque manual",
           diaIndex: start.diaIndex,
           horaIndex: minRow,
           duracion: targetSpan,
-          color: '#3b82f6',
+          color: "#3b82f6",
           pulsing: true,
-          scheduleIndex: (horariosGenerados && horariosGenerados.length > 0) ? horarioActualIndex : null,
+          scheduleIndex:
+            horariosGenerados && horariosGenerados.length > 0
+              ? horarioActualIndex
+              : null,
         });
         setEditingManualId(newId);
-        try { startPulse(newId); } catch (e) {}
+        try {
+          startPulse(newId);
+        } catch (e) {}
 
         // reset long-press state if any
         hasLongPressedRef.current = false;
 
-        if (previewRef.current) previewRef.current.style.display = 'none';
+        if (previewRef.current) previewRef.current.style.display = "none";
 
         selectionStartRef.current = null;
         selectionCurrentRef.current = null;
 
-        previewRef.current.removeEventListener('transitionend', onTransitionEnd);
+        previewRef.current.removeEventListener(
+          "transitionend",
+          onTransitionEnd,
+        );
       };
 
-      previewRef.current.addEventListener('transitionend', onTransitionEnd);
+      previewRef.current.addEventListener("transitionend", onTransitionEnd);
 
       // Fallback in case transitionend doesn't fire
       setTimeout(() => {
-        try { previewRef.current && previewRef.current.removeEventListener('transitionend', onTransitionEnd); } catch(e) {}
+        try {
+          previewRef.current &&
+            previewRef.current.removeEventListener(
+              "transitionend",
+              onTransitionEnd,
+            );
+        } catch (e) {}
         // ensure committed
         // Ensure no duplicate and then add
         removeManualBlock(newId);
         addManualBlock({
           id: newId,
-          name: 'Bloque manual',
+          name: "Bloque manual",
           diaIndex: start.diaIndex,
           horaIndex: minRow,
           duracion: targetSpan,
-          color: '#3b82f6',
+          color: "#3b82f6",
           pulsing: true,
-          scheduleIndex: (horariosGenerados && horariosGenerados.length > 0) ? horarioActualIndex : null,
+          scheduleIndex:
+            horariosGenerados && horariosGenerados.length > 0
+              ? horarioActualIndex
+              : null,
         });
         setEditingManualId(newId);
-        try { startPulse(newId); } catch (e) {}
+        try {
+          startPulse(newId);
+        } catch (e) {}
 
         // reset long-press state if any
         hasLongPressedRef.current = false;
 
-        if (previewRef.current) previewRef.current.style.display = 'none';
+        if (previewRef.current) previewRef.current.style.display = "none";
         selectionStartRef.current = null;
         selectionCurrentRef.current = null;
       }, 350);
-
     } else {
       // No conflict or fits as requested — commit directly
       addManualBlock({
         id: newId,
-        name: 'Bloque manual',
+        name: "Bloque manual",
         diaIndex: start.diaIndex,
         horaIndex: minRow,
         duracion: span,
-        color: '#3b82f6',
+        color: "#3b82f6",
         pulsing: true,
-        scheduleIndex: (horariosGenerados && horariosGenerados.length > 0) ? horarioActualIndex : null,
+        scheduleIndex:
+          horariosGenerados && horariosGenerados.length > 0
+            ? horarioActualIndex
+            : null,
       });
       setEditingManualId(newId);
-      try { startPulse(newId); } catch (e) {}
+      try {
+        startPulse(newId);
+      } catch (e) {}
 
       // reset long-press state if any
       hasLongPressedRef.current = false;
 
       // hide preview
-      if (previewRef.current) previewRef.current.style.display = 'none';
+      if (previewRef.current) previewRef.current.style.display = "none";
 
       selectionStartRef.current = null;
       selectionCurrentRef.current = null;
@@ -1047,7 +1156,7 @@ export default function Schedule() {
   const handleMouseDown = (e) => {
     // ignore clicks coming from elements that opt-out of selection
     const target = e.target;
-    if (target && target.closest && target.closest('[data-no-select]')) return;
+    if (target && target.closest && target.closest("[data-no-select]")) return;
 
     // if creating manual blocks is disabled, ignore and notify
     if (!effectiveAllowManualBlocks) {
@@ -1055,8 +1164,15 @@ export default function Schedule() {
     }
 
     // If an input is being edited for a manual block, force blur to commit/save it
-    if (editingManualId && typeof document !== 'undefined' && document.activeElement && document.activeElement.tagName === 'INPUT') {
-      try { document.activeElement.blur(); } catch (e) {}
+    if (
+      editingManualId &&
+      typeof document !== "undefined" &&
+      document.activeElement &&
+      document.activeElement.tagName === "INPUT"
+    ) {
+      try {
+        document.activeElement.blur();
+      } catch (e) {}
     }
 
     // only left click
@@ -1068,29 +1184,39 @@ export default function Schedule() {
     const cell = getCellFromClient(e.clientX, e.clientY);
     if (!cell) return;
 
-    selectionStartRef.current = { diaIndex: cell.diaIndex, horaIndex: cell.horaIndex };
+    selectionStartRef.current = {
+      diaIndex: cell.diaIndex,
+      horaIndex: cell.horaIndex,
+    };
     selectionCurrentRef.current = { ...selectionStartRef.current };
     isSelectingRef.current = true;
     hasDraggedRef.current = false;
     hasLongPressedRef.current = false;
 
     // Start long-press timer (2 seconds) to create a 1-hour block when holding in place
-    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
     longPressTimerRef.current = setTimeout(() => {
       handleLongPress(selectionStartRef.current);
     }, 200);
 
-    window.addEventListener('mousemove', onPointerMove);
-    window.addEventListener('mouseup', () => {
-      window.removeEventListener('mousemove', onPointerMove);
-      endSelection();
-    }, { once: true });
-  }; 
+    window.addEventListener("mousemove", onPointerMove);
+    window.addEventListener(
+      "mouseup",
+      () => {
+        window.removeEventListener("mousemove", onPointerMove);
+        endSelection();
+      },
+      { once: true },
+    );
+  };
 
   const handleTouchStart = (e) => {
     // ignore touches coming from elements that opt-out of selection
     const target = e.target;
-    if (target && target.closest && target.closest('[data-no-select]')) return;
+    if (target && target.closest && target.closest("[data-no-select]")) return;
 
     // if creating manual blocks is disabled, ignore and notify
     if (!effectiveAllowManualBlocks) {
@@ -1098,8 +1224,15 @@ export default function Schedule() {
     }
 
     // If an input is being edited for a manual block, force blur to commit/save it
-    if (editingManualId && typeof document !== 'undefined' && document.activeElement && document.activeElement.tagName === 'INPUT') {
-      try { document.activeElement.blur(); } catch (e) {}
+    if (
+      editingManualId &&
+      typeof document !== "undefined" &&
+      document.activeElement &&
+      document.activeElement.tagName === "INPUT"
+    ) {
+      try {
+        document.activeElement.blur();
+      } catch (e) {}
     }
 
     // prevent native scrolling/gestures that interfere with selection
@@ -1110,29 +1243,43 @@ export default function Schedule() {
     const cell = getCellFromClient(touch.clientX, touch.clientY);
     if (!cell) return;
 
-    selectionStartRef.current = { diaIndex: cell.diaIndex, horaIndex: cell.horaIndex };
+    selectionStartRef.current = {
+      diaIndex: cell.diaIndex,
+      horaIndex: cell.horaIndex,
+    };
     selectionCurrentRef.current = { ...selectionStartRef.current };
     isSelectingRef.current = true;
     hasDraggedRef.current = false;
     hasLongPressedRef.current = false;
 
     // Start long-press timer (2 seconds) to create a 1-hour block when holding in place
-    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
     longPressTimerRef.current = setTimeout(() => {
       handleLongPress(selectionStartRef.current);
     }, 2000);
 
     // Ensure selection commits to a block with id/name when finished via touch
-    window.addEventListener('touchend', () => {
-      window.removeEventListener('touchmove', onPointerMove);
-      endSelection();
-    }, { once: true });
+    window.addEventListener(
+      "touchend",
+      () => {
+        window.removeEventListener("touchmove", onPointerMove);
+        endSelection();
+      },
+      { once: true },
+    );
 
-    window.addEventListener('touchmove', onPointerMove, { passive: false });
-    window.addEventListener('touchend', () => {
-      window.removeEventListener('touchmove', onPointerMove);
-      endSelection();
-    }, { once: true });
+    window.addEventListener("touchmove", onPointerMove, { passive: false });
+    window.addEventListener(
+      "touchend",
+      () => {
+        window.removeEventListener("touchmove", onPointerMove);
+        endSelection();
+      },
+      { once: true },
+    );
   };
 
   // Helper: verifica si un grupo TIENE conflicto con el schedule actual (celdasMateria)
@@ -1167,7 +1314,7 @@ export default function Schedule() {
     removeManualBlock(id);
 
     // Ensure preview/selection cleared when deleting
-    if (previewRef.current) previewRef.current.style.display = 'none';
+    if (previewRef.current) previewRef.current.style.display = "none";
     isSelectingRef.current = false;
     selectionStartRef.current = null;
     selectionCurrentRef.current = null;
@@ -1175,13 +1322,13 @@ export default function Schedule() {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
-  }; 
+  };
 
   const renameManualBlockLocal = (id, newName) => {
     // call store action
     renameManualBlock(id, newName);
     // hide preview if any
-    if (previewRef.current) previewRef.current.style.display = 'none';
+    if (previewRef.current) previewRef.current.style.display = "none";
   };
 
   // startPulse is defined earlier (near clampPreviewToFree) to avoid redeclaration
@@ -1189,13 +1336,15 @@ export default function Schedule() {
 
   // Cuando se hace un reset global desde la barra lateral, eliminar también los bloques manuales
   useEffect(() => {
-    if (typeof resetKey === 'undefined') return;
+    if (typeof resetKey === "undefined") return;
 
     // Clear manual blocks via store
-    try { clearManualBlocks(); } catch (err) {}
+    try {
+      clearManualBlocks();
+    } catch (err) {}
 
     setEditingManualId(null);
-    if (previewRef.current) previewRef.current.style.display = 'none';
+    if (previewRef.current) previewRef.current.style.display = "none";
     isSelectingRef.current = false;
     selectionStartRef.current = null;
     selectionCurrentRef.current = null;
@@ -1208,7 +1357,6 @@ export default function Schedule() {
       }
     } catch (err) {}
   }, [resetKey]);
-
 
   const handleDragEnter = (e) => {
     e.preventDefault();
@@ -1444,9 +1592,11 @@ export default function Schedule() {
               style={{
                 gridTemplateColumns: "80px repeat(7, minmax(140px, 1fr))",
                 gridTemplateRows: `repeat(${horas.length}, 1fr)`,
-                userSelect: 'none', // prevent native text selection while selecting cells
+                userSelect: "none", // prevent native text selection while selecting cells
               }}
-              onDragStart={(e) => e.preventDefault()} /* prevent native element dragging */
+              onDragStart={(e) =>
+                e.preventDefault()
+              } /* prevent native element dragging */
               onDragOver={handleDragOver}
               onDragEnter={handleDragEnter}
               onDragLeave={handleDragLeave}
@@ -1496,7 +1646,7 @@ export default function Schedule() {
                         }}
                       />
                     );
-                  })} 
+                  })}
                 </React.Fragment>
               ))}
 
@@ -1504,16 +1654,16 @@ export default function Schedule() {
               <div
                 ref={previewRef}
                 style={{
-                  position: 'absolute',
+                  position: "absolute",
                   zIndex: 999,
-                  pointerEvents: 'none',
-                  display: 'none',
-                  background: 'rgba(59,130,246,0.12)',
-                  border: '1px solid rgba(59,130,246,0.6)',
+                  pointerEvents: "none",
+                  display: "none",
+                  background: "rgba(59,130,246,0.12)",
+                  border: "1px solid rgba(59,130,246,0.6)",
                   borderRadius: 8,
-                  transition: 'top 80ms linear, height 80ms linear',
-                  boxSizing: 'border-box',
-                  willChange: 'top, height',
+                  transition: "top 80ms linear, height 80ms linear",
+                  boxSizing: "border-box",
+                  willChange: "top, height",
                 }}
                 data-selection-preview
               />
@@ -1523,7 +1673,11 @@ export default function Schedule() {
                 {clasesParaRenderizar.map((clase, idx) => (
                   <div
                     data-manual-id={clase.manualId || undefined}
-                    key={clase.manualId ? `manual-${clase.manualId}` : `class-${idx}-${clase.diaIndex}-${clase.horaIndex}-${clase.isPreview ? "preview" : "permanent"}`}
+                    key={
+                      clase.manualId
+                        ? `manual-${clase.manualId}`
+                        : `class-${idx}-${clase.diaIndex}-${clase.horaIndex}-${clase.isPreview ? "preview" : "permanent"}`
+                    }
                     className="relative"
                     style={{
                       gridColumn: clase.diaIndex + 2, // +2 porque la primera columna es la de horas
@@ -1536,15 +1690,25 @@ export default function Schedule() {
                       clase={clase}
                       onHover={handleClassHover}
                       onLeave={handleClassLeave}
-                      onDelete={clase.manualId ? () => deleteManualBlock(clase.manualId) : undefined}
-                      onRename={clase.manualId ? (name) => renameManualBlock(clase.manualId, name) : undefined}
+                      onDelete={
+                        clase.manualId
+                          ? () => deleteManualBlock(clase.manualId)
+                          : undefined
+                      }
+                      onRename={
+                        clase.manualId
+                          ? (name) => renameManualBlock(clase.manualId, name)
+                          : undefined
+                      }
                       autoEdit={editingManualId === clase.manualId}
                       onEditComplete={(newName) => {
                         // clear editing state
                         setEditingManualId(null);
                         // pulse visual feedback on edit
                         if (clase.manualId) {
-                          try { startPulse(clase.manualId); } catch (e) {}
+                          try {
+                            startPulse(clase.manualId);
+                          } catch (e) {}
                         }
                       }}
                     />
