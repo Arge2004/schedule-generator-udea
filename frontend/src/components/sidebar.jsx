@@ -40,26 +40,8 @@ export default function Sidebar() {
     clearMaterias,
     clearRemovedGroups,
     darkTheme,
-    syncThemeWithSystem,
     setAllowManualBlocks,
   } = useMateriasStore();
-
-  // Sincronización del tema oscuro con el sistema
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = (e) => syncThemeWithSystem(e.matches);
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
-  }, [syncThemeWithSystem]);
-
-  // Aplicar/remover clase dark del documento
-  useEffect(() => {
-    if (darkTheme) {
-      document.querySelector("html")?.classList.add("dark");
-    } else {
-      document.querySelector("html")?.classList.remove("dark");
-    }
-  }, [darkTheme]);
 
   // Detección responsiva de dispositivo móvil
   useEffect(() => {
@@ -252,12 +234,12 @@ export default function Sidebar() {
   return (
     <>
       <Toaster />
-      <aside className="w-full sm:w-80 h-full select-none md:border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col relative overflow-hidden">
+      <aside className="w-full sm:w-sm h-full select-none md:border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col relative overflow-hidden">
         {/* Botón: Volver al menú principal */}
         <div className="absolute top-3 right-3 z-50">
           <button
             onClick={handleResetToMenu}
-            className="px-3 py-1 cursor-pointer rounded-md text-sm font-medium dark:bg-zinc-900 dark:text-white dark:border-zinc-800 dark:hover:bg-zinc-800 bg-white/80 text-zinc-900 border-zinc-200 hover:bg-zinc-100"
+            className="px-3 py-1 border cursor-pointer rounded-md text-sm font-medium dark:bg-zinc-900 dark:text-white dark:border-zinc-800 dark:hover:bg-zinc-800 bg-white/80 text-zinc-900 border-zinc-200 hover:bg-zinc-100"
             title="Volver al menú principal"
           >
             Menú

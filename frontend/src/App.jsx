@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import "./App.css";
 import Sidebar from "./components/Sidebar";
 import LoginSidebar from "./components/LoginSidebar";
@@ -6,8 +7,17 @@ import Background from "./components/Background";
 import { useMateriasStore } from "./store/materiasStore";
 
 function App() {
-  const { materias } = useMateriasStore();
+  const { materias, darkTheme } = useMateriasStore();
   const hasMaterias = materias && materias.length > 0;
+
+  // Aplicar/remover clase dark del documento según darkTheme (por defecto siempre false/light)
+  useEffect(() => {
+    if (darkTheme) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkTheme]);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
@@ -23,7 +33,7 @@ function App() {
         </>
       ) : (
         <>
-          {/* Sidebar de la aplicación a la izquierda (más estrecho) */}
+          {/* Sidebar de la aplicación a la izquierda */}
           <Sidebar />
 
           {/* Horario a la derecha */}
