@@ -1,7 +1,7 @@
 import './App.css'
 import Sidebar from './components/sidebar'
 import Schedule from './components/schedule'
-import ParallaxBackground from './components/ParallaxBackground'
+import ParallaxBackground from './components/Background'
 import { useMateriasStore } from './store/materiasStore'
 
 function App() {
@@ -9,8 +9,6 @@ function App() {
 
   return (
     <div className="flex h-dvh w-screen overflow-hidden">
-      <Sidebar />
-
       {/* Main content (hidden on small screens so mobile only shows the sidebar) */}
       <div className="hidden sm:block sm:flex-1 h-dvh overflow-auto">
         {!materias || materias.length === 0 ? (
@@ -19,6 +17,8 @@ function App() {
           <Schedule />
         )}
       </div>
+
+      <Sidebar />
     </div>
   )
 }

@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import Subject from './subject.jsx';
 import MobileScheduleModal from './MobileSchedule.jsx';
 import { useMateriasStore } from '../store/materiasStore.js';
-import { motion, AnimatePresence } from 'framer-motion';
 import { getFacultades, getProgramas, getHorarios, generarHorarios } from '../services/horarios.js';
 import toast, { Toaster } from 'react-hot-toast';
 import Select from 'react-select';
@@ -466,12 +465,8 @@ export default function Sidebar() {
     return (
         <>
             <Toaster />
-            <motion.aside
-                className="w-full h-full select-none md:border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col overflow-y-auto relative sm:w-80"
-                initial={{ x: -80, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: -80, opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 120, damping: 16 }}
+            <aside
+                className="w-lg h-full select-none md:border-r border-zinc-200 bg-white flex flex-col overflow-y-auto relative"
             >
                 {/* Botón: Volver al menú principal (limpia materias y estados) — sólo mostrar cuando hay materias cargadas */}
                 {materias && materias.length > 0 && (
@@ -553,7 +548,7 @@ export default function Sidebar() {
                                 <button
                                     onClick={handleScrapeHorarios}
                                     disabled={!selectedFacultad || !selectedPrograma || isScraping}
-                                    className="w-full px-4 text-sm py-3 mt-10 bg-primary cursor-pointer hover:bg-primary/90 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:cursor-not-allowed text-white rounded-lg transition-all flex items-center justify-center gap-2"
+                                    className="w-full px-4 text-sm py-3 mt-10 bg-primary cursor-pointer hover:bg-primary/90 disabled:bg-zinc-300 disabled:cursor-not-allowed text-white rounded-lg transition-all flex items-center justify-center gap-2"
                                 >
                                     {isScraping ? (
                                         <>
@@ -677,52 +672,30 @@ export default function Sidebar() {
                                     }}
                                     className="space-y-1 flex-1 min-h-0 pr-3 overflow-y-auto scrollbar-custom"
                                 >
-                                    <AnimatePresence>
-                                        {!materias || materias.length === 0 ? (
-                                            <motion.p
-                                                className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-4"
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: 10 }}
-                                                transition={{ duration: 0.3 }}
-                                            >
-                                                No hay materias cargadas. Sube un archivo HTML.
-                                            </motion.p>
-                                        ) : materiasFiltradas.length === 0 ? (
-                                            <motion.p
-                                                className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-4"
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: 10 }}
-                                                transition={{ duration: 0.3 }}
-                                            >
-                                                No se encontraron materias con "{debouncedSearchTerm}"
-                                            </motion.p>
-                                        ) : (
-                                            materiasFiltradas.map(materia => (
-                                                <motion.div
-                                                    key={materia.codigo}
-                                                    initial={{ opacity: 0, y: 10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, y: 10 }}
-                                                    transition={{ duration: 0.25 }}
-                                                >
-                                                    <Subject materia={materia} generationMode={generationMode} dragEnabled={dragEnabled} />
-                                                </motion.div>
-                                            ))
-                                        )}
-                                    </AnimatePresence>
+                                    {!materias || materias.length === 0 ? (
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-4">
+                                            No hay materias cargadas. Sube un archivo HTML.
+                                        </p>
+                                    ) : materiasFiltradas.length === 0 ? (
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-4">
+                                            No se encontraron materias con "{debouncedSearchTerm}"
+                                        </p>
+                                    ) : (
+                                        materiasFiltradas.map(materia => (
+                                            <div key={materia.codigo}>
+                                                <Subject materia={materia} generationMode={generationMode} dragEnabled={dragEnabled} />
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </div>
                         </div>
                         {/* Botón Generar Horario - Solo en modo automático */}
                         {generationMode === 'automatico' && (
                             <div className="px-4 pb-4">
-                                <motion.button
+                                <button
                                     onClick={handleGenerate}
                                     disabled={isGenerating || Object.keys(materiasSeleccionadas).length === 0}
-                                    whileTap={{ scale: 0.97 }}
-                                    whileHover={{ scale: 1.03 }}
                                     className={`w-full py-3 ${isGenerating ? 'bg-[#1392ec] cursor-not-allowed' : 'cursor-pointer bg-[#1392ec] hover:bg-[#1392ec]/90 disabled:bg-zinc-100 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed'} text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md disabled:shadow-none`}
                                     style={(Object.keys(materiasSeleccionadas).length === 0) ? {
                                         backgroundImage: `repeating-linear-gradient(
@@ -735,14 +708,10 @@ export default function Sidebar() {
                                         transparent 10px
                                     )`
                                     } : {}}
-                                    transition={{ type: 'spring', stiffness: 180, damping: 12 }}
                                 >
                                     {isGenerating ? (
-                                        <motion.div
-                                            className="rounded-full h-5 w-5 border-2 border-white border-t-transparent"
-                                            animate={{ rotate: 360 }}
-                                            transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
-                                            style={{ display: 'inline-block' }}
+                                        <div
+                                            className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent inline-block"
                                         />
                                     ) : (
                                         <>
@@ -752,170 +721,151 @@ export default function Sidebar() {
                                             <span className='text-sm font-semibold'>Generar Horarios</span>
                                         </>
                                     )}
-                                </motion.button>
+                                </button>
                             </div>
                         )}
 
                         {/* Botón Visualizar Horario - Solo en modo manual y móvil */}
                         {generationMode === 'manual' && isMobile && gruposSeleccionados && Object.keys(gruposSeleccionados).length > 0 && (
                             <div className="px-4 pb-4">
-                                <motion.button
+                                <button
                                     onClick={() => {
                                         setShowMobileSchedule(true);
                                     }}
-                                    whileTap={{ scale: 0.97 }}
-                                    whileHover={{ scale: 1.03 }}
                                     className="w-full py-3 cursor-pointer bg-[#1392ec] hover:bg-[#1392ec]/90 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
-                                    transition={{ type: 'spring', stiffness: 180, damping: 12 }}
                                 >
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                     </svg>
                                     <span className='text-sm font-semibold'>Visualizar Horario</span>
-                                </motion.button>
+                                </button>
                             </div>
                         )}
                         {/* Preferencias de Generación Automática */}
-                        <AnimatePresence>
-                            {generationMode === 'automatico' && (
-                                <motion.div
-                                    className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: 20 }}
-                                    transition={{ duration: 0.3 }}
-                                >
-                                    <div className="flex items-center justify-between mb-4">
-                                        <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Preferencias</p>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div className="space-y-1.5">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Hora mínima de clases</span>
-                                                <span className="text-xs font-bold text-primary">{horaMinima}:00</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <select
-                                                    value={horaMinima}
-                                                    onChange={(e) => setHoraMinima(Number(e.target.value))}
-                                                    className="flex-1 px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
-                                                >
-                                                    <option value={6}>6:00 AM</option>
-                                                    <option value={7}>7:00 AM</option>
-                                                    <option value={8}>8:00 AM</option>
-                                                    <option value={9}>9:00 AM</option>
-                                                    <option value={10}>10:00 AM</option>
-                                                    <option value={11}>11:00 AM</option>
-                                                    <option value={12}>12:00 PM</option>
-                                                    <option value={13}>1:00 PM</option>
-                                                    <option value={14}>2:00 PM</option>
-                                                </select>
-                                            </div>
-                                        </div>
+                        {generationMode === 'automatico' && (
+                            <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
+                                <div className="flex items-center justify-between mb-4">
+                                    <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Preferencias</p>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="space-y-1.5">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Evitar horarios con huecos extensos</span>
-                                            <button
-                                                onClick={() => setEvitarHuecos(!evitarHuecos)}
-                                                className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${evitarHuecos ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                                            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Hora mínima de clases</span>
+                                            <span className="text-xs font-bold text-primary">{horaMinima}:00</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                value={horaMinima}
+                                                onChange={(e) => setHoraMinima(Number(e.target.value))}
+                                                className="flex-1 px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
                                             >
-                                                <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${evitarHuecos ? 'right-0.5' : 'left-0.5'}`}></div>
-                                            </button>
+                                                <option value={6}>6:00 AM</option>
+                                                <option value={7}>7:00 AM</option>
+                                                <option value={8}>8:00 AM</option>
+                                                <option value={9}>9:00 AM</option>
+                                                <option value={10}>10:00 AM</option>
+                                                <option value={11}>11:00 AM</option>
+                                                <option value={12}>12:00 PM</option>
+                                                <option value={13}>1:00 PM</option>
+                                                <option value={14}>2:00 PM</option>
+                                            </select>
                                         </div>
-                                        {!isMobile && (
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Permitir crear bloques manuales (por horario)</span>
-                                                <button
-                                                    onClick={() => {
-                                                        if (!(horariosGenerados && horariosGenerados.length > 0)) return;
-                                                        const enable = !currentAllowManualBlocksForCurrentSchedule;
-                                                        setAllowManualBlocksForSchedule(horarioActualIndex, enable);
-                                                        // If enabling per-schedule manual blocks, migrate any global blocks to this schedule
-                                                        if (enable && manualBlocks && manualBlocks.length > 0) {
-                                                            try {
-                                                                manualBlocks.forEach((b) => {
-                                                                    if (typeof b.scheduleIndex === 'undefined' || b.scheduleIndex === null) {
-                                                                        updateManualBlock(b.id, { scheduleIndex: horarioActualIndex });
-                                                                    }
-                                                                });
-                                                            } catch (e) {
-                                                                console.error('Error migrating global manual blocks:', e);
-                                                            }
-                                                        }
-                                                    }}
-                                                    className={`w-8 h-4 outline-none rounded-full relative transition-colors ${currentAllowManualBlocksForCurrentSchedule ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'} ${!(horariosGenerados && horariosGenerados.length > 0) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
-                                                >
-                                                    <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${currentAllowManualBlocksForCurrentSchedule ? 'right-0.5' : 'left-0.5'}`}></div>
-                                                </button>
-                                            </div>
-                                        )}
                                     </div>
-                                </motion.div>
-                            )}
-                            {generationMode === 'manual' && !isMobile && (
-                                <motion.div
-                                    className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: 20 }}
-                                    transition={{ duration: 0.3 }}
-                                >
-                                    <div className="flex items-center justify-between mb-4">
-                                        <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Preferencias</p>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Evitar horarios con huecos extensos</span>
+                                        <button
+                                            onClick={() => setEvitarHuecos(!evitarHuecos)}
+                                            className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${evitarHuecos ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                                        >
+                                            <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${evitarHuecos ? 'right-0.5' : 'left-0.5'}`}></div>
+                                        </button>
                                     </div>
-                                    <div className="space-y-3">
+                                    {!isMobile && (
                                         <div className="flex items-center justify-between">
-                                            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Permitir arrastrar materias al horario</span>
+                                            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Permitir crear bloques manuales (por horario)</span>
                                             <button
                                                 onClick={() => {
-                                                    setDragEnabled(!dragEnabled)
+                                                    if (!(horariosGenerados && horariosGenerados.length > 0)) return;
+                                                    const enable = !currentAllowManualBlocksForCurrentSchedule;
+                                                    setAllowManualBlocksForSchedule(horarioActualIndex, enable);
+                                                    // If enabling per-schedule manual blocks, migrate any global blocks to this schedule
+                                                    if (enable && manualBlocks && manualBlocks.length > 0) {
+                                                        try {
+                                                            manualBlocks.forEach((b) => {
+                                                                if (typeof b.scheduleIndex === 'undefined' || b.scheduleIndex === null) {
+                                                                    updateManualBlock(b.id, { scheduleIndex: horarioActualIndex });
+                                                                }
+                                                            });
+                                                        } catch (e) {
+                                                            console.error('Error migrating global manual blocks:', e);
+                                                        }
+                                                    }
                                                 }}
-                                                className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${dragEnabled ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                                                className={`w-8 h-4 outline-none rounded-full relative transition-colors ${currentAllowManualBlocksForCurrentSchedule ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'} ${!(horariosGenerados && horariosGenerados.length > 0) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
                                             >
-                                                <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${dragEnabled ? 'right-0.5' : 'left-0.5'}`}></div>
+                                                <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${currentAllowManualBlocksForCurrentSchedule ? 'right-0.5' : 'left-0.5'}`}></div>
                                             </button>
                                         </div>
-
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Permitir crear bloques manuales</span>
-                                            <button
-                                                onClick={() => { if (!allowManualBlocksLocked) setAllowManualBlocks(!allowManualBlocks) }}
-                                                className={`w-8 h-4 outline-none rounded-full relative transition-colors ${allowManualBlocks ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'} ${allowManualBlocksLocked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
-                                            >
-                                                <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${allowManualBlocks ? 'right-0.5' : 'left-0.5'}`}></div>
-                                            </button>
-                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        {generationMode === 'manual' && !isMobile && (
+                            <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
+                                <div className="flex items-center justify-between mb-4">
+                                    <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Preferencias</p>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Permitir arrastrar materias al horario</span>
+                                        <button
+                                            onClick={() => {
+                                                setDragEnabled(!dragEnabled)
+                                            }}
+                                            className={`w-8 h-4 outline-none rounded-full relative cursor-pointer transition-colors ${dragEnabled ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                                        >
+                                            <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${dragEnabled ? 'right-0.5' : 'left-0.5'}`}></div>
+                                        </button>
                                     </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Permitir crear bloques manuales</span>
+                                        <button
+                                            onClick={() => { if (!allowManualBlocksLocked) setAllowManualBlocks(!allowManualBlocks) }}
+                                            className={`w-8 h-4 outline-none rounded-full relative transition-colors ${allowManualBlocks ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-700'} ${allowManualBlocksLocked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                                        >
+                                            <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${allowManualBlocks ? 'right-0.5' : 'left-0.5'}`}></div>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
 
-                <AnimatePresence>
-                    {showConfirmModeModal && (
-                        <motion.div className="fixed inset-0 z-50 flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                            <div className="absolute inset-0 bg-black/40" onClick={handleCancelModeChange} />
-                            <motion.div className="bg-white dark:bg-zinc-900 rounded-lg p-6 z-10 w-full max-w-md" initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 10, opacity: 0 }}>
-                                <h3 className="text-lg mb-2 text-primary">Cambiar modo de generación</h3>
-                                <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
-                                    <span className='block'>¿Estás seguro? Esto puede borrar tu horario actual.</span>
-                                    <span className='block mt-1 text-white dark:text-zinc-900' >.</span>
-                                    {horariosGenerados && horariosGenerados.length > 0 ? (
-                                        <span><span className='text-red-600'>{horariosGenerados.length} horarios </span>generados serán eliminados al cambiar a <span className='font-bold text-primary/80'>{pendingMode === 'manual' ? 'Manual' : 'Automático'}</span>.</span>
-                                    ) : (
-                                        <span><span className='text-red-600'>{Object.keys(materiasSeleccionadas || {}).length} materias </span> seleccionadas serán eliminadas al cambiar a <span className='font-bold text-primary/80'>{pendingMode === 'manual' ? 'Manual' : 'Automático'}</span>.</span>
-                                    )}
-                                </p>
-                                <div className="flex justify-center gap-2">
-                                    <button onClick={handleCancelModeChange} className="px-4 py-2 w-[125px] rounded-md bg-zinc-300 text-zinc-900 hover:bg-zinc-300/80 cursor-pointer dark:text-white dark:bg-zinc-800 dark:hover:bg-zinc-700">Cancelar</button>
-                                    <button onClick={handleConfirmModeChange} className="px-4 py-2 w-[125px] rounded-md bg-primary hover:bg-primary/80 cursor-pointer text-white">Sí, cambiar</button>
-                                </div>
-                            </motion.div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </motion.aside>
+                {showConfirmModeModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/40" onClick={handleCancelModeChange} />
+                        <div className="bg-white dark:bg-zinc-900 rounded-lg p-6 z-10 w-full max-w-md">
+                            <h3 className="text-lg mb-2 text-primary">Cambiar modo de generación</h3>
+                            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+                                <span className='block'>¿Estás seguro? Esto puede borrar tu horario actual.</span>
+                                <span className='block mt-1 text-white dark:text-zinc-900' >.</span>
+                                {horariosGenerados && horariosGenerados.length > 0 ? (
+                                    <span><span className='text-red-600'>{horariosGenerados.length} horarios </span>generados serán eliminados al cambiar a <span className='font-bold text-primary/80'>{pendingMode === 'manual' ? 'Manual' : 'Automático'}</span>.</span>
+                                ) : (
+                                    <span><span className='text-red-600'>{Object.keys(materiasSeleccionadas || {}).length} materias </span> seleccionadas serán eliminadas al cambiar a <span className='font-bold text-primary/80'>{pendingMode === 'manual' ? 'Manual' : 'Automático'}</span>.</span>
+                                )}
+                            </p>
+                            <div className="flex justify-center gap-2">
+                                <button onClick={handleCancelModeChange} className="px-4 py-2 w-[125px] rounded-md bg-zinc-300 text-zinc-900 hover:bg-zinc-300/80 cursor-pointer dark:text-white dark:bg-zinc-800 dark:hover:bg-zinc-700">Cancelar</button>
+                                <button onClick={handleConfirmModeChange} className="px-4 py-2 w-[125px] rounded-md bg-primary hover:bg-primary/80 cursor-pointer text-white">Sí, cambiar</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </aside>
 
 
 
