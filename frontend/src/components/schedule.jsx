@@ -320,9 +320,12 @@ export default function Schedule() {
   };
 
   const handleClassLeave = () => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
     hideTimeoutRef.current = setTimeout(() => {
       setTooltipData(null);
-    }, 100);
+    }, 40);
   };
 
   // Exportar PNG
