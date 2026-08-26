@@ -22,6 +22,7 @@ export default function Tooltip({
 
   const handleMouseEnter = () => {
     if (disabled || !content) return;
+    calculatePosition();
     timeoutRef.current = setTimeout(() => {
       calculatePosition();
       setIsVisible(true);
@@ -83,10 +84,17 @@ export default function Tooltip({
         style.left = `${coords.right + gap}px`;
         style.transform = "translateY(-50%)";
         break;
-      case "top-right":
+      case "top-left":
+        // Abre hacia arriba alineando el borde derecho al botón (crece hacia la izquierda)
         style.top = `${coords.top - gap}px`;
-        style.left = `${coords.right - coords.width}px`;
-        style.transform = "translateY(-100%)";
+        style.left = `${Math.min(window.innerWidth - 8, coords.right)}px`;
+        style.transform = "translate(-100%, -100%)";
+        break;
+      case "top-right":
+        // Abre hacia arriba alineando el borde izquierdo al botón (crece hacia la derecha)
+        style.top = `${coords.top - gap}px`;
+        style.left = `${Math.max(8, coords.left)}px`;
+        style.transform = "translate(0, -100%)";
         break;
       case "top":
       default:
@@ -117,7 +125,7 @@ export default function Tooltip({
         createPortal(
           <div
             style={getTooltipStyle()}
-            className="pointer-events-none px-2.5 py-1.5 bg-zinc-900 dark:bg-zinc-800 text-white rounded-md text-xs font-medium shadow-2xl border border-zinc-700/80 animate-in fade-in zoom-in-95 duration-100 max-w-xs whitespace-normal text-left"
+            className="pointer-events-none px-3 py-1.5 bg-zinc-900 dark:bg-zinc-800 text-white rounded-md text-xs font-medium shadow-2xl border border-zinc-700/80 animate-in fade-in zoom-in-95 duration-100 whitespace-nowrap text-left select-none"
           >
             {content}
           </div>,
