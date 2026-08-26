@@ -144,54 +144,77 @@ export default function ClassBlock({
   return (
     <motion.div
       ref={blockRef}
-      // Animación en su propia celda/fila sin saltos ni vuelos desde fuera
-      initial={{ opacity: 0, scale: 0.94 }}
-      animate={{ opacity: isPreview ? 0.75 : 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.94 }}
+      // Animación suave contenida en su fila y celda
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: isPreview ? 0.8 : 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
       transition={{
-        duration: 0.18,
+        duration: 0.16,
         ease: [0.25, 1, 0.5, 1],
       }}
       whileHover={{
         scale: 1.01,
         transition: { duration: 0.1 },
       }}
-      className={`absolute inset-1 rounded-md border border-l-4 flex flex-col justify-between p-2 overflow-hidden hover:shadow-md hover:z-20 cursor-pointer select-none group transition-shadow ${
-        isPreview ? "border-dashed" : ""
+      className={`absolute inset-1 rounded-md border border-l-[3.5px] flex flex-col justify-between items-center py-1 px-1.5 overflow-hidden hover:shadow-md hover:z-20 cursor-pointer select-none group transition-all ${
+        isPreview ? "border-dashed opacity-80" : ""
       } ${pulsing ? "pulse-animate" : ""}`}
       data-no-select
       style={{
-        backgroundColor: `${blockColor}15`,
+        backgroundColor: `${blockColor}12`,
         borderColor: blockColor,
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={onLeave}
     >
-      {/* Botón de eliminar (para bloques manuales) */}
-      {isManual && (
-        <button
-          type="button"
-          onClick={handleDelete}
-          title="Eliminar bloque"
-          aria-label="Eliminar bloque"
-          className="absolute right-1 top-1 h-5 w-5 rounded-md bg-red-600/90 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer z-30"
-          onMouseDown={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-          }}
-        >
-          <TrashIcon className="w-3 h-3" />
-        </button>
-      )}
+      {/* 1. Fila Superior: Badges (Código, Grupo, Aula, Preview) */}
+      <div className="flex absolute left-1 items-start w-full justify-between gap-1 flex-wrap">
+        <div className="flex items-center gap-1 flex-wrap min-w-0">
+          {/* Badge de Grupo */}
+          {grupo !== null && typeof grupo !== "undefined" && (
+            <span
+              className="font-mono text-xs font-bold px-1.5 py-0.5 rounded leading-none text-white shadow-2xs"
+              style={{ backgroundColor: blockColor }}
+            >
+              G{grupo}
+            </span>
+          )}
 
-      {/* Contenido Superior: Nombre de Materia / Grupo / Preview */}
-      <div className="flex-1 min-w-0">
-        {isPreview && (
-          <span className="text-[9px] font-bold text-white bg-black/60 px-1 py-0.5 rounded-sm mb-1 inline-block">
-            PREVIEW
-          </span>
+          {/* Badge de Aula */}
+          {aula && (
+            <span className="font-mono text-xs font-medium text-primary dark:text-zinc-100 bg-primary/5 border-primary/40 dark:border-primary/40 border px-1 py-0.5 rounded leading-none truncate max-w-[85px]">
+              {aula}
+            </span>
+          )}
+
+          {/* Badge de Preview */}
+          {isPreview && (
+            <span className="font-mono text-[8.5px] font-bold text-white bg-primary px-1.5 py-0.5 rounded leading-none">
+              PREVIEW
+            </span>
+          )}
+        </div>
+
+        {/* Botón de eliminar (para bloques manuales) */}
+        {isManual && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            title="Eliminar bloque"
+            aria-label="Eliminar bloque"
+            className="h-4.5 w-4.5 rounded bg-red-600/90 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex-shrink-0"
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
+          >
+            <TrashIcon className="w-2.5 h-2.5" />
+          </button>
         )}
+      </div>
 
+      {/* 2. Cuerpo: Nombre de la Materia */}
+      <div className="flex-1 min-w-0 my-1 flex items-center">
         {isEditing && isManual ? (
           <input
             ref={inputRef}
@@ -199,42 +222,18 @@ export default function ClassBlock({
             onChange={(e) => setEditText(e.target.value)}
             onBlur={commitEdit}
             onKeyDown={handleKeyDown}
-            className="w-full text-xs font-bold p-1 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full text-xs font-semibold p-1 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-primary"
             onMouseDown={(e) => e.stopPropagation()}
             aria-label="Editar nombre del bloque"
           />
         ) : (
           <p
             onDoubleClick={() => isManual && setIsEditing(true)}
-            className="font-bold text-xs leading-tight line-clamp-2"
-            style={{ color: blockColor }}
+            className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 leading-snug line-clamp-2"
           >
             {displayName}
           </p>
         )}
-
-        {grupo ? (
-          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono font-medium mt-0.5">
-            Grupo {grupo}
-          </p>
-        ) : null}
-      </div>
-
-      {/* Contenido Inferior: Aula y Horario */}
-      <div className="space-y-0.5 mt-1.5 flex-shrink-0 text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
-        {aula && (
-          <div className="flex items-center gap-1 truncate">
-            <span className="font-semibold text-zinc-600 dark:text-zinc-300">
-              Aula:
-            </span>
-            <span className="truncate">{aula}</span>
-          </div>
-        )}
-        <div className="flex items-center gap-1 tabular-nums">
-          <span>
-            {horaInicio}:00 - {horaFin}:00
-          </span>
-        </div>
       </div>
     </motion.div>
   );
