@@ -41,13 +41,19 @@ export default function DitherBackground() {
     const ctx = canvas.getContext("2d");
 
     let animId;
+    let ro;
     let lastTime = 0;
     const interval = 1000 / TARGET_FPS;
 
     const img = new Image();
     img.src = "/background/ditther-background.png";
 
-    img.onload = () => {
+    const initDither = async () => {
+      // Esperar a que las fuentes web (Dancing Script / Caveat) estén listas
+      try {
+        await document.fonts.ready;
+      } catch (e) {}
+
       const imgW = img.naturalWidth;
       const imgH = img.naturalHeight;
 
@@ -57,6 +63,29 @@ export default function DitherBackground() {
       sampleCanvas.height = imgH;
       const sCtx = sampleCanvas.getContext("2d", { willReadFrequently: true });
       sCtx.drawImage(img, 0, 0);
+
+      // Calcular posición inferior derecha dentro del área visible según aspect ratio
+      const cw = canvas.offsetWidth || 500;
+      const ch = canvas.offsetHeight || 900;
+      const visibleImgW = (cw / ch) * imgH;
+      const rightX = Math.min(imgW - 16, Math.floor((imgW / 2) + (visibleImgW / 2) - 18));
+      const bottomY = imgH - 8;
+
+      // Dibujar texto "UdeA" en cursiva integrado antes del dithering
+      sCtx.save();
+      sCtx.font = "italic 700 56px 'Dancing Script', 'Caveat', 'Brush Script MT', 'Segoe Script', cursive";
+      sCtx.textAlign = "right";
+      sCtx.textBaseline = "bottom";
+
+      // Sombra oscura suave para contraste contra árboles/edificios
+      sCtx.fillStyle = "rgba(0, 0, 0, 0.85)";
+      sCtx.fillText("UdeA", rightX + 2, bottomY + 2);
+
+      // Letras blancas cursivas para que el Bayer 4x4 las cuantice en dither
+      sCtx.fillStyle = "rgba(255, 255, 255, 0.96)";
+      sCtx.fillText("UdeA", rightX, bottomY);
+      sCtx.restore();
+
       const imgData = sCtx.getImageData(0, 0, imgW, imgH).data;
 
       // 2. Definir grid en bloques de 2×2 px
@@ -148,7 +177,7 @@ export default function DitherBackground() {
         canvas.height = canvas.offsetHeight;
       };
       resize();
-      const ro = new ResizeObserver(resize);
+      ro = new ResizeObserver(resize);
       ro.observe(canvas);
 
       // Cuantización de color con umbral
@@ -225,15 +254,13 @@ export default function DitherBackground() {
       };
 
       animId = requestAnimationFrame(draw);
-
-      return () => {
-        cancelAnimationFrame(animId);
-        ro.disconnect();
-      };
     };
+
+    img.onload = initDither;
 
     return () => {
       cancelAnimationFrame(animId);
+      if (ro) ro.disconnect();
     };
   }, []);
 

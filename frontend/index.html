@@ -5,15 +5,23 @@
     <link rel="icon" type="image/png" href="/background/fuente.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>UdeA Horarios</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
     <script>
-      // Aplicar tema antes de que se cargue la app para evitar flash
+      // Aplicar tema persistido o Light por defecto para evitar cualquier flash de color
       (function() {
-        const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (isDark) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
+        try {
+          const raw = localStorage.getItem('udea-schedule-store');
+          if (raw) {
+            const data = JSON.parse(raw);
+            if (data?.state?.darkTheme === true) {
+              document.documentElement.classList.add('dark');
+              return;
+            }
+          }
+        } catch (e) {}
+        document.documentElement.classList.remove('dark');
       })();
     </script>
   </head>
