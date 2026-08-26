@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { useMateriasStore } from "../store/materiasStore.js";
 import { generarHorarios } from "../services/horarios.js";
 import MobileScheduleModal from "./MobileSchedule.jsx";
 import { GENERATION_MODES } from "../constants/sidebar.js";
+import { ArrowLeftIcon } from "../icons/index.js";
+import Tooltip from "./Tooltip.jsx";
 
-// Subcomponentes del sidebar de la aplicación
+// Subcomponentes del sidebar
 import ModeToggle from "./sidebar/ModeToggle.jsx";
 import SubjectList from "./sidebar/SubjectList.jsx";
 import GenerateAction from "./sidebar/GenerateAction.jsx";
-import SidebarPreferences from "./sidebar/SidebarPreferences.jsx";
 import ConfirmModeModal from "./sidebar/ConfirmModeModal.jsx";
 
 export default function Sidebar() {
@@ -39,7 +40,6 @@ export default function Sidebar() {
     horariosGenerados,
     clearMaterias,
     clearRemovedGroups,
-    darkTheme,
     setAllowManualBlocks,
   } = useMateriasStore();
 
@@ -51,15 +51,15 @@ export default function Sidebar() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Debounce del término de búsqueda (300ms)
+  // Debounce del término de búsqueda (250ms)
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 300);
+    }, 250);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Filtrar y ordenar materias
+  // Filtrar materias respetando orden natural (sin mover seleccionadas al principio)
   const materiasFiltradas = useMemo(() => {
     if (!materias) return [];
 
@@ -74,23 +74,8 @@ export default function Sidebar() {
       );
     }
 
-    if (generationMode === GENERATION_MODES.AUTOMATICO) {
-      const seleccionadas = [];
-      const noSeleccionadas = [];
-
-      resultado.forEach((materia) => {
-        if (materiasSeleccionadas[materia.codigo]) {
-          seleccionadas.push(materia);
-        } else {
-          noSeleccionadas.push(materia);
-        }
-      });
-
-      return [...seleccionadas, ...noSeleccionadas];
-    }
-
     return resultado;
-  }, [materias, debouncedSearchTerm, materiasSeleccionadas, generationMode]);
+  }, [materias, debouncedSearchTerm]);
 
   // Generación automática de horarios
   const handleGenerate = async () => {
@@ -126,12 +111,17 @@ export default function Sidebar() {
       const names = removedNames.join(", ");
       const message =
         removedNames.length === 1
-          ? `La materia ${names} fue eliminada: no tiene grupos disponibles desde las ${horaMinima}:00.`
-          : `Se eliminaron ${removedNames.length} materias por hora mínima (${horaMinima}:00): ${names}.`;
+          ? `La materia ${names} fue omitida: no tiene grupos desde las ${horaMinima}:00.`
+          : `Se omitieron ${removedNames.length} materias por hora mínima (${horaMinima}:00): ${names}.`;
       toast.error(message, {
-        duration: 8000,
+        duration: 6000,
         position: "bottom-center",
-        style: { background: "#ff0000ab", color: "#fff" },
+        style: {
+          background: "#18181b",
+          color: "#f4f4f5",
+          border: "1px solid #27272a",
+          fontSize: "12px",
+        },
       });
     }
 
@@ -147,11 +137,16 @@ export default function Sidebar() {
 
       if (horarios.length === 0) {
         toast.error(
-          "No se pudieron generar horarios válidos. Verifica las selecciones.",
+          "No se pudieron generar horarios válidos con las materias seleccionadas.",
           {
-            duration: 8000,
+            duration: 6000,
             position: "bottom-center",
-            style: { background: "#ff0000ab", color: "#fff" },
+            style: {
+              background: "#18181b",
+              color: "#f4f4f5",
+              border: "1px solid #27272a",
+              fontSize: "12px",
+            },
           },
         );
       } else {
@@ -172,9 +167,7 @@ export default function Sidebar() {
     if (targetMode === generationMode) return;
 
     const scheduleCount = horariosGenerados ? horariosGenerados.length : 0;
-    if (
-      scheduleCount > 0
-    ) {
+    if (scheduleCount > 0) {
       setPendingMode(targetMode);
       setShowConfirmModeModal(true);
       return;
@@ -184,9 +177,7 @@ export default function Sidebar() {
       ? Object.keys(materiasSeleccionadas).length
       : 0;
 
-    if (
-      seleccionCount >= 1
-    ) {
+    if (seleccionCount >= 1) {
       setPendingMode(targetMode);
       setShowConfirmModeModal(true);
       return;
@@ -234,59 +225,49 @@ export default function Sidebar() {
   return (
     <>
       <Toaster />
-      <aside className="w-full sm:w-sm h-full select-none md:border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-background-dark flex flex-col relative overflow-hidden">
-        {/* Botón: Volver al menú principal */}
-        <div className="absolute top-3 right-3 z-50">
-          <button
-            onClick={handleResetToMenu}
-            className="px-3 py-1 border cursor-pointer rounded-md text-sm font-medium dark:bg-zinc-900 dark:text-white dark:border-zinc-800 dark:hover:bg-zinc-800 bg-white/80 text-zinc-900 border-zinc-200 hover:bg-zinc-100"
-            title="Volver al menú principal"
-          >
-            Menú
-          </button>
+      <aside className="w-full sm:w-sm h-full select-none md:border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex flex-col relative z-20 transition-colors">
+        {/* Cabecera: Mode Toggle + Botón Volver envuelto con Tooltip */}
+        <div className="p-3 border-b border-zinc-200/80 dark:border-zinc-800 flex items-center gap-1.5 flex-shrink-0 bg-white dark:bg-zinc-950">
+          <ModeToggle
+            generationMode={generationMode}
+            onRequestModeChange={requestModeChange}
+          />
+          <Tooltip content="Volver al menú de facultades y programas" position="bottom">
+            <button
+              type="button"
+              onClick={handleResetToMenu}
+              className="h-8 w-8 flex items-center justify-center border border-zinc-200 dark:border-zinc-800 bg-transparent rounded-md text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer"
+              aria-label="Volver al menú de facultades y programas"
+            >
+              <ArrowLeftIcon className="w-4 h-4" />
+            </button>
+          </Tooltip>
         </div>
 
-        <div className="flex flex-col h-full overflow-hidden">
-          <div className="p-4 space-y-6 flex flex-col flex-1 min-h-0 overflow-hidden">
-            {/* Selector de modo */}
-            <ModeToggle
-              generationMode={generationMode}
-              onRequestModeChange={requestModeChange}
-            />
-
-            {/* Búsqueda y lista de materias */}
-            <SubjectList
-              materiasFiltradas={materiasFiltradas}
-              searchTerm={searchTerm}
-              onSearchChange={(e) => setSearchTerm(e.target.value)}
-              onClearSearch={() => setSearchTerm("")}
-              debouncedSearchTerm={debouncedSearchTerm}
-              generationMode={generationMode}
-              dragEnabled={dragEnabled}
-            />
-          </div>
-
-          {/* Acciones principales de generación / visualización */}
-          <GenerateAction
+        {/* Cuerpo principal: Lista de materias */}
+        <div className="flex-1 min-h-0 p-3 flex flex-col">
+          <SubjectList
+            materiasFiltradas={materiasFiltradas}
+            searchTerm={searchTerm}
+            onSearchChange={(e) => setSearchTerm(e.target.value)}
+            onClearSearch={() => setSearchTerm("")}
             generationMode={generationMode}
-            isGenerating={isGenerating}
-            onGenerate={handleGenerate}
-            isMobile={isMobile}
-            onShowMobileSchedule={() => setShowMobileSchedule(true)}
-          />
-
-          {/* Preferencias de configuración */}
-          <SidebarPreferences
-            generationMode={generationMode}
+            dragEnabled={dragEnabled}
+            setDragEnabled={setDragEnabled}
             horaMinima={horaMinima}
             setHoraMinima={setHoraMinima}
             evitarHuecos={evitarHuecos}
             setEvitarHuecos={setEvitarHuecos}
-            dragEnabled={dragEnabled}
-            setDragEnabled={setDragEnabled}
             isMobile={isMobile}
           />
         </div>
+
+        {/* Dock Flotante Inferior: Solo visible en modo Automático */}
+        <GenerateAction
+          generationMode={generationMode}
+          isGenerating={isGenerating}
+          onGenerate={handleGenerate}
+        />
 
         {/* Modal de confirmación de cambio de modo */}
         <ConfirmModeModal

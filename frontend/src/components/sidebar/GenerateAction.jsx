@@ -1,74 +1,62 @@
+/* Hallmark · component: GenerateAction · genre: modern-minimal
+ * Bottom action dock:
+ * - If generationMode is MANUAL: renders nothing (returns null).
+ * - If generationMode is AUTOMATICO: renders the primary Generate Schedule action.
+ * - Selection count rendered as a clean badge without parentheses.
+ */
 import { useMateriasStore } from "../../store/materiasStore.js";
-import { CalendarIcon, EyeIcon } from "../../icons";
+import { CalendarIcon } from "../../icons/index.js";
 import { GENERATION_MODES } from "../../constants/sidebar.js";
 
 export default function GenerateAction({
   generationMode,
   isGenerating,
   onGenerate,
-  isMobile,
-  onShowMobileSchedule,
 }) {
-  const { materiasSeleccionadas = {}, gruposSeleccionados = {}, darkTheme } = useMateriasStore();
+  const { materiasSeleccionadas = {} } = useMateriasStore();
 
-  const hasSelectedGrupos = Object.keys(gruposSeleccionados).length > 0;
-  const isAutomaticMode = generationMode === GENERATION_MODES.AUTOMATICO;
-  const isManualMode = generationMode === GENERATION_MODES.MANUAL && isMobile && hasSelectedGrupos;
+  // En modo manual, no mostrar nada en la parte inferior según requerimiento
+  if (generationMode === GENERATION_MODES.MANUAL) {
+    return null;
+  }
 
-  if (isAutomaticMode) {
-    const hasSelectedMaterias = Object.keys(materiasSeleccionadas).length > 0;
-    const isDisabled = isGenerating || !hasSelectedMaterias;
-    const stripeColor = darkTheme
-      ? "rgba(255, 255, 255, 0.03)"
-      : "rgba(19, 146, 236, 0.03)";
+  const selectedMateriasCount = Object.keys(materiasSeleccionadas).length;
+  const isDisabled = isGenerating || selectedMateriasCount === 0;
 
-    return (
-      <div className="px-4 pb-4">
-        <button
-          onClick={onGenerate}
-          disabled={isDisabled}
-          style={
-            !hasSelectedMaterias
-              ? {
-                  backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 4px, ${stripeColor} 5px, ${stripeColor} 6px, transparent 4px, transparent 10px)`,
-                }
-              : undefined
+  return (
+    <div className="p-3 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-2 flex-shrink-0">
+      {/* Botón Generar Horarios (Full Width y Prominente) */}
+      <button
+        type="button"
+        onClick={onGenerate}
+        disabled={isDisabled}
+        className={`
+          flex-1 h-9 px-4 rounded-md font-bold text-xs transition-all 
+          flex items-center justify-center gap-2 shadow-xs cursor-pointer
+          ${
+            isDisabled
+              ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 border border-zinc-200/50 dark:border-zinc-700/50 cursor-not-allowed"
+              : "bg-primary hover:bg-primary/90 text-white active:scale-[0.99]"
           }
-          className={`
-            w-full py-3 text-white font-bold rounded-lg transition-all 
-            flex items-center justify-center gap-2 shadow-sm 
-            bg-primary hover:bg-primary/90 
-            disabled:bg-zinc-100 dark:disabled:bg-zinc-700 
-            disabled:cursor-not-allowed disabled:shadow-none
-            ${isGenerating ? "cursor-wait" : "cursor-pointer"}
-          `}
-        >
-          {isGenerating ? (
-            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-          ) : (
-            <>
-              <CalendarIcon />
-              <span className="text-sm font-semibold">Generar Horarios</span>
-            </>
-          )}
-        </button>
-      </div>
-    );
-  }
-
-  if (isManualMode) {
-    return (
-      <div className="px-4 pb-4">
-        <button
-          onClick={onShowMobileSchedule}
-          className="w-full py-3 cursor-pointer bg-primary hover:bg-primary/90 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
-        >
-          <EyeIcon />
-          <span className="text-sm font-semibold">Visualizar Horario</span>
-        </button>
-      </div>
-    );
-  }
-
-  return null;
+        `}
+      >
+        {isGenerating ? (
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
+            <span>Generando…</span>
+          </div>
+        ) : (
+          <>
+            <CalendarIcon className="w-4 h-4" />
+            <span>Generar Horarios</span>
+            {selectedMateriasCount > 0 && (
+              <span className="font-mono text-[10.5px] font-bold bg-white/25 text-white px-2 py-0.5 rounded-md tabular-nums border border-white/20">
+                {selectedMateriasCount}
+              </span>
+            )}
+          </>
+        )}
+      </button>
+    </div>
+  );
 }

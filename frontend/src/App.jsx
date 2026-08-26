@@ -20,7 +20,7 @@ function App() {
   }, [darkTheme]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
+    <div className="flex h-screen w-screen overflow-hidden relative">
       {!hasMaterias ? (
         <>
           {/* Fondo / Dither a la izquierda en el login */}

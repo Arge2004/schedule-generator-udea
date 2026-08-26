@@ -1,2 +1,12 @@
 export { default as CalendarIcon } from "./CalendarIcon.jsx";
 export { default as EyeIcon } from "./EyeIcon.jsx";
+export { default as GearIcon } from "./GearIcon.jsx";
+export { default as SearchIcon } from "./SearchIcon.jsx";
+export { default as TrashIcon } from "./TrashIcon.jsx";
+export { default as ArrowLeftIcon } from "./ArrowLeftIcon.jsx";
+export { default as ClockIcon } from "./ClockIcon.jsx";
+export { default as UserIcon } from "./UserIcon.jsx";
+export { default as ChevronDownIcon } from "./ChevronDownIcon.jsx";
+export { default as GripIcon } from "./GripIcon.jsx";
+export { default as FilterIcon } from "./FilterIcon.jsx";
+export { default as InfoIcon } from "./InfoIcon.jsx";

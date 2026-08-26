@@ -1,3 +1,7 @@
+/* Hallmark · component: ConfirmModeModal · genre: modern-minimal · theme: custom
+ * states: default · hover · focus-visible · active
+ * contrast: pass (4.5:1+)
+ */
 import { useMateriasStore } from "../../store/materiasStore.js";
 import { MODES } from "../../constants/sidebar.js";
 
@@ -9,57 +13,65 @@ export default function ConfirmModeModal({
 }) {
   if (!isOpen) return null;
 
-  const { materiasSeleccionadas = {}, horariosGenerados = [] } = useMateriasStore();
+  const { materiasSeleccionadas = {}, horariosGenerados = [] } =
+    useMateriasStore();
 
   const scheduleCount = horariosGenerados.length;
-  const count = scheduleCount > 0 ? scheduleCount : Object.keys(materiasSeleccionadas).length;
-  const unitLabel = scheduleCount > 0 ? "horarios generados" : "materias seleccionadas";
+  const count =
+    scheduleCount > 0 ? scheduleCount : Object.keys(materiasSeleccionadas).length;
+  const unitLabel =
+    scheduleCount > 0 ? "horarios generados" : "materias seleccionadas";
   const targetMode = MODES.find((m) => m.id === pendingMode)?.label || "";
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="confirm-mode-title"
     >
       {/* Overlay para cerrar al hacer clic afuera */}
       <div className="absolute inset-0" onClick={onCancel} aria-hidden="true" />
 
       {/* Tarjeta Modal */}
-      <div className="relative bg-white dark:bg-zinc-900 rounded-xl p-6 shadow-xl z-10 w-full max-w-md border border-zinc-200 dark:border-zinc-800">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-2">
-          Cambiar modo de generación
+      <div className="relative bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-2xl z-10 w-full max-w-sm border border-zinc-200/80 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-150 text-left">
+        <h3
+          id="confirm-mode-title"
+          className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-2"
+        >
+          ¿Cambiar a modo {targetMode}?
         </h3>
 
-        <div className="text-sm text-zinc-600 dark:text-zinc-400 space-y-2 mb-6">
-          <p>¿Estás seguro? Esto puede borrar tu configuración actual.</p>
+        <div className="text-xs text-zinc-600 dark:text-zinc-400 space-y-2 mb-6">
           <p>
-            <span className="font-semibold text-red-500 dark:text-red-400">
-              {count} {unitLabel}
-            </span>{" "}
-            se eliminarán al cambiar al modo{" "}
-            <span className="font-bold text-primary">{targetMode}</span>.
+            Al cambiar de modo se reiniciará tu selección actual para evitar inconsistencias.
           </p>
+          <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 font-medium">
+            Se descartarán{" "}
+            <span className="font-bold font-mono text-amber-950 dark:text-amber-200">
+              {count} {unitLabel}
+            </span>.
+          </div>
         </div>
 
         {/* Acciones */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={onCancel}
             type="button"
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors
-                       bg-zinc-100 text-zinc-700 hover:bg-zinc-200 
-                       dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 cursor-pointer"
+            className="flex-1 h-9 px-4 rounded-xl text-xs font-semibold transition-all duration-150
+                       bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 
+                       hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white cursor-pointer active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             Cancelar
           </button>
           <button
             onClick={onConfirm}
             type="button"
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-colors
-                       bg-primary hover:bg-primary/90 shadow-sm cursor-pointer"
+            className="flex-1 h-9 px-4 rounded-xl text-xs font-semibold text-white transition-all duration-150
+                       bg-primary hover:bg-primary/90 shadow-xs cursor-pointer active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            Sí, cambiar
+            Confirmar
           </button>
         </div>
       </div>

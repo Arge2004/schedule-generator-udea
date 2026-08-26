@@ -1,47 +1,63 @@
-import React, { useState, useEffect } from "react";
-import { AnimatePresence, motion } from 'framer-motion';
+import React, { useState, useEffect, useMemo } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useMateriasStore } from "../store/materiasStore";
+import { GENERATION_MODES } from "../constants/sidebar";
+import { ChevronDownIcon, GripIcon, InfoIcon } from "../icons/index.js";
+import Tooltip from "./Tooltip.jsx";
 
-//nombre,codigo,grupos
-export default function Subject({materia, generationMode, dragEnabled = true}) {
-  const { 
-    materiasSeleccionadas, 
-    toggleMateriaSelected, 
-    gruposSeleccionados, 
-    selectGrupo, 
+export default function Subject({
+  materia,
+  generationMode,
+  dragEnabled = true,
+}) {
+  const {
+    materiasSeleccionadas,
+    toggleMateriaSelected,
+    gruposSeleccionados,
+    selectGrupo,
     resetKey,
     setDraggingMateria,
-    clearDragState,
     materias,
     manualBlocks,
   } = useMateriasStore();
+
   const isSelected = !!materiasSeleccionadas[materia?.codigo];
   const [isExpanded, setIsExpanded] = useState(false);
   const grupoSeleccionado = gruposSeleccionados[materia?.codigo];
   const [celdasMateriaHorario, setCeldasMateriaHorario] = useState(new Map());
 
-  // Sincronizar celdas ocupadas con los grupos seleccionados antes de renderizar el dropdown
+  const isManualMode = generationMode === GENERATION_MODES.MANUAL;
+
+  // Sincronizar celdas ocupadas con los grupos seleccionados
   useEffect(() => {
-    if (generationMode === 'manual' && gruposSeleccionados) {
-      const diasArr = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    if (isManualMode && gruposSeleccionados) {
+      const diasArr = [
+        "Lunes",
+        "Martes",
+        "Miércoles",
+        "Jueves",
+        "Viernes",
+        "Sábado",
+        "Domingo",
+      ];
       const horasArr = Array.from({ length: 16 }, (_, i) => i + 6);
       const map = new Map();
-      // Obtener todas las materias desde el store (estado global)
       let todasMaterias = [];
       if (materias && Array.isArray(materias)) {
         todasMaterias = materias;
       } else if (materia) {
         todasMaterias = [materia];
       }
+
       Object.entries(gruposSeleccionados).forEach(([codigo, grupoNum]) => {
         if (!codigo || !grupoNum) return;
-        // Buscar la materia y grupo correspondiente en la lista global
-        const mat = todasMaterias.find(m => m.codigo === codigo);
+        const mat = todasMaterias.find((m) => m.codigo === codigo);
         if (!mat) return;
-        const grupo = mat.grupos.find(g => g.numero === grupoNum);
-        if (!grupo) return;
-        grupo.horarios.forEach(horario => {
-          horario.dias.forEach(dia => {
+        const grupo = mat.grupos?.find((g) => g.numero === grupoNum);
+        if (!grupo || !grupo.horarios) return;
+
+        grupo.horarios.forEach((horario) => {
+          horario.dias?.forEach((dia) => {
             const diaIndex = diasArr.indexOf(dia);
             if (diaIndex !== -1) {
               const horaInicioIdx = horasArr.indexOf(horario.horaInicio);
@@ -56,39 +72,54 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
       });
       setCeldasMateriaHorario(map);
     } else {
-      // En modo automático o cuando no hay gruposseleccionados, limpiar el mapa
-      // para evitar bloqueos residuales de un estado manual anterior
       setCeldasMateriaHorario(new Map());
     }
-  }, [gruposSeleccionados, generationMode, materia]);
+  }, [gruposSeleccionados, isManualMode, materia, materias]);
+
+  // Contar grupos disponibles vs totales
+  const totalGrupos = materia?.grupos?.length || 0;
+  const gruposConCupo = useMemo(() => {
+    if (!materia?.grupos) return 0;
+    return materia.grupos.filter((g) => (g.cupoDisponible || 0) > 0).length;
+  }, [materia]);
+
+  const totalCupos = useMemo(() => {
+    if (!materia?.grupos || materia.grupos.length === 0) return 0;
+    return materia.grupos.reduce((acc, g) => acc + (g.cupoDisponible || 0), 0);
+  }, [materia]);
+
+  const hasZeroCuposGlobally = totalCupos === 0;
 
   const handleChange = () => {
     if (materia?.codigo) {
       toggleMateriaSelected(materia.codigo);
-      // Si está deseleccionando, cerrar el desplegable
       if (isSelected) {
         setIsExpanded(false);
       }
     }
   };
 
-  // Validar conflicto de horarios antes de seleccionar grupo
   const handleGrupoSelect = (numeroGrupo) => {
-    // Si el grupo ya está seleccionado, deseleccionar
     if (grupoSeleccionado === numeroGrupo) {
       selectGrupo(materia.codigo, null);
       toggleMateriaSelected(materia.codigo);
       return;
     }
 
-    // Obtener celdas ocupadas del schedule desde el estado local
-    const celdasMateria = celdasMateriaHorario;
-    const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const dias = [
+      "Lunes",
+      "Martes",
+      "Miércoles",
+      "Jueves",
+      "Viernes",
+      "Sábado",
+      "Domingo",
+    ];
     const horas = Array.from({ length: 16 }, (_, i) => i + 6);
-    const grupo = materia.grupos.find(g => g.numero === numeroGrupo);
+    const grupo = materia.grupos?.find((g) => g.numero === numeroGrupo);
     let tieneConflicto = false;
+
     if (grupo) {
-      // Build occupied set from manualBlocks for quick lookup
       const occupiedManual = new Set();
       if (manualBlocks && manualBlocks.length > 0) {
         manualBlocks.forEach((b) => {
@@ -98,16 +129,21 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
         });
       }
 
-      grupo.horarios.forEach(horario => {
-        horario.dias.forEach(dia => {
+      grupo.horarios?.forEach((horario) => {
+        horario.dias?.forEach((dia) => {
           const diaIndex = dias.indexOf(dia);
           if (diaIndex !== -1) {
             const horaInicioIdx = horas.indexOf(horario.horaInicio);
             const duracion = horario.horaFin - horario.horaInicio;
             for (let i = 0; i < duracion; i++) {
               const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
-              const materiaEnCeldaCodigo = celdasMateria.get(celdaKey);
-              if ((materiaEnCeldaCodigo && materiaEnCeldaCodigo !== materia.codigo) || occupiedManual.has(celdaKey)) {
+              const materiaEnCeldaCodigo =
+                celdasMateriaHorario.get(celdaKey);
+              if (
+                (materiaEnCeldaCodigo &&
+                  materiaEnCeldaCodigo !== materia.codigo) ||
+                occupiedManual.has(celdaKey)
+              ) {
                 tieneConflicto = true;
                 break;
               }
@@ -116,362 +152,377 @@ export default function Subject({materia, generationMode, dragEnabled = true}) {
         });
       });
     }
+
     if (tieneConflicto) {
-      // Mostrar notificación (usando el notifier registrado en el store)
       const { notify } = useMateriasStore.getState();
-      if (notify) notify('⚠️ No se puede seleccionar: hay un conflicto con otra materia');
+      if (notify)
+        notify("⚠️ No se puede seleccionar: conflicto con otra materia");
       return;
     }
+
     selectGrupo(materia.codigo, numeroGrupo);
     if (!isSelected) {
       toggleMateriaSelected(materia.codigo);
     }
   };
 
-  // Cerrar desplegable cuando se hace reset
   useEffect(() => {
     setIsExpanded(false);
   }, [resetKey]);
 
   useEffect(() => {
-    if (dragEnabled){
+    if (dragEnabled) {
       setIsExpanded(false);
     }
   }, [dragEnabled]);
 
   const handleItemClick = () => {
-    if (generationMode === 'manual') {
-      // En modo manual, solo expandir/contraer, NO seleccionar
+    if (isManualMode && !dragEnabled) {
       setIsExpanded(!isExpanded);
+    } else if (!isManualMode && !hasZeroCuposGlobally) {
+      handleChange();
     }
   };
 
-  // Calcular si existe al menos un grupo disponible (sin conflictos) para esta materia
-  const anyGrupoAvailable = (() => {
-    if (!materia?.grupos || materia.grupos.length === 0) return false;
-    const diasArr = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-    const horasArr = Array.from({ length: 16 }, (_, i) => i + 6);
-    return materia.grupos.some(gr => {
-      if (gr.cupoDisponible === 0) return false;
-      // Si el grupo no tiene horarios, considerarlo disponible
-      if (!gr.horarios || gr.horarios.length === 0) return false;
-      // Verificar si alguno de sus horarios choca con el mapa de celdas
-      // Build occupied set from manualBlocks for this check
-    const occupiedManual = new Set();
-    if (manualBlocks && manualBlocks.length > 0) {
-      manualBlocks.forEach((b) => {
-        for (let k = 0; k < b.duracion; k++) {
-          occupiedManual.add(`${b.diaIndex}-${b.horaIndex + k}`);
-        }
-      });
-    }
-
-    for (const horario of gr.horarios) {
-        for (const dia of horario.dias) {
-          const diaIndex = diasArr.indexOf(dia);
-          if (diaIndex === -1) continue;
-          const horaInicioIdx = horasArr.indexOf(horario.horaInicio);
-          const duracion = horario.horaFin - horario.horaInicio;
-          for (let i = 0; i < duracion; i++) {
-            const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
-            const materiaEnCeldaCodigo = celdasMateriaHorario.get(celdaKey);
-            if ((materiaEnCeldaCodigo && materiaEnCeldaCodigo !== materia.codigo) || occupiedManual.has(celdaKey)) {
-              // Tiene conflicto, este grupo no está disponible
-              return false;
-            }
-          }
-        }
-      }
-      // No se detectaron conflictos para este grupo
-      return true;
-    });
-  })();
-  const subjectDisabled = !anyGrupoAvailable;
-
-  const toggleExpand = (e) => {
-    e.preventDefault();
-    setIsExpanded(!isExpanded);
-  };
-
-  // Handlers para drag and drop (solo en modo manual)
   const handleDragStart = (e) => {
-    // No permitir arrastrar si la materia está deshabilitada por conflictos
-    if (subjectDisabled) {
+    if (hasZeroCuposGlobally || !isManualMode || !materia?.grupos?.length) {
       e.preventDefault();
       return;
     }
-
-    if (generationMode !== 'manual' || !materia?.grupos || materia.grupos.length === 0) {
-      e.preventDefault();
-      return;
-    }
-        
-    // Guardar datos de la materia en el store
     setDraggingMateria({
       codigo: materia.codigo,
       nombre: materia.nombre,
       grupos: materia.grupos,
     });
-    
-    // Configurar el efecto visual del drag
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', materia.codigo);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", materia.codigo);
   };
 
-  const handleDragEnd = () => {
-    // Limpiar después de un delay MÁS LARGO para que el drop tenga tiempo de procesar
-  };
+  const isCardActive =
+    (isManualMode && grupoSeleccionado) || (!isManualMode && isSelected);
 
   return (
-    <div className="space-y-2">
-      <div className={`rounded-lg transition-all border-2 flex flex-col gap-2 select-none ${
-        (generationMode === 'manual' && grupoSeleccionado) || (generationMode !== 'manual' && isSelected) 
-          ? 'border-primary' 
-          : 'border-transparent'
-      }`}>
-        {generationMode === 'manual' ? (
-          <div 
-            draggable={dragEnabled && materia?.grupos && materia.grupos.length > 0 && !subjectDisabled}
-            onDragStart={dragEnabled && !subjectDisabled ? handleDragStart : undefined}
-            onDragEnd={dragEnabled && !subjectDisabled ? handleDragEnd : undefined}
-            onClick={!dragEnabled ? handleItemClick : undefined}
-            className={`flex items-center gap-3 p-2.5 hover:bg-zinc-200 rounded dark:hover:bg-zinc-100/10 group ${
-              dragEnabled && materia?.grupos && materia.grupos.length > 0 && !subjectDisabled ? 'cursor-move' : !dragEnabled ? 'cursor-pointer' : 'cursor-default'
-            }`}
-            style={subjectDisabled && !isSelected ? {
-              backgroundImage: `repeating-linear-gradient(
-                45deg,
-                rgba(220,38,38,0.18) 0px,
-                rgba(220,38,38,0.18) 6px,
-                transparent 6px,
-                transparent 12px
-              )`
-            } : undefined}
-          >
-            <div className="flex flex-col items-start flex-1">
-              <span className="text-sm font-semibold text-slate-900 dark:text-zinc-100">
-                {materia?.nombre ? materia.nombre : "Undefined Subject"}
+    <div
+      className={`rounded-md border transition-all duration-150 select-none ${
+        isCardActive
+          ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-xs ring-1 ring-primary/20"
+          : hasZeroCuposGlobally
+            ? "border-zinc-200/60 dark:border-zinc-800/60 bg-zinc-50/40 dark:bg-zinc-900/30 opacity-60"
+            : "border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 hover:border-zinc-300 dark:hover:border-zinc-700"
+      }`}
+    >
+      {/* Cabecera de la materia centrada verticalmente */}
+      <div
+        draggable={
+          isManualMode &&
+          dragEnabled &&
+          materia?.grupos?.length > 0 &&
+          !hasZeroCuposGlobally
+        }
+        onDragStart={
+          isManualMode && dragEnabled && !hasZeroCuposGlobally
+            ? handleDragStart
+            : undefined
+        }
+        onClick={handleItemClick}
+        className="p-2.5 flex items-center justify-between gap-2.5 transition-colors cursor-pointer"
+      >
+        <div className="flex-1 min-w-0 flex flex-col text-left space-y-1">
+          {/* Fila 1: Badges superiores (Código gris, Grupos disp/total, Sin cupos, Grupo elegido en AZUL) */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Badge gris con código */}
+            <span className="font-mono text-[10.5px] font-semibold px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-700/60">
+              #{materia?.codigo}
+            </span>
+
+            {/* Badge de grupos disponibles/totales solo números */}
+            <span
+              className="font-mono text-[10.5px] font-semibold px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-700/60 tabular-nums"
+              title={`${gruposConCupo} de ${totalGrupos} grupos con cupos`}
+            >
+              {gruposConCupo}/{totalGrupos}
+            </span>
+
+            {/* Badge Sin Cupos si aplica */}
+            {hasZeroCuposGlobally && (
+              <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 border border-red-200/60 dark:border-red-900/60">
+                Sin cupos
               </span>
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                ID: {materia?.codigo ? materia.codigo : "XXXXXX"} • <span className="text-primary">{materia?.grupos ? materia.grupos.length + " Grupos disponibles" : "Sin grupos"}</span>
+            )}
+
+            {/* Badge de grupo seleccionado en AZUL */}
+            {isManualMode && grupoSeleccionado && (
+              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-primary/15 text-primary border border-primary/30">
+                G{grupoSeleccionado}
               </span>
-            </div>
-            {materia?.grupos && !dragEnabled && (
-              <svg 
-                className={`w-5 h-5 text-zinc-500 dark:text-zinc-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
             )}
           </div>
-        ) : (
-          <label
-            className={`flex items-center gap-3 p-2.5 hover:bg-zinc-100 rounded-lg dark:hover:bg-zinc-100/10 group ${subjectDisabled && !isSelected ? 'opacity-90 cursor-default' : 'cursor-pointer'}`}
-            style={subjectDisabled && !isSelected ? {
-              backgroundImage: `repeating-linear-gradient(
-                45deg,
-                rgba(220,38,38,0.18) 0px,
-                rgba(220,38,38,0.18) 6px,
-                transparent 6px,
-                transparent 12px
-              )`
-            } : undefined}
-          >
-            <div className="flex flex-col items-start flex-1">
-              <span className="text-sm font-semibold text-slate-900 dark:text-zinc-100">
-                {materia?.nombre ? materia.nombre : "Undefined Subject"}
-              </span>
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                ID: {materia?.codigo ? materia.codigo : "XXXXXX"} • <span className="text-primary">{materia?.grupos ? materia.grupos.length + " Grupos disponibles" : "Sin grupos"}</span>
-              </span>
-            </div>
-            {subjectDisabled && !isSelected && (
-              // efecto de rayas diagonales aplicado vía style del contenedor
-              null
-            )}
-            <input
-              className={`w-5 h-5 rounded border border-zinc-300 dark:bg-zinc-900 dark:border-zinc-700 focus:ring-primary ${subjectDisabled ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
-              type="checkbox"
-              checked={isSelected}
-              disabled={subjectDisabled}
-              onChange={handleChange}
-              onFocus={(e) => e.preventDefault()}
-              style={{
-                backgroundColor: isSelected ? '#1392ec' : '#fff', // primary-600 o blanco
-                borderColor: '#d1d5db', // zinc-300
-                color: isSelected ? '#fff' : '#1392ec', // check blanco sobre azul, azul sobre blanco
-                WebkitAppearance: 'none',
-                appearance: 'none',
-                display: 'grid',
-                placeContent: 'center',
-                transition: 'background 0.2s, border 0.2s',
-              }}
-            />
-            <style>{`
-              input[type="checkbox"].rounded:checked {
-                background-color: #1392ec !important;
-                border-color: #1392ec !important;
-                color: #fff !important;
-                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='4 8.5 7 11.5 12 5.5'/%3E%3C/svg%3E");
-                background-repeat: no-repeat;
-                background-position: center;
-                background-size: 1.2em 1.2em;
-              }
-            `}</style>
-          </label>
-        )}
-        
-        {/* Mostrar grupos solo si en modo manual y expandido, animado */}
-        <AnimatePresence>
-          {generationMode === 'manual' && materia?.grupos && isExpanded && (
-            <motion.div
-              key="dropdown"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="px-4 pb-3 space-y-2.5 overflow-hidden"
-            >
-              {materia.grupos.map((grupo, idx) => {
-                const sinCupos = grupo.cupoDisponible === 0;
-                const isGrupoSelected = grupoSeleccionado === grupo.numero;
-                // Validar conflicto para este grupo (incluye bloques manuales)
-                let tieneConflicto = false;
-                let noTieneHorarios = !grupo.horarios || grupo.horarios.length === 0;
 
-                // Build occupied set from manualBlocks for quick lookup
-                const occupiedManual = new Set();
-                if (manualBlocks && manualBlocks.length > 0) {
-                  manualBlocks.forEach((b) => {
-                    for (let k = 0; k < b.duracion; k++) {
-                      occupiedManual.add(`${b.diaIndex}-${b.horaIndex + k}`);
-                    }
-                  });
-                }
+          {/* Fila 2: Nombre de la Materia */}
+          <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 leading-snug truncate pr-1">
+            {materia?.nombre || "Materia sin nombre"}
+          </h3>
+        </div>
 
-                if (grupo) {
-                  grupo.horarios.forEach(horario => {
-                    horario.dias.forEach(dia => {
-                      const diasArr = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-                      const horasArr = Array.from({ length: 16 }, (_, i) => i + 6);
-                      const diaIndex = diasArr.indexOf(dia);
-                      if (diaIndex !== -1) {
-                        const horaInicioIdx = horasArr.indexOf(horario.horaInicio);
-                        const duracion = horario.horaFin - horario.horaInicio;
-                        for (let i = 0; i < duracion; i++) {
-                          const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
-                          const materiaEnCeldaCodigo = celdasMateriaHorario.get(celdaKey);
-                          if ((materiaEnCeldaCodigo && materiaEnCeldaCodigo !== materia.codigo) || occupiedManual.has(celdaKey)) {
-                            tieneConflicto = true;
-                            break;
-                          }
-                        }
-                      }
-                    });
-                  });
-                }
-                const disabled = sinCupos || tieneConflicto || noTieneHorarios;
-                return (
-                  <div 
-                    key={idx}
-                    onClick={disabled ? undefined : () => handleGrupoSelect(grupo.numero)}
-                    className={`p-4 rounded-xl border-2 transition-all ${
-                      disabled
-                        ? 'bg-zinc-200 dark:bg-zinc-800 opacity-60 cursor-not-allowed border-zinc-200 dark:border-zinc-800'
-                        : isGrupoSelected
-                          ? 'border-primary bg-primary/5 dark:bg-primary/10 cursor-pointer'
-                          : 'border-zinc-200 dark:border-zinc-800 hover:border-primary/40 bg-white dark:bg-zinc-900/50 cursor-pointer'
+        {/* Lado Derecho: Chevron / Checkbox Personalizado / Drag indicator (Perfectamente Centrado) */}
+        <div className="flex items-center justify-center gap-1.5 flex-shrink-0 self-center">
+          {isManualMode ? (
+            dragEnabled ? (
+              <Tooltip content="Arrastrar materia al horario" position="top">
+                <div
+                  className="p-1 rounded-md text-zinc-400 hover:text-primary transition-colors cursor-grab"
+                  aria-label="Arrastrar materia al horario"
+                >
+                  <GripIcon className="w-4 h-4" />
+                </div>
+              </Tooltip>
+            ) : (
+              <Tooltip
+                content={isExpanded ? "Colapsar grupos" : "Expandir grupos"}
+                position="top"
+              >
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsExpanded(!isExpanded);
+                  }}
+                  className="p-1 rounded-md border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  aria-label={isExpanded ? "Colapsar grupos" : "Expandir grupos"}
+                >
+                  <ChevronDownIcon
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                      isExpanded ? "rotate-180 text-primary" : ""
                     }`}
-                    aria-disabled={disabled}
-                    tabIndex={disabled ? -1 : 0}
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-zinc-700 dark:text-zinc-200">Grupo {grupo.numero}</span>
-                        {idx === 0 && !sinCupos && (
-                          <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 rounded uppercase tracking-wider">
-                            Recomendado
-                          </span>
-                        )}
-                        {sinCupos && (
-                          <span className="text-[9px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-2 py-0.5 rounded uppercase tracking-wider">
-                            Agotado
-                          </span>
-                        )}
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border-2 transition-colors flex-shrink-0 flex items-center justify-center ${
-                        isGrupoSelected
-                          ? 'border-primary bg-primary'
-                          : sinCupos 
-                            ? 'border-zinc-300 dark:border-zinc-700' 
-                            : 'border-zinc-300 dark:border-zinc-600'
-                      }`}>
-                        {isGrupoSelected && (
-                          <div className="w-2 h-2 rounded-full bg-white" />
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 text-xs mb-3 text-start">
-                      {grupo.horarios && grupo.horarios.length > 0 && (
-                        <div className="space-y-1.5">
-                          {grupo.horarios.map((h, hidx) => (
-                            <div key={hidx} className="flex items-start gap-2">
-                              <svg className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                              <div className="flex flex-col">
-                                <span className="text-zinc-700 dark:text-zinc-300 font-medium text-start">
-                                  {h.dias?.join(', ')}
-                                </span>
-                                <span className="text-zinc-500 dark:text-zinc-400 text-[11px]">
-                                  {h.horaInicio}:00 - {h.horaFin}:00
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      
-                      {grupo.profesor && (
-                        <div className="flex items-center gap-2 pt-1">
-                          <svg className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                          <span className="text-zinc-500 dark:text-zinc-400 italic">
-                            {grupo.profesor}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                      <div className="flex items-center gap-1.5">
-                        <div className={`w-2 h-2 rounded-full ${sinCupos ? 'bg-red-400' : 'bg-emerald-400'}`} />
-                        <span className={`text-xs font-semibold ${sinCupos ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                          {sinCupos ? 'Sin cupos' : 'Cupos disponibles'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        <span className="text-sm font-bold text-zinc-700 dark:text-white">
-                          {grupo.cupoDisponible} <span className="dark:text-zinc-400 text-[11px]"> / {grupo.cupoMaximo}</span>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </motion.div>
+                  />
+                </button>
+              </Tooltip>
+            )
+          ) : (
+            /* Checkbox Personalizado: Fondo blanco en light mode, azul al marcarse y centrado verticalmente */
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={isSelected}
+              disabled={hasZeroCuposGlobally}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!hasZeroCuposGlobally) {
+                  handleChange();
+                }
+              }}
+              className={`w-4.5 h-4.5 rounded-md border flex items-center justify-center transition-all cursor-pointer ${
+                isSelected
+                  ? "bg-primary border-primary text-white shadow-2xs"
+                  : "bg-white dark:bg-zinc-800/80 border-zinc-300 dark:border-zinc-700 hover:border-primary/80 dark:hover:border-primary/80"
+              } ${hasZeroCuposGlobally ? "opacity-30 cursor-not-allowed" : ""}`}
+              aria-label={`Seleccionar ${materia?.nombre}`}
+            >
+              {isSelected && (
+                <svg
+                  className="w-3 h-3 text-white"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="3.5 8.5 6.5 11.5 12.5 4.5" />
+                </svg>
+              )}
+            </button>
           )}
-        </AnimatePresence>
+        </div>
       </div>
+
+      {/* Desplegable de Grupos: Acordeón */}
+      <AnimatePresence initial={false}>
+        {isManualMode && !dragEnabled && materia?.grupos && isExpanded && (
+          <motion.div
+            key="groups"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="px-2 pb-2.5 pt-0.5 space-y-1.5 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/40 dark:bg-zinc-900/30"
+          >
+            {materia.grupos.map((grupo, idx) => {
+              const sinCupos = grupo.cupoDisponible === 0;
+              const isGrupoSelected = grupoSeleccionado === grupo.numero;
+
+              // Validar conflicto de horario
+              let tieneConflicto = false;
+              const diasArr = [
+                "Lunes",
+                "Martes",
+                "Miércoles",
+                "Jueves",
+                "Viernes",
+                "Sábado",
+                "Domingo",
+              ];
+              const horasArr = Array.from({ length: 16 }, (_, i) => i + 6);
+              const occupiedManual = new Set();
+              if (manualBlocks && manualBlocks.length > 0) {
+                manualBlocks.forEach((b) => {
+                  for (let k = 0; k < b.duracion; k++) {
+                    occupiedManual.add(`${b.diaIndex}-${b.horaIndex + k}`);
+                  }
+                });
+              }
+
+              if (grupo.horarios) {
+                for (const horario of grupo.horarios) {
+                  for (const dia of horario.dias || []) {
+                    const diaIndex = diasArr.indexOf(dia);
+                    if (diaIndex === -1) continue;
+                    const horaInicioIdx = horasArr.indexOf(horario.horaInicio);
+                    const duracion = horario.horaFin - horario.horaInicio;
+                    for (let i = 0; i < duracion; i++) {
+                      const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
+                      const materiaEnCeldaCodigo =
+                        celdasMateriaHorario.get(celdaKey);
+                      if (
+                        (materiaEnCeldaCodigo &&
+                          materiaEnCeldaCodigo !== materia.codigo) ||
+                        occupiedManual.has(celdaKey)
+                      ) {
+                        tieneConflicto = true;
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+
+              const disabled = sinCupos || tieneConflicto;
+
+              return (
+                <div
+                  key={idx}
+                  onClick={
+                    disabled
+                      ? undefined
+                      : () => handleGrupoSelect(grupo.numero)
+                  }
+                  className={`relative p-2 rounded-md border text-xs transition-all duration-150 flex items-center justify-between gap-2.5 ${
+                    disabled
+                      ? "opacity-40 cursor-not-allowed border-zinc-200/50 dark:border-zinc-800 bg-zinc-100/40 dark:bg-zinc-900/20"
+                      : isGrupoSelected
+                        ? "border-primary bg-primary/10 text-primary dark:text-blue-100 font-semibold cursor-pointer shadow-2xs ring-1 ring-primary/30"
+                        : "border-zinc-200/60 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer"
+                  }`}
+                >
+                  {/* EXTREMO IZQUIERDO: Check / Radio Indicator + Badge Grupo */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div
+                      className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
+                        isGrupoSelected
+                          ? "border-primary bg-primary text-white"
+                          : "border-zinc-300 dark:border-zinc-600 bg-white dark:bg-transparent"
+                      }`}
+                    >
+                      {isGrupoSelected && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                      )}
+                    </div>
+
+                    <span
+                      className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md ${
+                        isGrupoSelected
+                          ? "bg-primary text-white"
+                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60"
+                      }`}
+                    >
+                      G{grupo.numero}
+                    </span>
+                  </div>
+
+                  {/* CENTRO: Horarios divididos en filas por cada bloque */}
+                  <div className="flex-1 min-w-0 flex flex-col space-y-0.5 text-left font-mono">
+                    {grupo.horarios && grupo.horarios.length > 0 ? (
+                      grupo.horarios.map((h, hIdx) => {
+                        const diasStr = (h.dias || [])
+                          .map((d) => d.slice(0, 3))
+                          .join(", ");
+                        const start = String(h.horaInicio).padStart(2, "0");
+                        const end = String(h.horaFin).padStart(2, "0");
+
+                        return (
+                          <div
+                            key={hIdx}
+                            className="flex items-center gap-1 text-[10.5px] text-zinc-700 dark:text-zinc-300 truncate"
+                          >
+                            <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                              {diasStr}
+                            </span>
+                            <span className="text-zinc-500 dark:text-zinc-400">
+                              {start}:00-{end}:00
+                            </span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <span className="text-[10px] text-zinc-400">Sin horario</span>
+                    )}
+                  </div>
+
+                  {/* EXTREMO DERECHO: Badge de Cupos + Botón de Info Cuadrado con Tooltip Reutilizable */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {/* Badge de Cupos */}
+                    <span
+                      className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-md border tabular-nums ${
+                        sinCupos
+                          ? "bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/60"
+                          : tieneConflicto
+                            ? "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/60"
+                            : "bg-zinc-100 dark:bg-zinc-800 text-primary dark:text-blue-400 border-zinc-200/60 dark:border-zinc-700/60"
+                      }`}
+                    >
+                      {grupo.cupoDisponible}/{grupo.cupoMaximo}
+                    </span>
+
+                    {/* Botón de Información Cuadrado envuelto en Tooltip */}
+                    <Tooltip
+                      position="top"
+                      content={
+                        <div className="space-y-2 w-56">
+                          <div>
+                            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-zinc-300 block mb-0.5">
+                              Docente
+                            </span>
+                            <span className="text-xs font-semibold text-white block leading-snug">
+                              {grupo.profesor || "Docente por asignar"}
+                            </span>
+                          </div>
+                          <div className="pt-1.5 border-t border-zinc-800">
+                            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-zinc-300 block mb-0.5">
+                              Aula / Salón
+                            </span>
+                            <span className="text-xs font-mono text-primary dark:text-blue-400 font-bold block">
+                              {grupo.aula || "Por asignar"}
+                            </span>
+                          </div>
+                        </div>
+                      }
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-6 w-6 rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                        aria-label="Información del grupo"
+                      >
+                        <InfoIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </Tooltip>
+                  </div>
+                </div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
-
