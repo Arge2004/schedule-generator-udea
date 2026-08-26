@@ -54,9 +54,8 @@ export default function Schedule() {
   const [exporting, setExporting] = useState(false);
   const [editingManualId, setEditingManualId] = useState(null);
 
-  // Tooltip flotante
-  const [tooltipData, setTooltipData] = useState(null);
-  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  // Tooltip flotante atómico
+  const [tooltipState, setTooltipState] = useState(null);
   const hideTimeoutRef = useRef(null);
 
   // Refs de grid y selección
@@ -297,36 +296,33 @@ export default function Schedule() {
       )) ||
     (materiasSeleccionadas && Object.keys(materiasSeleccionadas).length > 0);
 
-  // Handlers para Tooltip
-  const handleClassHover = (clase, position) => {
+  // Handlers para Tooltip con callback memorizado
+  const handleClassHover = React.useCallback((clase, position) => {
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = null;
     }
 
-    const minSpaceAbove = window.innerHeight * 0.25;
+    const minSpaceAbove = 170;
     const spaceAbove = position.y;
     const spaceRight = window.innerWidth - (position.x + position.width);
 
-    const finalPosition = { ...position };
-    if (spaceAbove < minSpaceAbove && spaceRight > 300) {
-      finalPosition.placement = "right";
-    } else {
-      finalPosition.placement = "top";
-    }
+    const finalPosition = {
+      ...position,
+      placement: spaceAbove < minSpaceAbove && spaceRight > 260 ? "right" : "top",
+    };
 
-    setTooltipData(clase);
-    setTooltipPosition(finalPosition);
-  };
+    setTooltipState({ clase, position: finalPosition });
+  }, []);
 
-  const handleClassLeave = () => {
+  const handleClassLeave = React.useCallback(() => {
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
     }
     hideTimeoutRef.current = setTimeout(() => {
-      setTooltipData(null);
-    }, 40);
-  };
+      setTooltipState(null);
+    }, 20);
+  }, []);
 
   // Exportar PNG
   const handleExportPNG = async () => {
@@ -877,11 +873,11 @@ export default function Schedule() {
           </div>
 
           {/* Tooltip global de información de clase */}
-          {tooltipData && (
+          {tooltipState && (
             <ClassTooltip
-              clase={tooltipData}
-              color={tooltipData.color}
-              position={tooltipPosition}
+              clase={tooltipState.clase}
+              color={tooltipState.clase.color}
+              position={tooltipState.position}
             />
           )}
         </div>

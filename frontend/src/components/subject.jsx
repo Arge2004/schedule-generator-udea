@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, memo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMateriasStore } from "../store/materiasStore";
 import { GENERATION_MODES } from "../constants/sidebar";
 import { ChevronDownIcon, GripIcon, InfoIcon } from "../icons/index.js";
 import Tooltip from "./Tooltip.jsx";
 
-export default function Subject({
+function SubjectComponent({
   materia,
   generationMode,
   dragEnabled = true,
@@ -526,3 +526,5 @@ export default function Subject({
     </div>
   );
 }
+
+export default memo(SubjectComponent);

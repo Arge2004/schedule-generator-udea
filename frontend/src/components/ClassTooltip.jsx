@@ -1,7 +1,3 @@
-/* Hallmark · component: ClassTooltip · genre: modern-minimal
- * Instant floating tooltip with detailed class and professor info.
- * High-performance without sluggish coordinate transitions.
- */
 import { createPortal } from "react-dom";
 
 export default function ClassTooltip({ clase, color, position }) {
@@ -19,15 +15,14 @@ export default function ClassTooltip({ clase, color, position }) {
     left: isPlacementRight
       ? `${position.x + (position.width || 0) + 8}px`
       : `${position.x + (position.width || 0) / 2}px`,
-    top: isPlacementRight
-      ? `${position.y}px`
-      : `${position.y - 8}px`,
+    top: isPlacementRight ? `${position.y}px` : `${position.y - 8}px`,
     transform: isPlacementRight ? "translateY(0)" : "translate(-50%, -100%)",
+    willChange: "transform, left, top",
   };
 
   const tooltipContent = (
     <div
-      className="rounded-md shadow-2xl border border-zinc-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-3 min-w-[240px] max-w-xs pointer-events-none text-left animate-in fade-in zoom-in-95 duration-75 select-none"
+      className="rounded-md shadow-2xl border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 min-w-[240px] max-w-xs pointer-events-none text-left select-none animate-in fade-in zoom-in-95 duration-75"
       style={tooltipStyle}
     >
       {/* 1. Header con Badge de Grupo y Código */}

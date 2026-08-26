@@ -1,9 +1,8 @@
-import { useMemo, useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef, memo } from "react";
 import { useMateriasStore } from "../store/materiasStore.js";
 import { TrashIcon } from "../icons/index.js";
 
-export default function ClassBlock({
+function ClassBlockComponent({
   clase,
   onHover,
   onLeave,
@@ -15,12 +14,8 @@ export default function ClassBlock({
   const {
     materia,
     grupo,
-    horaInicio,
-    horaFin,
     aula,
-    profesor,
     color,
-    duracion,
     isPreview,
     codigoMateria,
     source,
@@ -30,8 +25,6 @@ export default function ClassBlock({
 
   const blockRef = useRef(null);
   const inputRef = useRef(null);
-  const { materias, gruposSeleccionados, selectGrupo, toggleMateriaSelected } =
-    useMateriasStore();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(materia || "");
@@ -58,23 +51,6 @@ export default function ClassBlock({
   const isMobile =
     typeof window !== "undefined" ? window.innerWidth <= 768 : false;
 
-  const codigo = useMemo(() => {
-    if (codigoMateria) return codigoMateria;
-    if (!materia || !materias) return undefined;
-    const normalize = (s = "") =>
-      s
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/\p{Diacritic}/gu, "")
-        .trim();
-    const found = materias.find(
-      (m) =>
-        normalize(m.nombre) === normalize(String(materia)) ||
-        m.codigo === codigoMateria,
-    );
-    return found ? found.codigo : undefined;
-  }, [codigoMateria, materia, materias]);
-
   const handleMouseEnter = () => {
     if (isMobile) return;
     if (blockRef.current && onHover) {
@@ -89,6 +65,8 @@ export default function ClassBlock({
   };
 
   const handleGrupoSelect = () => {
+    const { gruposSeleccionados, selectGrupo, toggleMateriaSelected } =
+      useMateriasStore.getState();
     const grupoSeleccionado = gruposSeleccionados[codigoMateria];
     if (grupoSeleccionado === grupo) {
       selectGrupo(codigoMateria, null);
@@ -142,21 +120,9 @@ export default function ClassBlock({
   const blockColor = color || "#3b82f6";
 
   return (
-    <motion.div
+    <div
       ref={blockRef}
-      // Animación suave contenida en su fila y celda
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: isPreview ? 0.8 : 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{
-        duration: 0.16,
-        ease: [0.25, 1, 0.5, 1],
-      }}
-      whileHover={{
-        scale: 1.01,
-        transition: { duration: 0.1 },
-      }}
-      className={`absolute inset-1 rounded-md border border-l-[3.5px] flex flex-col justify-between items-center py-1 px-1.5 overflow-hidden hover:shadow-md hover:z-20 cursor-pointer select-none group transition-all ${
+      className={`absolute inset-1 rounded-md border border-l-[3.5px] flex flex-col justify-between items-center py-1 px-1.5 overflow-hidden hover:shadow-md hover:scale-[1.01] hover:z-20 cursor-pointer select-none group transition-transform duration-75 ease-out ${
         isPreview ? "border-dashed opacity-80" : ""
       } ${pulsing ? "pulse-animate" : ""}`}
       data-no-select
@@ -167,7 +133,7 @@ export default function ClassBlock({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={onLeave}
     >
-      {/* 1. Fila Superior: Badges (Código, Grupo, Aula, Preview) */}
+      {/* 1. Fila Superior: Badges (Grupo, Aula, Preview) */}
       <div className="flex absolute left-1 items-start w-full justify-between gap-1 flex-wrap">
         <div className="flex items-center gap-1 flex-wrap min-w-0">
           {/* Badge de Grupo */}
@@ -235,6 +201,8 @@ export default function ClassBlock({
           </p>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
+
+export default memo(ClassBlockComponent);
