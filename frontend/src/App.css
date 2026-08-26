@@ -63,3 +63,109 @@
   animation: pulseBlock 680ms cubic-bezier(.22,.9,.26,1);
   transform-origin: center;
 }
+
+/* =====================================================
+   DITHER BACKGROUND — Máscara CSS + Animated Noise
+   Arquitectura:
+   - .dither-mask-layer  → tiene el mask-image del PNG;
+                           solo los PUNTOS del dither son visibles.
+   - .dither-anim-fill   → fondo animado dentro de la máscara;
+                           al desplazarse frame a frame el ruido,
+                           cada punto muestra diferente intensidad
+                           → efecto de aparición/desaparición.
+   ===================================================== */
+
+/* Wrapper enmascarado: solo muestra los pixels opacos del PNG (los puntos) */
+.dither-mask-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  -webkit-mask-image: url('/background/ditther-background.png');
+  mask-image: url('/background/ditther-background.png');
+  -webkit-mask-size: cover;
+  mask-size: cover;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
+  overflow: hidden;
+}
+
+/* Fondo animado DENTRO de la máscara — hace los puntos vibrar y parpadear */
+.dither-anim-fill {
+  position: absolute;
+  inset: -60%;
+  width: 220%;
+  height: 220%;
+  /* Ruido fractal SVG inline: genera textura orgánica blanco/negro */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  background-repeat: repeat;
+  /* steps() = saltos discretos → ilusión de puntos que aparecen/desaparecen de golpe */
+  animation: dither-flicker 0.9s steps(12) infinite;
+  will-change: transform, background-position;
+}
+
+/* Segunda pasada de ruido más lento para que no sea tan repetitivo */
+.dither-anim-fill-slow {
+  position: absolute;
+  inset: -60%;
+  width: 220%;
+  height: 220%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n2)' opacity='1'/%3E%3C/svg%3E");
+  background-size: 300px 300px;
+  background-repeat: repeat;
+  opacity: 0.3;
+  mix-blend-mode: screen;
+  animation: dither-flicker-slow 1.4s steps(8) infinite;
+  will-change: transform, background-position;
+}
+
+@keyframes dither-flicker {
+  0%   { transform: translate(0px,    0px);    background-position:   0%   0%; }
+  8%   { transform: translate(-8px,   4px);    background-position:  12%  -7%; }
+  17%  { transform: translate(5px,   -9px);    background-position: -18%  15%; }
+  25%  { transform: translate(-3px,  12px);    background-position:  25%  -3%; }
+  33%  { transform: translate(10px,  -4px);    background-position:  -7%  22%; }
+  42%  { transform: translate(-12px,  7px);    background-position:  18%  10%; }
+  50%  { transform: translate(7px,   -12px);   background-position: -25%  -8%; }
+  58%  { transform: translate(-5px,  10px);    background-position:   8% -18%; }
+  67%  { transform: translate(12px,  -6px);    background-position: -12%  25%; }
+  75%  { transform: translate(-9px,   3px);    background-position:  20%   5%; }
+  83%  { transform: translate(4px,   -10px);   background-position:  -5% -20%; }
+  92%  { transform: translate(-7px,   8px);    background-position:  15%  12%; }
+  100% { transform: translate(0px,    0px);    background-position:   0%   0%; }
+}
+
+@keyframes dither-flicker-slow {
+  0%   { transform: translate(0px,   0px);   background-position:   0%   0%; }
+  25%  { transform: translate(-15px, 10px);  background-position:  20% -15%; }
+  50%  { transform: translate(10px, -15px);  background-position: -20%  10%; }
+  75%  { transform: translate(-8px,  15px);  background-position:  10%  20%; }
+  100% { transform: translate(0px,   0px);   background-position:   0%   0%; }
+}
+
+/* Herencia de las clases previas - ya no se usan pero por si acaso */
+.dither-container {
+  position: absolute;
+  inset: 0;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  -webkit-mask-image: url('/background/ditther-background.png');
+  mask-image: url('/background/ditther-background.png');
+  -webkit-mask-size: cover;
+  mask-size: cover;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
+  overflow: hidden;
+}
+
