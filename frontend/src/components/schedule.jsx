@@ -217,6 +217,7 @@ export default function Schedule() {
     materias,
     previewGrupo,
     manualBlocks,
+    darkTheme,
   ]);
 
   // Mapa de celdas ocupadas

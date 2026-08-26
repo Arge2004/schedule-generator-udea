@@ -31,7 +31,7 @@ export default function GenerateAction({
         onClick={onGenerate}
         disabled={isDisabled}
         className={`
-          flex-1 h-9 px-4 rounded-md font-bold text-xs transition-all 
+          flex-1 h-9 px-4 rounded-md font-bold text-xs  
           flex items-center justify-center gap-2 shadow-xs cursor-pointer
           ${
             isDisabled

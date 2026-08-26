@@ -129,11 +129,10 @@ export default function Sidebar() {
 
     try {
       const codigosSeleccionados = Object.keys(materiasSeleccionadas);
-      const horarios = await generarHorarios(
-        materias,
-        codigosSeleccionados,
-        { horaMinima, evitarHuecos },
-      );
+      const horarios = await generarHorarios(materias, codigosSeleccionados, {
+        horaMinima,
+        evitarHuecos,
+      });
 
       if (horarios.length === 0) {
         toast.error(
@@ -232,11 +231,14 @@ export default function Sidebar() {
             generationMode={generationMode}
             onRequestModeChange={requestModeChange}
           />
-          <Tooltip content="Volver al menú de facultades y programas" position="bottom">
+          <Tooltip
+            content="Volver al menú de facultades y programas"
+            position="bottom"
+          >
             <button
               type="button"
               onClick={handleResetToMenu}
-              className="h-8 w-8 flex items-center justify-center border border-zinc-200 dark:border-zinc-800 bg-transparent rounded-md text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer"
+              className="h-8 w-8 flex items-center justify-center border border-zinc-200 dark:border-zinc-800 bg-transparent rounded-md text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white  cursor-pointer"
               aria-label="Volver al menú de facultades y programas"
             >
               <ArrowLeftIcon className="w-4 h-4" />

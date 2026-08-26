@@ -259,7 +259,7 @@ export default function ProgramSelector({ onMenuOpenChange }) {
             className="w-full px-4 text-sm py-3 mt-6 bg-primary hover:bg-primary/90 
                        disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:text-zinc-500
                        disabled:cursor-not-allowed text-white font-semibold rounded-lg 
-                       transition-all flex items-center justify-center gap-2 cursor-pointer"
+                       flex items-center justify-center gap-2 cursor-pointer"
           >
             {isScraping ? (
               <>

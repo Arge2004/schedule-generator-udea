@@ -49,7 +49,7 @@ export default function ScheduleToolbar({
             type="button"
             onClick={() => setExportMenuOpen(!exportMenuOpen)}
             disabled={exporting}
-            className="h-8 px-3 rounded-md bg-primary hover:bg-primary/90 text-white font-medium text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            className="h-8 px-3 rounded-md bg-primary hover:bg-primary/90 text-white font-medium text-xs flex items-center gap-1.5  cursor-pointer disabled:opacity-50"
             aria-label="Exportar horario"
           >
             <DownloadIcon className="w-3.5 h-3.5" />
@@ -104,7 +104,7 @@ export default function ScheduleToolbar({
                     : scheduleCount - 1;
                 onSetHorarioActualIndex(newIndex);
               }}
-              className="h-7 w-7 rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+              className="h-7 w-7 rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white  cursor-pointer flex items-center justify-center"
               aria-label="Horario anterior"
             >
               <ChevronLeftIcon className="w-3.5 h-3.5" />
@@ -125,7 +125,7 @@ export default function ScheduleToolbar({
                     : 0;
                 onSetHorarioActualIndex(newIndex);
               }}
-              className="h-7 w-7 rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+              className="h-7 w-7 rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white  cursor-pointer flex items-center justify-center"
               aria-label="Horario siguiente"
             >
               <ChevronRightIcon className="w-3.5 h-3.5" />
@@ -141,7 +141,7 @@ export default function ScheduleToolbar({
           type="button"
           onClick={onClearSchedule}
           disabled={!hasContentToClear}
-          className={`h-8 px-2.5 rounded-md border flex items-center gap-1.5 text-xs font-medium transition-colors ${
+          className={`h-8 px-2.5 rounded-md border flex items-center gap-1.5 text-xs font-medium  ${
             hasContentToClear
               ? "border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-red-600 dark:hover:text-red-400 cursor-pointer"
               : "border-transparent bg-transparent text-zinc-300 dark:text-zinc-700 cursor-not-allowed"
@@ -157,7 +157,7 @@ export default function ScheduleToolbar({
           <button
             type="button"
             onClick={onToggleColorBlobs}
-            className="h-8 w-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors cursor-pointer flex items-center justify-center"
+            className="h-8 w-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200  cursor-pointer flex items-center justify-center"
             aria-label="Alternar efectos de fondo"
           >
             <SparklesIcon className="w-3.5 h-3.5" />
@@ -172,7 +172,7 @@ export default function ScheduleToolbar({
           <button
             type="button"
             onClick={onToggleDarkTheme}
-            className="h-8 w-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors cursor-pointer flex items-center justify-center"
+            className="h-8 w-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200  cursor-pointer flex items-center justify-center"
             aria-label={
               darkTheme ? "Cambiar a tema claro" : "Cambiar a tema oscuro"
             }

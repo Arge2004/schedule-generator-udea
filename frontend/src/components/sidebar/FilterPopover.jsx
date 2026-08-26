@@ -91,7 +91,7 @@ export default function FilterPopover({
                   key={letter}
                   type="button"
                   onClick={() => onSelectLetter(isSelected ? null : letter)}
-                  className={`h-6 rounded-md font-mono text-[11px] font-bold transition-colors cursor-pointer flex items-center justify-center ${
+                  className={`h-6 rounded-md font-mono text-[11px] font-bold  cursor-pointer flex items-center justify-center ${
                     isSelected
                       ? "bg-primary text-white shadow-2xs"
                       : "bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200/60 dark:border-zinc-700/60 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
@@ -149,7 +149,7 @@ export default function FilterPopover({
                       onSetHoraMaximaFilter(jornada.max);
                     }
                   }}
-                  className={`p-1.5 rounded-md border text-center transition-colors cursor-pointer flex flex-col items-center justify-center ${
+                  className={`p-1.5 rounded-md border text-center  cursor-pointer flex flex-col items-center justify-center ${
                     isActive
                       ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
                       : "border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
@@ -180,7 +180,7 @@ export default function FilterPopover({
                   key={d.id}
                   type="button"
                   onClick={() => onToggleDia(d.id)}
-                  className={`h-6 rounded-md font-mono text-[11px] font-semibold transition-colors cursor-pointer flex items-center justify-center ${
+                  className={`h-6 rounded-md font-mono text-[11px] font-semibold  cursor-pointer flex items-center justify-center ${
                     isSelected
                       ? "bg-primary text-white shadow-2xs"
                       : "bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200/60 dark:border-zinc-700/60 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"

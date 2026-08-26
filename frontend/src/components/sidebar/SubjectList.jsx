@@ -4,7 +4,12 @@ import FilterPopover from "./FilterPopover.jsx";
 import PreferencesPopover from "./PreferencesPopover.jsx";
 import Tooltip from "../Tooltip.jsx";
 import { useMateriasStore } from "../../store/materiasStore.js";
-import { SearchIcon, TrashIcon, FilterIcon, GearIcon } from "../../icons/index.js";
+import {
+  SearchIcon,
+  TrashIcon,
+  FilterIcon,
+  GearIcon,
+} from "../../icons/index.js";
 
 function getNormalizedInitialLetter(str) {
   if (!str) return "#";
@@ -130,8 +135,7 @@ export default function SubjectList({
         const hasValidSchedule = (materia.grupos || []).some((g) =>
           (g.horarios || []).some(
             (h) =>
-              h.horaInicio >= horaMinimaFilter &&
-              h.horaFin <= horaMaximaFilter,
+              h.horaInicio >= horaMinimaFilter && h.horaFin <= horaMaximaFilter,
           ),
         );
         if (!hasValidSchedule) return false;
@@ -223,7 +227,9 @@ export default function SubjectList({
 
     // Scroll suave hacia la materia
     const timer = setTimeout(() => {
-      const el = document.getElementById(`subject-card-${focusedMateriaCodigo}`);
+      const el = document.getElementById(
+        `subject-card-${focusedMateriaCodigo}`,
+      );
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
       }
@@ -287,7 +293,7 @@ export default function SubjectList({
                 setIsPreferencesOpen(false);
               }}
               aria-label="Filtros avanzados"
-              className={`h-8 w-8 rounded-md border flex items-center justify-center transition-colors cursor-pointer ${
+              className={`h-8 w-8 rounded-md border flex items-center justify-center  cursor-pointer ${
                 hasAdvancedFilters || isFilterPopoverOpen
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -325,7 +331,7 @@ export default function SubjectList({
                 setIsFilterPopoverOpen(false);
               }}
               aria-label="Preferencias de generación y horarios"
-              className={`h-8 w-8 rounded-md border flex items-center justify-center transition-colors cursor-pointer ${
+              className={`h-8 w-8 rounded-md border flex items-center justify-center  cursor-pointer ${
                 isPreferencesOpen
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -362,7 +368,7 @@ export default function SubjectList({
               onClick={handleReset}
               disabled={!hasAnySelection}
               aria-label="Limpiar selecciones y horarios"
-              className={`h-8 w-8 rounded-md border flex items-center justify-center transition-colors ${
+              className={`h-8 w-8 rounded-md border flex items-center justify-center  ${
                 hasAnySelection
                   ? "border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-red-600 dark:hover:text-red-400 cursor-pointer"
                   : "border-transparent bg-transparent text-zinc-300 dark:text-zinc-700 cursor-not-allowed"
@@ -388,7 +394,7 @@ export default function SubjectList({
                 key={tab.id}
                 type="button"
                 onClick={() => setQuickFilter(tab.id)}
-                className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
+                className={`px-2 py-1 rounded-md text-[11px] font-semibold  cursor-pointer ${
                   isActive
                     ? "bg-primary text-white"
                     : "border border-zinc-200/80 dark:border-zinc-800 bg-transparent text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
@@ -423,7 +429,7 @@ export default function SubjectList({
                   key={letter}
                   type="button"
                   onClick={() => scrollToLetter(letter)}
-                  className={`w-5.5 h-5.5 rounded-md text-xs font-mono font-bold flex items-center justify-center transition-colors cursor-pointer ${
+                  className={`w-5.5 h-5.5 rounded-md text-xs font-mono font-bold flex items-center justify-center  cursor-pointer ${
                     isActive
                       ? "bg-primary text-white shadow-2xs"
                       : "text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"

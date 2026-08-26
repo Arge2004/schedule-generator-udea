@@ -18,7 +18,9 @@ export default function ConfirmModeModal({
 
   const scheduleCount = horariosGenerados.length;
   const count =
-    scheduleCount > 0 ? scheduleCount : Object.keys(materiasSeleccionadas).length;
+    scheduleCount > 0
+      ? scheduleCount
+      : Object.keys(materiasSeleccionadas).length;
   const unitLabel =
     scheduleCount > 0 ? "horarios generados" : "materias seleccionadas";
   const targetMode = MODES.find((m) => m.id === pendingMode)?.label || "";
@@ -44,13 +46,15 @@ export default function ConfirmModeModal({
 
         <div className="text-xs text-zinc-600 dark:text-zinc-400 space-y-2 mb-6">
           <p>
-            Al cambiar de modo se reiniciará tu selección actual para evitar inconsistencias.
+            Al cambiar de modo se reiniciará tu selección actual para evitar
+            inconsistencias.
           </p>
           <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 font-medium">
             Se descartarán{" "}
             <span className="font-bold font-mono text-amber-950 dark:text-amber-200">
               {count} {unitLabel}
-            </span>.
+            </span>
+            .
           </div>
         </div>
 
@@ -59,7 +63,7 @@ export default function ConfirmModeModal({
           <button
             onClick={onCancel}
             type="button"
-            className="flex-1 h-9 px-4 rounded-xl text-xs font-semibold transition-all duration-150
+            className="flex-1 h-9 px-4 rounded-xl text-xs font-semibold  duration-150
                        bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 
                        hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white cursor-pointer active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
@@ -68,7 +72,7 @@ export default function ConfirmModeModal({
           <button
             onClick={onConfirm}
             type="button"
-            className="flex-1 h-9 px-4 rounded-xl text-xs font-semibold text-white transition-all duration-150
+            className="flex-1 h-9 px-4 rounded-xl text-xs font-semibold text-white  duration-150
                        bg-primary hover:bg-primary/90 shadow-xs cursor-pointer active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             Confirmar

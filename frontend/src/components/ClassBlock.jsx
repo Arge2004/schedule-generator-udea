@@ -23,6 +23,8 @@ function ClassBlockComponent({
     pulsing,
   } = clase;
 
+  const { darkTheme } = useMateriasStore();
+
   const blockRef = useRef(null);
   const inputRef = useRef(null);
 

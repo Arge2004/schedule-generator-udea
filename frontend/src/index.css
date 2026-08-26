@@ -13,7 +13,7 @@
   --radius-xl: 0.75rem;
   --radius-full: 9999px;
 }
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:is(.dark, .dark *));
 
 /* Fallback para navegadores antiguos que no soportan @theme */
 @supports not (color: var(--color-primary)) {
@@ -49,14 +49,20 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
+  color-scheme: light;
+  color: #18181b;
   background-color: #ffffff;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html.dark {
+  color-scheme: dark;
+  color: #f4f4f5;
+  background-color: #09090b;
 }
 
 a {
@@ -77,13 +83,6 @@ body {
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
 }
 
 /* Scrollbar personalizado */

@@ -49,15 +49,44 @@ export const useMateriasStore = create(
       focusMateria: (codigo) => set({ focusedMateriaCodigo: codigo, focusTimestamp: Date.now() }),
       clearFocusedMateria: () => set({ focusedMateriaCodigo: null }),
 
-      // Acciones de tema
-      setDarkTheme: (isDark) => set({ darkTheme: isDark }),
-      toggleDarkTheme: () => set((state) => ({ 
-        darkTheme: !state.darkTheme, 
-        themeSyncEnabled: false 
-      })),
-      syncThemeWithSystem: (isDark) => set((state) => 
-        state.themeSyncEnabled ? { darkTheme: isDark } : {}
-      ),
+      // Acciones de tema con actualización síncrona del DOM
+      setDarkTheme: (isDark) => {
+        if (typeof document !== 'undefined') {
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        }
+        set({ darkTheme: isDark });
+      },
+      toggleDarkTheme: () => set((state) => {
+        const nextDark = !state.darkTheme;
+        if (typeof document !== 'undefined') {
+          if (nextDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        }
+        return { 
+          darkTheme: nextDark, 
+          themeSyncEnabled: false 
+        };
+      }),
+      syncThemeWithSystem: (isDark) => set((state) => {
+        if (state.themeSyncEnabled) {
+          if (typeof document !== 'undefined') {
+            if (isDark) {
+              document.documentElement.classList.add('dark');
+            } else {
+              document.documentElement.classList.remove('dark');
+            }
+          }
+          return { darkTheme: isDark };
+        }
+        return {};
+      }),
 
       // Acciones de carga de datos
       setMateriasData: (data) => set((state) => ({

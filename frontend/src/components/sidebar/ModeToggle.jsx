@@ -22,7 +22,7 @@ export default function ModeToggle({ generationMode, onRequestModeChange }) {
             aria-pressed={isActive}
             className={`
               relative z-10 flex-1 h-full cursor-pointer flex items-center justify-center px-2.5 
-              rounded-md text-xs font-semibold tracking-tight transition-colors duration-150 outline-none
+              rounded-md text-xs font-semibold tracking-tight  duration-150 outline-none
               focus-visible:ring-1 focus-visible:ring-primary
               ${
                 isActive

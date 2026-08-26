@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import "./App.css";
 import Sidebar from "./components/Sidebar";
 import LoginSidebar from "./components/LoginSidebar";
@@ -10,8 +10,8 @@ function App() {
   const { materias, darkTheme } = useMateriasStore();
   const hasMaterias = materias && materias.length > 0;
 
-  // Aplicar/remover clase dark del documento según darkTheme (por defecto siempre false/light)
-  useEffect(() => {
+  // Aplicar/remover clase dark del documento síncronamente antes del paint
+  useLayoutEffect(() => {
     if (darkTheme) {
       document.documentElement.classList.add("dark");
     } else {

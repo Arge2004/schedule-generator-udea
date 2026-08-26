@@ -5,11 +5,7 @@ import { GENERATION_MODES } from "../constants/sidebar";
 import { ChevronDownIcon, GripIcon, InfoIcon } from "../icons/index.js";
 import Tooltip from "./Tooltip.jsx";
 
-function SubjectComponent({
-  materia,
-  generationMode,
-  dragEnabled = true,
-}) {
+function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
   const {
     materiasSeleccionadas,
     toggleMateriaSelected,
@@ -21,6 +17,7 @@ function SubjectComponent({
     manualBlocks,
     focusedMateriaCodigo,
     focusTimestamp,
+    darkTheme,
   } = useMateriasStore();
 
   const isSelected = !!materiasSeleccionadas[materia?.codigo];
@@ -155,8 +152,7 @@ function SubjectComponent({
             const duracion = horario.horaFin - horario.horaInicio;
             for (let i = 0; i < duracion; i++) {
               const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
-              const materiaEnCeldaCodigo =
-                celdasMateriaHorario.get(celdaKey);
+              const materiaEnCeldaCodigo = celdasMateriaHorario.get(celdaKey);
               if (
                 (materiaEnCeldaCodigo &&
                   materiaEnCeldaCodigo !== materia.codigo) ||
@@ -222,14 +218,14 @@ function SubjectComponent({
   return (
     <div
       id={`subject-card-${materia?.codigo}`}
-      className={`rounded-md border select-none transition-all duration-200 ${
+      className={`rounded-md border select-none duration-200 ${
         isHighlighted
           ? "ring-2 ring-primary border-primary bg-primary/10 shadow-md"
           : isCardActive
             ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-xs ring-1 ring-primary/20"
             : hasZeroCuposGlobally
-              ? "border-zinc-200/60 dark:border-zinc-800/60 bg-zinc-50/40 dark:bg-zinc-900/30 opacity-60"
-              : "border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 hover:border-zinc-300 dark:hover:border-zinc-700"
+              ? "border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 opacity-60"
+              : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700"
       }`}
     >
       {/* Cabecera de la materia centrada verticalmente */}
@@ -246,19 +242,21 @@ function SubjectComponent({
             : undefined
         }
         onClick={handleItemClick}
-        className="p-2.5 flex items-center justify-between gap-2.5 transition-colors cursor-pointer"
+        className="p-2.5 flex items-center justify-between gap-2.5  cursor-pointer"
       >
         <div className="flex-1 min-w-0 flex flex-col text-left space-y-1">
           {/* Fila 1: Badges superiores (Código gris, Grupos disp/total, Sin cupos, Grupo elegido en AZUL) */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {/* Badge gris con código */}
-            <span className="font-mono text-[10.5px] font-semibold px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-700/60">
-              #{materia?.codigo}
-            </span>
+            {materia?.codigo && (
+              <span className="font-mono text-[10.5px] font-semibold px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                #{materia.codigo}
+              </span>
+            )}
 
             {/* Badge de grupos disponibles/totales solo números */}
             <span
-              className="font-mono text-[10.5px] font-semibold px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-700/60 tabular-nums"
+              className="font-mono text-[10.5px] font-semibold px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 tabular-nums"
               title={`${gruposConCupo} de ${totalGrupos} grupos con cupos`}
             >
               {gruposConCupo}/{totalGrupos}
@@ -291,7 +289,7 @@ function SubjectComponent({
             dragEnabled ? (
               <Tooltip content="Arrastrar materia al horario" position="top">
                 <div
-                  className="p-1 rounded-md text-zinc-400 hover:text-primary transition-colors cursor-grab"
+                  className="p-1 rounded-md text-zinc-400 hover:text-primary  cursor-grab"
                   aria-label="Arrastrar materia al horario"
                 >
                   <GripIcon className="w-4 h-4" />
@@ -308,11 +306,13 @@ function SubjectComponent({
                     e.stopPropagation();
                     setIsExpanded(!isExpanded);
                   }}
-                  className="p-1 rounded-md border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                  aria-label={isExpanded ? "Colapsar grupos" : "Expandir grupos"}
+                  className="p-1 rounded-md border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800  cursor-pointer"
+                  aria-label={
+                    isExpanded ? "Colapsar grupos" : "Expandir grupos"
+                  }
                 >
                   <ChevronDownIcon
-                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                    className={`w-3.5 h-3.5 ${
                       isExpanded ? "rotate-180 text-primary" : ""
                     }`}
                   />
@@ -332,7 +332,7 @@ function SubjectComponent({
                   handleChange();
                 }
               }}
-              className={`w-4.5 h-4.5 rounded-md border flex items-center justify-center transition-all cursor-pointer ${
+              className={`w-4.5 h-4.5 rounded-md border flex items-center justify-center cursor-pointer ${
                 isSelected
                   ? "bg-primary border-primary text-white shadow-2xs"
                   : "bg-white dark:bg-zinc-800/80 border-zinc-300 dark:border-zinc-700 hover:border-primary/80 dark:hover:border-primary/80"
@@ -365,8 +365,11 @@ function SubjectComponent({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className="px-2 pb-2.5 pt-0.5 space-y-1.5 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/40 dark:bg-zinc-900/30"
+            transition={{
+              height: { duration: 0.15, ease: "easeOut" },
+              opacity: { duration: 0.15, ease: "easeOut" },
+            }}
+            className="px-2 pb-2.5 pt-0.5 space-y-1.5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60"
           >
             {materia.grupos.map((grupo, idx) => {
               const sinCupos = grupo.cupoDisponible === 0;
@@ -423,22 +426,20 @@ function SubjectComponent({
                 <div
                   key={idx}
                   onClick={
-                    disabled
-                      ? undefined
-                      : () => handleGrupoSelect(grupo.numero)
+                    disabled ? undefined : () => handleGrupoSelect(grupo.numero)
                   }
-                  className={`relative p-2 rounded-md border text-xs transition-all duration-150 flex items-center justify-between gap-2.5 ${
+                  className={`relative p-2 rounded-md border text-xs duration-150 flex items-center justify-between gap-2.5 ${
                     disabled
-                      ? "opacity-40 cursor-not-allowed border-zinc-200/50 dark:border-zinc-800 bg-zinc-100/40 dark:bg-zinc-900/20"
+                      ? "opacity-40 cursor-not-allowed border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/40"
                       : isGrupoSelected
                         ? "border-primary bg-primary/10 text-primary dark:text-blue-100 font-semibold cursor-pointer shadow-2xs ring-1 ring-primary/30"
-                        : "border-zinc-200/60 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer"
+                        : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer"
                   }`}
                 >
                   {/* EXTREMO IZQUIERDO: Check / Radio Indicator + Badge Grupo */}
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <div
-                      className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
+                      className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center  ${
                         isGrupoSelected
                           ? "border-primary bg-primary text-white"
                           : "border-zinc-300 dark:border-zinc-600 bg-white dark:bg-transparent"
@@ -453,7 +454,7 @@ function SubjectComponent({
                       className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md ${
                         isGrupoSelected
                           ? "bg-primary text-white"
-                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60"
+                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
                       }`}
                     >
                       G{grupo.numero}
@@ -485,7 +486,9 @@ function SubjectComponent({
                         );
                       })
                     ) : (
-                      <span className="text-[10px] text-zinc-400">Sin horario</span>
+                      <span className="text-[10px] text-zinc-400">
+                        Sin horario
+                      </span>
                     )}
                   </div>
 
@@ -498,7 +501,7 @@ function SubjectComponent({
                           ? "bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/60"
                           : tieneConflicto
                             ? "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/60"
-                            : "bg-zinc-100 dark:bg-zinc-800 text-primary dark:text-blue-400 border-zinc-200/60 dark:border-zinc-700/60"
+                            : "bg-zinc-100 dark:bg-zinc-800 text-primary dark:text-blue-400 border border-zinc-200 dark:border-zinc-700"
                       }`}
                     >
                       {grupo.cupoDisponible}/{grupo.cupoMaximo}
@@ -531,7 +534,7 @@ function SubjectComponent({
                       <button
                         type="button"
                         onClick={(e) => e.stopPropagation()}
-                        className="h-6 w-6 rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                        className="h-6 w-6 rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white  cursor-pointer flex items-center justify-center"
                         aria-label="Información del grupo"
                       >
                         <InfoIcon className="w-3.5 h-3.5" />

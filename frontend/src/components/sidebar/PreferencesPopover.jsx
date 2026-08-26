@@ -98,7 +98,7 @@ export default function PreferencesPopover({
             type="button"
             onClick={onClose}
             aria-label="Cerrar preferencias"
-            className="h-6 w-6 rounded-md flex items-center justify-center text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-xs leading-none"
+            className="h-6 w-6 rounded-md flex items-center justify-center text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800  cursor-pointer text-xs leading-none"
           >
             ✕
           </button>
