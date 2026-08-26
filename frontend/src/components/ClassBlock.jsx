@@ -117,11 +117,20 @@ function ClassBlockComponent({
     }
   };
 
+  const handleBlockClick = (e) => {
+    if (e.target.closest("button") || e.target.closest("input")) return;
+    if (codigoMateria) {
+      const { focusMateria } = useMateriasStore.getState();
+      if (focusMateria) focusMateria(codigoMateria);
+    }
+  };
+
   const blockColor = color || "#3b82f6";
 
   return (
     <div
       ref={blockRef}
+      onClick={handleBlockClick}
       className={`absolute inset-1 rounded-md border border-l-[3.5px] flex flex-col justify-between items-center py-1 px-1.5 overflow-hidden hover:shadow-md hover:scale-[1.01] hover:z-20 cursor-pointer select-none group transition-transform duration-75 ease-out ${
         isPreview ? "border-dashed opacity-80" : ""
       } ${pulsing ? "pulse-animate" : ""}`}

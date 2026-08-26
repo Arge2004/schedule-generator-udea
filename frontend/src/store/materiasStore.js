@@ -32,7 +32,7 @@ export const useMateriasStore = create(
       darkTheme: false,
       themeSyncEnabled: false,
       
-      // Estados transitorios de drag and drop
+      // Estados transitorios de drag and drop y navegación
       draggingMateria: null,
       hoveredScheduleCell: null,
       availableHorarios: [],
@@ -40,8 +40,14 @@ export const useMateriasStore = create(
       gruposConflicto: [],
       previewGrupo: null,
       pendingModal: false,
+      focusedMateriaCodigo: null,
+      focusTimestamp: 0,
       notify: (message) => { console.log('Notify:', message); },
       setNotifier: (fn) => set({ notify: fn }),
+
+      // Navegación y scroll interactivo hacia materias
+      focusMateria: (codigo) => set({ focusedMateriaCodigo: codigo, focusTimestamp: Date.now() }),
+      clearFocusedMateria: () => set({ focusedMateriaCodigo: null }),
 
       // Acciones de tema
       setDarkTheme: (isDark) => set({ darkTheme: isDark }),

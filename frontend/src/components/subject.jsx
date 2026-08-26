@@ -19,12 +19,30 @@ function SubjectComponent({
     setDraggingMateria,
     materias,
     manualBlocks,
+    focusedMateriaCodigo,
+    focusTimestamp,
   } = useMateriasStore();
 
   const isSelected = !!materiasSeleccionadas[materia?.codigo];
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isHighlighted, setIsHighlighted] = useState(false);
   const grupoSeleccionado = gruposSeleccionados[materia?.codigo];
   const [celdasMateriaHorario, setCeldasMateriaHorario] = useState(new Map());
+
+  // Auto-expandir y resaltar cuando se hace clic desde el horario
+  useEffect(() => {
+    if (
+      focusedMateriaCodigo &&
+      String(focusedMateriaCodigo) === String(materia?.codigo)
+    ) {
+      setIsExpanded(true);
+      setIsHighlighted(true);
+      const timer = setTimeout(() => {
+        setIsHighlighted(false);
+      }, 1600);
+      return () => clearTimeout(timer);
+    }
+  }, [focusedMateriaCodigo, focusTimestamp, materia?.codigo]);
 
   const isManualMode = generationMode === GENERATION_MODES.MANUAL;
 
@@ -203,12 +221,15 @@ function SubjectComponent({
 
   return (
     <div
-      className={`rounded-md border select-none ${
-        isCardActive
-          ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-xs ring-1 ring-primary/20"
-          : hasZeroCuposGlobally
-            ? "border-zinc-200/60 dark:border-zinc-800/60 bg-zinc-50/40 dark:bg-zinc-900/30 opacity-60"
-            : "border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 hover:border-zinc-300 dark:hover:border-zinc-700"
+      id={`subject-card-${materia?.codigo}`}
+      className={`rounded-md border select-none transition-all duration-200 ${
+        isHighlighted
+          ? "ring-2 ring-primary border-primary bg-primary/10 shadow-md"
+          : isCardActive
+            ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-xs ring-1 ring-primary/20"
+            : hasZeroCuposGlobally
+              ? "border-zinc-200/60 dark:border-zinc-800/60 bg-zinc-50/40 dark:bg-zinc-900/30 opacity-60"
+              : "border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 hover:border-zinc-300 dark:hover:border-zinc-700"
       }`}
     >
       {/* Cabecera de la materia centrada verticalmente */}

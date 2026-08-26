@@ -54,6 +54,8 @@ export default function SubjectList({
     setAllowManualBlocks,
     clearAllowManualBlocksBySchedule,
     unlockAllowManualBlocks,
+    focusedMateriaCodigo,
+    focusTimestamp,
   } = useMateriasStore();
 
   const selectedCount = useMemo(() => {
@@ -203,6 +205,32 @@ export default function SubjectList({
     }
     setActiveLetter(currentLetter);
   }, [availableLetters]);
+
+  // Navegar y hacer scroll automáticamente hacia la materia seleccionada desde el horario
+  useEffect(() => {
+    if (!focusedMateriaCodigo || !focusTimestamp) return;
+
+    // Verificar si la materia está oculta por los filtros actuales
+    const isVisibleInCurrentFilter = finalFilteredMaterias.some(
+      (m) => String(m.codigo) === String(focusedMateriaCodigo),
+    );
+
+    if (!isVisibleInCurrentFilter) {
+      if (quickFilter !== "all") setQuickFilter("all");
+      if (selectedLetter !== null) setSelectedLetter(null);
+      if (searchTerm) onClearSearch();
+    }
+
+    // Scroll suave hacia la materia
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`subject-card-${focusedMateriaCodigo}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 70);
+
+    return () => clearTimeout(timer);
+  }, [focusTimestamp, focusedMateriaCodigo]);
 
   // Scroll suave hacia una letra seleccionada
   const scrollToLetter = (letter) => {
