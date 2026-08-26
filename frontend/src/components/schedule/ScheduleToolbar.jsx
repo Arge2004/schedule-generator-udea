@@ -41,7 +41,7 @@ export default function ScheduleToolbar({
   const scheduleCount = horariosGenerados ? horariosGenerados.length : 0;
 
   return (
-    <div className="h-12 border-t border-zinc-200/80 dark:border-zinc-800 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xs px-4 flex items-center justify-between flex-shrink-0 select-none z-20 transition-colors">
+    <div className="h-12 border-t border-zinc-200/80 dark:border-zinc-800 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xs px-4 flex items-center justify-between flex-shrink-0 select-none z-20">
       {/* Lado Izquierdo: Botón Exportar + Menú Popover anclado directamente */}
       <div className="flex items-center gap-2">
         <div ref={exportContainerRef} className="relative">

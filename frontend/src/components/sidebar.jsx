@@ -225,7 +225,7 @@ export default function Sidebar() {
   return (
     <>
       <Toaster />
-      <aside className="w-full sm:w-sm h-full select-none md:border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex flex-col relative z-20 transition-colors">
+      <aside className="w-full sm:w-sm h-full select-none md:border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex flex-col relative z-20">
         {/* Cabecera: Mode Toggle + Botón Volver envuelto con Tooltip */}
         <div className="p-3 border-b border-zinc-200/80 dark:border-zinc-800 flex items-center gap-1.5 flex-shrink-0 bg-white dark:bg-zinc-950">
           <ModeToggle

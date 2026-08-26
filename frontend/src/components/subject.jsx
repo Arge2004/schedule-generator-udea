@@ -203,7 +203,7 @@ function SubjectComponent({
 
   return (
     <div
-      className={`rounded-md border transition-all duration-150 select-none ${
+      className={`rounded-md border select-none ${
         isCardActive
           ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-xs ring-1 ring-primary/20"
           : hasZeroCuposGlobally

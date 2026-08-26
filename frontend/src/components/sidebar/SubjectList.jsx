@@ -230,7 +230,7 @@ export default function SubjectList({
             className="w-full pl-8 pr-7 py-1.5 bg-transparent border border-zinc-200 dark:border-zinc-800 rounded-md text-xs 
                        text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 
                        focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary 
-                       transition-all h-8"
+                       h-8"
             placeholder="Buscar por nombre o código…"
             type="text"
             value={searchTerm}

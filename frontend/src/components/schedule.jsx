@@ -728,7 +728,7 @@ export default function Schedule() {
       celdasMateria={celdasMateria}
       showToastMessage={(msg) => toast(msg)}
     >
-      <div className="flex-1 h-full flex flex-col bg-white dark:bg-zinc-950 relative overflow-hidden select-none transition-colors">
+      <div className="flex-1 h-full flex flex-col bg-white dark:bg-zinc-950 relative overflow-hidden select-none">
         <Toaster />
 
         {/* Área del Horario */}
