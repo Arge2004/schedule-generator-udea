@@ -61,7 +61,6 @@ function SubjectComponent({
   const [isShaking, setIsShaking] = useState(false);
   const [showSelectParticles, setShowSelectParticles] = useState(false);
   const [showGroupParticles, setShowGroupParticles] = useState(null);
-  const [celdasMateriaHorario, setCeldasMateriaHorario] = useState(new Map());
   const grupoRefs = useRef({});
 
   const lastShakeTimestampRef = useRef(shakeTimestamp || 0);
@@ -197,53 +196,56 @@ function SubjectComponent({
     [hasActiveAdvancedFilters, activeFilters],
   );
 
-  // Sincronizar celdas ocupadas con los grupos seleccionados solo si el acordeón está expandido
-  useEffect(() => {
-    if (isManualMode && isExpanded && gruposSeleccionados) {
-      const diasArr = [
-        "Lunes",
-        "Martes",
-        "Miércoles",
-        "Jueves",
-        "Viernes",
-        "Sábado",
-        "Domingo",
-      ];
-      const horasArr = Array.from({ length: 16 }, (_, i) => i + 6);
-      const map = new Map();
-      let todasMaterias = [];
-      if (materias && Array.isArray(materias)) {
-        todasMaterias = materias;
-      } else if (materia) {
-        todasMaterias = [materia];
-      }
+  // Celdas ocupadas calculadas sincrónicamente en tiempo real ante cualquier cambio del store
+  const occupiedScheduleCells = useMemo(() => {
+    if (!isManualMode || !gruposSeleccionados) return new Map();
+    const dias = [
+      "Lunes",
+      "Martes",
+      "Miércoles",
+      "Jueves",
+      "Viernes",
+      "Sábado",
+      "Domingo",
+    ];
+    const map = new Map();
+    const allMaterias =
+      materias && Array.isArray(materias)
+        ? materias
+        : materia
+          ? [materia]
+          : [];
 
-      Object.entries(gruposSeleccionados).forEach(([codigo, grupoNum]) => {
-        if (!codigo || !grupoNum) return;
-        const mat = todasMaterias.find((m) => String(m.codigo) === String(codigo));
-        if (!mat) return;
-        const grupo = mat.grupos?.find((g) => String(g.numero) === String(grupoNum));
-        if (!grupo || !grupo.horarios) return;
-
-        grupo.horarios.forEach((horario) => {
-          horario.dias?.forEach((dia) => {
-            const diaIndex = diasArr.indexOf(dia);
-            if (diaIndex !== -1) {
-              const horaInicioIdx = horasArr.indexOf(horario.horaInicio);
-              const duracion = horario.horaFin - horario.horaInicio;
-              for (let i = 0; i < duracion; i++) {
-                const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
-                map.set(celdaKey, codigo);
-              }
+    Object.entries(gruposSeleccionados).forEach(([cod, numGrp]) => {
+      if (!cod || !numGrp) return;
+      const mat = allMaterias.find((m) => String(m.codigo) === String(cod));
+      const g = mat?.grupos?.find((gr) => String(gr.numero) === String(numGrp));
+      (g?.horarios || []).forEach((h) => {
+        (h.dias || []).forEach((d) => {
+          const dIdx = dias.indexOf(d);
+          if (dIdx !== -1) {
+            for (let hr = h.horaInicio; hr < h.horaFin; hr++) {
+              map.set(`${dIdx}-${hr}`, String(cod));
             }
-          });
+          }
         });
       });
-      setCeldasMateriaHorario(map);
-    } else if (!isExpanded) {
-      setCeldasMateriaHorario(new Map());
+    });
+
+    return map;
+  }, [gruposSeleccionados, isManualMode, materias, materia]);
+
+  const occupiedManualCells = useMemo(() => {
+    const set = new Set();
+    if (manualBlocks && manualBlocks.length > 0) {
+      manualBlocks.forEach((b) => {
+        for (let k = 0; k < b.duracion; k++) {
+          set.add(`${b.diaIndex}-${b.horaIndex + 6 + k}`);
+        }
+      });
     }
-  }, [gruposSeleccionados, isManualMode, isExpanded, materia, materias]);
+    return set;
+  }, [manualBlocks]);
 
   // Contar grupos disponibles vs totales
   const totalGrupos = materia?.grupos?.length || 0;
@@ -272,6 +274,39 @@ function SubjectComponent({
     }
   };
 
+  const checkGroupConflict = useCallback(
+    (grp) => {
+      if (!grp || !grp.horarios || grp.horarios.length === 0) return false;
+      const dias = [
+        "Lunes",
+        "Martes",
+        "Miércoles",
+        "Jueves",
+        "Viernes",
+        "Sábado",
+        "Domingo",
+      ];
+      return grp.horarios.some((horario) => {
+        return (horario.dias || []).some((dia) => {
+          const diaIndex = dias.indexOf(dia);
+          if (diaIndex === -1) return false;
+          for (let hr = horario.horaInicio; hr < horario.horaFin; hr++) {
+            const cellKey = `${diaIndex}-${hr}`;
+            const occupiedCod = occupiedScheduleCells.get(cellKey);
+            if (occupiedCod && String(occupiedCod) !== String(materia?.codigo)) {
+              return true;
+            }
+            if (occupiedManualCells.has(cellKey)) {
+              return true;
+            }
+          }
+          return false;
+        });
+      });
+    },
+    [occupiedScheduleCells, occupiedManualCells, materia?.codigo],
+  );
+
   const handleGrupoSelect = (numeroGrupo) => {
     if (grupoSeleccionado === numeroGrupo) {
       selectGrupo(materia.codigo, null);
@@ -279,56 +314,16 @@ function SubjectComponent({
       return;
     }
 
-    const dias = [
-      "Lunes",
-      "Martes",
-      "Miércoles",
-      "Jueves",
-      "Viernes",
-      "Sábado",
-      "Domingo",
-    ];
-    const horas = Array.from({ length: 16 }, (_, i) => i + 6);
-    const grupo = materia.grupos?.find((g) => g.numero === numeroGrupo);
-    let tieneConflicto = false;
+    const grupo = materia.grupos?.find(
+      (g) => String(g.numero) === String(numeroGrupo),
+    );
+    if (!grupo) return;
 
-    if (grupo) {
-      const occupiedManual = new Set();
-      if (manualBlocks && manualBlocks.length > 0) {
-        manualBlocks.forEach((b) => {
-          for (let k = 0; k < b.duracion; k++) {
-            occupiedManual.add(`${b.diaIndex}-${b.horaIndex + k}`);
-          }
-        });
-      }
-
-      grupo.horarios?.forEach((horario) => {
-        horario.dias?.forEach((dia) => {
-          const diaIndex = dias.indexOf(dia);
-          if (diaIndex !== -1) {
-            const horaInicioIdx = horas.indexOf(horario.horaInicio);
-            const duracion = horario.horaFin - horario.horaInicio;
-            for (let i = 0; i < duracion; i++) {
-              const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
-              const materiaEnCeldaCodigo = celdasMateriaHorario.get(celdaKey);
-              if (
-                (materiaEnCeldaCodigo &&
-                  String(materiaEnCeldaCodigo) !== String(materia.codigo)) ||
-                occupiedManual.has(celdaKey)
-              ) {
-                tieneConflicto = true;
-                break;
-              }
-            }
-          }
-        });
-      });
-    }
-
-    if (tieneConflicto) {
+    if (checkGroupConflict(grupo)) {
       const { notify } = useMateriasStore.getState();
       if (notify)
         notify("⚠️ No se puede seleccionar: conflicto con otra materia");
+      toast.error("Conflicto con otra materia en el horario");
       return;
     }
 
@@ -341,61 +336,33 @@ function SubjectComponent({
     }
   };
 
-  const checkGroupConflict = (grp) => {
-    if (!grp || !grp.horarios || grp.horarios.length === 0) return true;
-    const dias = [
-      "Lunes",
-      "Martes",
-      "Miércoles",
-      "Jueves",
-      "Viernes",
-      "Sábado",
-      "Domingo",
-    ];
-    const storeState = useMateriasStore.getState();
-    const currentGrupos = storeState.gruposSeleccionados || {};
-    const allManual = storeState.manualBlocks || [];
-    const allMaterias = storeState.materias || [];
+  // Verificar si todos los grupos disponibles tienen conflicto de horario
+  const hasAllGroupsConflicted = useMemo(() => {
+    if (
+      hasZeroCuposGlobally ||
+      !materia?.grupos ||
+      materia.grupos.length === 0 ||
+      grupoSeleccionado ||
+      !isManualMode
+    ) {
+      return false;
+    }
 
-    // Celdas ocupadas por otras materias
-    const occupiedByOthers = new Set();
-    Object.entries(currentGrupos).forEach(([cod, numGrp]) => {
-      if (!cod || !numGrp || String(cod) === String(materia?.codigo)) return;
-      const mat = allMaterias.find((m) => String(m.codigo) === String(cod));
-      const g = mat?.grupos?.find((gr) => String(gr.numero) === String(numGrp));
-      (g?.horarios || []).forEach((h) => {
-        (h.dias || []).forEach((d) => {
-          const dIdx = dias.indexOf(d);
-          if (dIdx !== -1) {
-            for (let hr = h.horaInicio; hr < h.horaFin; hr++) {
-              occupiedByOthers.add(`${dIdx}-${hr}`);
-            }
-          }
-        });
-      });
-    });
+    const availableGroupsWithCupos = materia.grupos.filter(
+      (g) => typeof g.cupoDisponible !== "number" || g.cupoDisponible > 0,
+    );
+    if (availableGroupsWithCupos.length === 0) return false;
 
-    // Celdas ocupadas por bloques manuales
-    allManual.forEach((b) => {
-      for (let k = 0; k < b.duracion; k++) {
-        occupiedByOthers.add(`${b.diaIndex}-${b.horaIndex + 6 + k}`);
-      }
-    });
-
-    // Verificar si este grupo colisiona con el horario actual
-    return grp.horarios.some((horario) => {
-      return (horario.dias || []).some((dia) => {
-        const diaIndex = dias.indexOf(dia);
-        if (diaIndex === -1) return false;
-        for (let hr = horario.horaInicio; hr < horario.horaFin; hr++) {
-          if (occupiedByOthers.has(`${diaIndex}-${hr}`)) {
-            return true;
-          }
-        }
-        return false;
-      });
-    });
-  };
+    return availableGroupsWithCupos.every((g) => checkGroupConflict(g));
+  }, [
+    hasZeroCuposGlobally,
+    materia?.grupos,
+    grupoSeleccionado,
+    isManualMode,
+    gruposSeleccionados,
+    manualBlocks,
+    checkGroupConflict,
+  ]);
 
   useEffect(() => {
     setIsExpanded(false);
@@ -561,9 +528,7 @@ function SubjectComponent({
           ? "ring-2 ring-primary border-primary bg-primary/10 shadow-md"
           : isCardActive
             ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-xs ring-1 ring-primary/20"
-            : hasZeroCuposGlobally
-              ? "border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 opacity-60"
-              : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700"
+            : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700"
       }`}
     >
       {/* Cabecera de la materia centrada verticalmente */}
@@ -584,7 +549,7 @@ function SubjectComponent({
         className="p-2.5 flex items-center justify-between gap-2.5  cursor-pointer"
       >
         <div className="flex-1 min-w-0 flex flex-col text-left space-y-1">
-          {/* Fila 1: Badges superiores (Código gris, Grupos disp/total, Sin cupos, Grupo elegido en AZUL) */}
+          {/* Fila 1: Badges superiores (Código gris, Grupos disp/total, Sin cupos, Con conflictos, Grupo elegido en AZUL) */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {/* Badge gris con código */}
             {materia?.codigo && (
@@ -605,6 +570,13 @@ function SubjectComponent({
             {hasZeroCuposGlobally && (
               <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 border border-red-200/60 dark:border-red-900/60">
                 Sin cupos
+              </span>
+            )}
+
+            {/* Badge Con Conflictos si todos los grupos disponibles tienen colisión */}
+            {!hasZeroCuposGlobally && hasAllGroupsConflicted && (
+              <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/80 dark:border-amber-900/60">
+                Con conflictos
               </span>
             )}
 
@@ -723,51 +695,7 @@ function SubjectComponent({
             {materia.grupos.map((grupo, idx) => {
               const sinCupos = grupo.cupoDisponible === 0;
               const isGrupoSelected = grupoSeleccionado === grupo.numero;
-
-              // Validar conflicto de horario
-              let tieneConflicto = false;
-              const diasArr = [
-                "Lunes",
-                "Martes",
-                "Miércoles",
-                "Jueves",
-                "Viernes",
-                "Sábado",
-                "Domingo",
-              ];
-              const horasArr = Array.from({ length: 16 }, (_, i) => i + 6);
-              const occupiedManual = new Set();
-              if (manualBlocks && manualBlocks.length > 0) {
-                manualBlocks.forEach((b) => {
-                  for (let k = 0; k < b.duracion; k++) {
-                    occupiedManual.add(`${b.diaIndex}-${b.horaIndex + k}`);
-                  }
-                });
-              }
-
-              if (grupo.horarios) {
-                for (const horario of grupo.horarios) {
-                  for (const dia of horario.dias || []) {
-                    const diaIndex = diasArr.indexOf(dia);
-                    if (diaIndex === -1) continue;
-                    const horaInicioIdx = horasArr.indexOf(horario.horaInicio);
-                    const duracion = horario.horaFin - horario.horaInicio;
-                    for (let i = 0; i < duracion; i++) {
-                      const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
-                      const materiaEnCeldaCodigo =
-                        celdasMateriaHorario.get(celdaKey);
-                      if (
-                        (materiaEnCeldaCodigo &&
-                          materiaEnCeldaCodigo !== materia.codigo) ||
-                        occupiedManual.has(celdaKey)
-                      ) {
-                        tieneConflicto = true;
-                        break;
-                      }
-                    }
-                  }
-                }
-              }
+              const tieneConflicto = checkGroupConflict(grupo);
 
               const disabled = sinCupos || tieneConflicto;
               const isFocusedGrupo =
