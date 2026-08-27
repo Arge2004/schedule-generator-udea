@@ -30,7 +30,7 @@ export const ScheduleProvider = ({ celdasMateria, showToastMessage, children }) 
               const duracion = horario.horaFin - horario.horaInicio;
               for (let i = 0; i < duracion; i++) {
                 const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
-                if (celdasMateriaSinActual.get(celdaKey) === materia.codigo) {
+                if (String(celdasMateriaSinActual.get(celdaKey)) === String(materia.codigo)) {
                   celdasMateriaSinActual.delete(celdaKey);
                 }
               }
@@ -51,7 +51,7 @@ export const ScheduleProvider = ({ celdasMateria, showToastMessage, children }) 
             for (let i = 0; i < duracion; i++) {
               const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
               const materiaEnCeldaCodigo = celdasMateriaSinActual.get(celdaKey);
-              if (materiaEnCeldaCodigo && materiaEnCeldaCodigo !== materia.codigo) {
+              if (materiaEnCeldaCodigo && String(materiaEnCeldaCodigo) !== String(materia.codigo)) {
                 tieneConflicto = true;
                 break;
               }

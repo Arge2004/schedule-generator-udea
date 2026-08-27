@@ -2,7 +2,8 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 import toast, { Toaster } from "react-hot-toast";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { TrashIcon } from "../icons/index.js";
 
 import ColorBlobs from "./ColorBlobs.jsx";
 import { ScheduleProvider } from "./ScheduleContext.jsx";
@@ -51,10 +52,32 @@ export default function Schedule() {
     clearAllowManualBlocksBySchedule,
     dragEnabled,
     setDraggingMateria,
+    deleteMateriaFromSchedule,
   } = useMateriasStore();
 
   const [exporting, setExporting] = useState(false);
   const [editingManualId, setEditingManualId] = useState(null);
+  const [isHoveringTrash, setIsHoveringTrash] = useState(false);
+  const [explodingCodigo, setExplodingCodigo] = useState(null);
+  const [explodingManualId, setExplodingManualId] = useState(null);
+
+  const handleDeleteSubjectWithAnimation = (codigoMateria) => {
+    if (!codigoMateria) return;
+    setExplodingCodigo(codigoMateria);
+    setTimeout(() => {
+      deleteMateriaFromSchedule(codigoMateria);
+      setExplodingCodigo(null);
+    }, 420);
+  };
+
+  const handleDeleteManualBlockWithAnimation = (manualId) => {
+    if (!manualId) return;
+    setExplodingManualId(manualId);
+    setTimeout(() => {
+      removeManualBlock(manualId);
+      setExplodingManualId(null);
+    }, 420);
+  };
 
   // Tooltip flotante atómico
   const [tooltipState, setTooltipState] = useState(null);
@@ -727,6 +750,7 @@ export default function Schedule() {
       targetMateriaCodigo ||
       useMateriasStore.getState().draggingMateria?.codigo ||
       draggingMateria?.codigo;
+
     for (const horario of grupo.horarios || []) {
       for (const dia of horario.dias || []) {
         const diaIndex = DIAS.indexOf(dia);
@@ -735,11 +759,10 @@ export default function Schedule() {
         const duracion = horario.horaFin - horario.horaInicio;
         for (let i = 0; i < duracion; i++) {
           const celdaKey = `${diaIndex}-${horaInicioIndex + i}`;
-          const materiaEnCeldaValor = celdasMateria.get(celdaKey);
-          const materiaEnCeldaCodigo = getCodigoFromValor(materiaEnCeldaValor);
+          const materiaEnCelda = celdasMateria.get(celdaKey);
           if (
-            materiaEnCeldaCodigo &&
-            materiaEnCeldaCodigo !== activeCodigo
+            materiaEnCelda &&
+            String(materiaEnCelda) !== String(activeCodigo)
           ) {
             return true;
           }
@@ -749,12 +772,22 @@ export default function Schedule() {
     return false;
   };
 
-  // Actualizar inmediatamente availableHorarios al iniciar drag (desde sidebar o desde el schedule)
+  // Actualizar inmediatamente availableHorarios al iniciar drag (solo grupos con cupos, sin conflicto y distintos al actual)
   useEffect(() => {
     if (draggingMateria) {
+      const grupoActual =
+        gruposSeleccionados[draggingMateria.codigo] ||
+        gruposSeleccionados[String(draggingMateria.codigo)];
+
       const todosLosHorarios = [];
       (draggingMateria.grupos || []).forEach((grupo) => {
+        // Excluir el grupo que ya está puesto actualmente en el schedule
+        if (grupoActual && String(grupo.numero) === String(grupoActual)) return;
+        // Excluir grupos sin cupos si tienen cupoDisponible === 0
+        if (typeof grupo.cupoDisponible === "number" && grupo.cupoDisponible <= 0) return;
+        // Excluir grupos con conflicto con otras materias en el horario
         if (groupHasConflict(grupo, draggingMateria.codigo)) return;
+
         (grupo.horarios || []).forEach((horario) => {
           todosLosHorarios.push({
             ...horario,
@@ -766,7 +799,7 @@ export default function Schedule() {
     } else {
       setAvailableHorarios([]);
     }
-  }, [draggingMateria]);
+  }, [draggingMateria, celdasMateria, gruposSeleccionados]);
 
   const handleDragEnter = (e) => {
     e.preventDefault();
@@ -789,40 +822,93 @@ export default function Schedule() {
     const currentDragging =
       overrideMateria ||
       storeState.draggingMateria ||
-      draggingMateria ||
-      blockDragMateriaRef.current;
+      draggingMateria;
 
     if (!currentDragging) return false;
 
     const dia = DIAS[diaIndex];
     const hora = HORAS[horaIndex];
 
+    const grupoActual =
+      storeState.gruposSeleccionados[currentDragging.codigo] ||
+      storeState.gruposSeleccionados[String(currentDragging.codigo)];
+
     const gruposEnEstaCelda = (currentDragging.grupos || []).filter((grupo) => {
+      // Excluir el grupo actual ya colocado
+      if (grupoActual && String(grupo.numero) === String(grupoActual)) return false;
+      if (typeof grupo.cupoDisponible === "number" && grupo.cupoDisponible <= 0) return false;
       if (groupHasConflict(grupo, currentDragging.codigo)) return false;
       return (grupo.horarios || []).some((horario) => {
-        const cellStart = hora;
-        const cellEnd = hora + 1;
         return (
           (horario.dias || []).includes(dia) &&
-          ((horario.horaInicio < cellEnd && horario.horaFin > cellStart) ||
-            horario.horaInicio === cellEnd)
+          hora >= horario.horaInicio &&
+          hora < horario.horaFin
         );
       });
     });
 
     if (gruposEnEstaCelda.length === 0) {
-      toast.error("⚠️ No se puede colocar en este horario.");
+      storeState.triggerShakeMateria?.(currentDragging.codigo);
+
+      // 1. ¿El grupo actual de esta materia ocupa esta celda?
+      const grupoActualObj = (currentDragging.grupos || []).find(
+        (g) => grupoActual && String(g.numero) === String(grupoActual)
+      );
+      const isCurrentGroupCell =
+        grupoActualObj &&
+        (grupoActualObj.horarios || []).some((h) => {
+          return (
+            (h.dias || []).includes(dia) &&
+            hora >= h.horaInicio &&
+            hora < h.horaFin
+          );
+        });
+
+      // 2. ¿Hay otra materia o bloque manual ocupando esta celda?
+      const celdaKey = `${diaIndex}-${horaIndex}`;
+      const materiaEnCelda = celdasMateria?.get(celdaKey);
+      const isOccupiedByOther =
+        (materiaEnCelda &&
+          String(materiaEnCelda) !== String(currentDragging.codigo)) ||
+        (storeState.manualBlocks || []).some(
+          (b) =>
+            b.diaIndex === diaIndex &&
+            horaIndex >= b.horaIndex &&
+            horaIndex < b.horaIndex + b.duracion
+        );
+
+      // 3. ¿Algún grupo de esta materia tiene clases aquí?
+      const anyGroupAtThisTime = (currentDragging.grupos || []).some((g) =>
+        (g.horarios || []).some(
+          (h) =>
+            (h.dias || []).includes(dia) &&
+            hora >= h.horaInicio &&
+            hora < h.horaFin
+        )
+      );
+
+      if (isCurrentGroupCell) {
+        toast.error("Este grupo ya está seleccionado en este horario");
+      } else if (isOccupiedByOther) {
+        toast.error("Este espacio ya está ocupado por otra materia");
+      } else if (!anyGroupAtThisTime) {
+        toast.error("Esta materia no tiene clases en este horario");
+      } else {
+        toast.error("⚠️ No hay grupos disponibles sin conflicto de horario");
+      }
+
       clearDragState();
       return false;
     }
 
     if (gruposEnEstaCelda.length > 1) {
       // Asegurar que draggingMateria esté en el store antes de abrir el modal
-      useMateriasStore.setState({ draggingMateria: currentDragging });
+      useMateriasStore.setState({ draggingMateria: currentDragging, lastDropSuccessful: true });
       setShowGrupoSelector(true, gruposEnEstaCelda);
       return true;
     } else if (gruposEnEstaCelda.length === 1) {
       const grupo = gruposEnEstaCelda[0];
+      useMateriasStore.setState({ lastDropSuccessful: true });
       selectGrupo(currentDragging.codigo, grupo.numero);
       if (!storeState.gruposSeleccionados[currentDragging.codigo]) {
         toggleMateriaSelected(currentDragging.codigo);
@@ -855,10 +941,10 @@ export default function Schedule() {
           <ScheduleHeader dias={DIAS} />
 
           {/* Cuadrícula interactiva de Horas x Días */}
-          <div className="flex-1 min-h-0 overflow-auto scrollbar-custom relative z-10">
+          <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden scrollbar-custom relative z-10">
             <div
               ref={gridRef}
-              className="grid h-full w-full relative min-h-[680px]"
+              className="grid h-full w-full relative min-h-full"
               style={{
                 gridTemplateColumns: "72px repeat(7, minmax(120px, 1fr))",
                 gridTemplateRows: `repeat(${HORAS.length}, 1fr)`,
@@ -952,8 +1038,8 @@ export default function Schedule() {
                         onLeave={handleClassLeave}
                         onDelete={
                           clase.manualId
-                            ? () => removeManualBlock(clase.manualId)
-                            : undefined
+                            ? () => handleDeleteManualBlockWithAnimation(clase.manualId)
+                            : () => handleDeleteSubjectWithAnimation(clase.codigoMateria)
                         }
                         onRename={
                           clase.manualId
@@ -962,7 +1048,12 @@ export default function Schedule() {
                         }
                         autoEdit={editingManualId === clase.manualId}
                         onEditComplete={() => setEditingManualId(null)}
-                        isForceExploding={clearingExplosions.has(blockKey)}
+                        isForceExploding={
+                          Boolean(
+                            (clase.codigoMateria && explodingCodigo && String(explodingCodigo) === String(clase.codigoMateria)) ||
+                            (clase.manualId && explodingManualId === clase.manualId)
+                          )
+                        }
                       />
                     </div>
                   );
@@ -981,6 +1072,46 @@ export default function Schedule() {
               )}
             </div>
           </div>
+
+          {/* Zona flotante para eliminar materia al arrastrar */}
+          <AnimatePresence>
+            {draggingMateria && (
+              <motion.div
+                initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 50, scale: 0.9 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-full border shadow-2xl flex items-center gap-3 backdrop-blur-md transition-all duration-200 cursor-pointer select-none ${
+                  isHoveringTrash
+                    ? "bg-red-500 text-white border-red-600 ring-4 ring-red-500/30 scale-105"
+                    : "bg-white/95 dark:bg-zinc-900/95 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/60 ring-1 ring-red-500/20"
+                }`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setIsHoveringTrash(true);
+                }}
+                onDragLeave={() => setIsHoveringTrash(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsHoveringTrash(false);
+                  if (draggingMateria?.codigo) {
+                    deleteMateriaFromSchedule?.(draggingMateria.codigo);
+                    toast.success("Materia eliminada del horario");
+                  }
+                  clearDragState();
+                }}
+              >
+                <TrashIcon className={`w-5 h-5 ${isHoveringTrash ? "animate-bounce" : ""}`} />
+                <span className="font-semibold text-sm">
+                  {isHoveringTrash
+                    ? "¡Soltar para eliminar del horario!"
+                    : "Arrastra aquí para eliminar del horario"}
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Tooltip global de información de clase */}
           {tooltipState && (

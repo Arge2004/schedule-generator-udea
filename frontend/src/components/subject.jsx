@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo, memo } from "react";
+import React, { useState, useEffect, useRef, useMemo, memo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import toast from "react-hot-toast";
 import { useMateriasStore } from "../store/materiasStore";
 import { GENERATION_MODES } from "../constants/sidebar";
 import { ChevronDownIcon, GripIcon, InfoIcon } from "../icons/index.js";
@@ -25,10 +26,29 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
   const isSelected = !!materiasSeleccionadas[materia?.codigo];
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHighlighted, setIsHighlighted] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
   const [showSelectParticles, setShowSelectParticles] = useState(false);
   const [showGroupParticles, setShowGroupParticles] = useState(null);
   const grupoSeleccionado = gruposSeleccionados[materia?.codigo];
   const [celdasMateriaHorario, setCeldasMateriaHorario] = useState(new Map());
+
+  const shakeMateriaCodigo = useMateriasStore((s) => s.shakeMateriaCodigo);
+  const shakeTimestamp = useMateriasStore((s) => s.shakeTimestamp);
+  const lastShakeTimestampRef = useRef(shakeTimestamp || 0);
+
+  useEffect(() => {
+    if (
+      shakeTimestamp &&
+      shakeTimestamp !== lastShakeTimestampRef.current &&
+      shakeMateriaCodigo &&
+      String(shakeMateriaCodigo) === String(materia?.codigo)
+    ) {
+      lastShakeTimestampRef.current = shakeTimestamp;
+      setIsShaking(true);
+      const timer = setTimeout(() => setIsShaking(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [shakeMateriaCodigo, shakeTimestamp, materia?.codigo]);
 
   // Auto-expandir y resaltar cuando se hace clic desde el horario
   useEffect(() => {
@@ -163,7 +183,7 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
               const materiaEnCeldaCodigo = celdasMateriaHorario.get(celdaKey);
               if (
                 (materiaEnCeldaCodigo &&
-                  materiaEnCeldaCodigo !== materia.codigo) ||
+                  String(materiaEnCeldaCodigo) !== String(materia.codigo)) ||
                 occupiedManual.has(celdaKey)
               ) {
                 tieneConflicto = true;
@@ -191,6 +211,39 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
     }
   };
 
+  const checkGroupConflict = (grp) => {
+    if (!grp || !grp.horarios) return false;
+    const dias = [
+      "Lunes",
+      "Martes",
+      "Miércoles",
+      "Jueves",
+      "Viernes",
+      "Sábado",
+      "Domingo",
+    ];
+    const horas = Array.from({ length: 16 }, (_, i) => i + 6);
+    return grp.horarios.some((horario) => {
+      return (horario.dias || []).some((dia) => {
+        const diaIndex = dias.indexOf(dia);
+        if (diaIndex === -1) return false;
+        const horaInicioIdx = horas.indexOf(horario.horaInicio);
+        const duracion = horario.horaFin - horario.horaInicio;
+        for (let i = 0; i < duracion; i++) {
+          const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
+          const materiaEnCeldaCodigo = celdasMateriaHorario.get(celdaKey);
+          if (
+            materiaEnCeldaCodigo &&
+            String(materiaEnCeldaCodigo) !== String(materia?.codigo)
+          ) {
+            return true;
+          }
+        }
+        return false;
+      });
+    });
+  };
+
   useEffect(() => {
     setIsExpanded(false);
   }, [resetKey]);
@@ -200,6 +253,24 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
       setIsExpanded(false);
     }
   }, [dragEnabled]);
+
+  const handleGroupSelect = (numeroGrupo) => {
+    const isAlreadySelected = grupoSeleccionado === numeroGrupo;
+
+    if (isAlreadySelected) {
+      selectGrupo(materia.codigo, null);
+      if (isSelected) {
+        toggleMateriaSelected(materia.codigo);
+      }
+    } else {
+      selectGrupo(materia.codigo, numeroGrupo);
+      setShowGroupParticles(numeroGrupo);
+      setTimeout(() => setShowGroupParticles(null), 500);
+      if (!isSelected) {
+        toggleMateriaSelected(materia.codigo);
+      }
+    }
+  };
 
   const handleItemClick = () => {
     if (isManualMode && !dragEnabled) {
@@ -214,6 +285,25 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
       e.preventDefault();
       return;
     }
+
+    const availableGroups = (materia.grupos || []).filter((g) => {
+      if (grupoSeleccionado && String(g.numero) === String(grupoSeleccionado)) {
+        return false;
+      }
+      if (typeof g.cupoDisponible === "number" && g.cupoDisponible <= 0) {
+        return false;
+      }
+      return !checkGroupConflict(g);
+    });
+
+    if (availableGroups.length === 0) {
+      e.preventDefault();
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500);
+      toast.error("No hay otros horarios disponibles para esta materia");
+      return;
+    }
+
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", materia.codigo);
 
@@ -221,7 +311,7 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
     if (typeof document !== "undefined") {
       const isDark = document.documentElement.classList.contains("dark");
       const dragNode = document.createElement("div");
-      dragNode.style.position = "absolute";
+      dragNode.style.position = "fixed";
       dragNode.style.top = "-9999px";
       dragNode.style.left = "-9999px";
       dragNode.style.zIndex = "999999";
@@ -273,17 +363,25 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
   };
 
   const handleDragEnd = () => {
-    // Limpiar estado de drag siempre que termine el arrastre,
-    // independientemente de si se soltó en el schedule o fuera de él
-    clearDragState?.();
+    const state = useMateriasStore.getState();
+    if (!state.lastDropSuccessful && state.draggingMateria?.codigo) {
+      state.triggerShakeMateria?.(state.draggingMateria.codigo);
+    }
+    state.clearDragState?.();
   };
 
   const isCardActive =
     (isManualMode && grupoSeleccionado) || (!isManualMode && isSelected);
 
   return (
-    <div
+    <motion.div
       id={`subject-card-${materia?.codigo}`}
+      animate={
+        isShaking
+          ? { x: [0, -8, 8, -6, 6, -3, 3, 0] }
+          : { x: 0 }
+      }
+      transition={{ duration: 0.45, ease: "easeInOut" }}
       className={`rounded-md border select-none duration-200 ${
         isHighlighted
           ? "ring-2 ring-primary border-primary bg-primary/10 shadow-md"
@@ -624,7 +722,7 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
 

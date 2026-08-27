@@ -43,6 +43,16 @@ export const useMateriasStore = create(
       pendingModal: false,
       focusedMateriaCodigo: null,
       focusTimestamp: 0,
+      shakeMateriaCodigo: null,
+      shakeTimestamp: 0,
+      lastDropSuccessful: false,
+      setLastDropSuccessful: (val) => set({ lastDropSuccessful: Boolean(val) }),
+      triggerShakeMateria: (codigo) => {
+        set({ shakeMateriaCodigo: codigo, shakeTimestamp: Date.now() });
+        setTimeout(() => {
+          set((state) => (state.shakeMateriaCodigo === codigo ? { shakeMateriaCodigo: null } : state));
+        }, 500);
+      },
       notify: (message) => { console.log('Notify:', message); },
       setNotifier: (fn) => set({ notify: fn }),
 
@@ -144,6 +154,19 @@ export const useMateriasStore = create(
         gruposSeleccionados: { ...state.gruposSeleccionados, [codigoMateria]: numeroGrupo }
       })),
 
+      // Eliminar una materia completamente del horario (manual)
+      deleteMateriaFromSchedule: (codigoMateria) => set((state) => {
+        const newGrupos = { ...state.gruposSeleccionados };
+        delete newGrupos[codigoMateria];
+        const newMaterias = { ...state.materiasSeleccionadas };
+        delete newMaterias[codigoMateria];
+        return {
+          gruposSeleccionados: newGrupos,
+          materiasSeleccionadas: newMaterias,
+          resetKey: (state.resetKey || 0) + 1,
+        };
+      }),
+
       // Verificar si una materia está seleccionada
       isMateriaSelected: (codigoMateria) => (state) => {
         return !!state.materiasSeleccionadas[codigoMateria];
@@ -196,6 +219,7 @@ export const useMateriasStore = create(
       setDraggingMateria: (materia) => set({
         draggingMateria: materia,
         availableHorarios: materia ? [] : [],
+        lastDropSuccessful: false,
       }),
 
       setHoveredScheduleCell: (cell) => set({

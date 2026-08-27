@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, memo } from "react";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 import { useMateriasStore } from "../store/materiasStore.js";
 import { TrashIcon, GripIcon } from "../icons/index.js";
 import Tooltip from "./Tooltip.jsx";
@@ -69,8 +70,28 @@ function ClassBlockComponent({
   const [editText, setEditText] = useState(materia || "");
   const [displayName, setDisplayName] = useState(materia || "");
   const [isExploding, setIsExploding] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
   const [showEntranceParticles, setShowEntranceParticles] =
     useState(!isPreview);
+
+  const shakeMateriaCodigo = useMateriasStore((s) => s.shakeMateriaCodigo);
+  const shakeTimestamp = useMateriasStore((s) => s.shakeTimestamp);
+  const lastShakeTimestampRef = useRef(shakeTimestamp || 0);
+
+  useEffect(() => {
+    if (
+      shakeTimestamp &&
+      shakeTimestamp !== lastShakeTimestampRef.current &&
+      shakeMateriaCodigo &&
+      (String(shakeMateriaCodigo) === String(codigoMateria) ||
+        (materia && String(shakeMateriaCodigo) === String(materia)))
+    ) {
+      lastShakeTimestampRef.current = shakeTimestamp;
+      setIsShaking(true);
+      const timer = setTimeout(() => setIsShaking(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [shakeMateriaCodigo, shakeTimestamp, codigoMateria, materia]);
 
   useEffect(() => {
     if (isForceExploding && !isExploding) {
@@ -153,6 +174,27 @@ function ClassBlockComponent({
     handleGrupoSelect();
   };
 
+  const handleRemoveSubject = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onLeave?.();
+
+    if (onDelete) {
+      onDelete();
+      return;
+    }
+
+    setIsExploding(true);
+    setTimeout(() => {
+      if (manualId) {
+        if (onDelete) onDelete();
+      } else if (codigoMateria) {
+        const state = useMateriasStore.getState();
+        state.deleteMateriaFromSchedule?.(codigoMateria);
+      }
+    }, 420);
+  };
+
   const commitEdit = () => {
     const newName = editText?.trim();
     const finalName = newName && newName.length > 0 ? newName : "Bloque manual";
@@ -190,6 +232,55 @@ function ClassBlockComponent({
     !manualId &&
     dragEnabled;
 
+  const checkGroupConflict = (grupoToTest, activeCodigo) => {
+    const state = useMateriasStore.getState();
+    const { materias: todasMaterias, gruposSeleccionados } = state;
+    const diasArr = [
+      "Lunes",
+      "Martes",
+      "Miércoles",
+      "Jueves",
+      "Viernes",
+      "Sábado",
+      "Domingo",
+    ];
+    const horasArr = Array.from({ length: 16 }, (_, i) => i + 6);
+
+    const celdasOtras = new Set();
+    Object.entries(gruposSeleccionados || {}).forEach(([cod, gNum]) => {
+      if (!gNum || String(cod) === String(activeCodigo)) return;
+      const mat = (todasMaterias || []).find(
+        (m) => String(m.codigo) === String(cod),
+      );
+      const grp = mat?.grupos?.find((g) => String(g.numero) === String(gNum));
+      (grp?.horarios || []).forEach((h) => {
+        (h.dias || []).forEach((d) => {
+          const dIdx = diasArr.indexOf(d);
+          if (dIdx !== -1) {
+            const hIdx = horasArr.indexOf(h.horaInicio);
+            const dur = h.horaFin - h.horaInicio;
+            for (let i = 0; i < dur; i++) {
+              celdasOtras.add(`${dIdx}-${hIdx + i}`);
+            }
+          }
+        });
+      });
+    });
+
+    return (grupoToTest.horarios || []).some((h) => {
+      return (h.dias || []).some((d) => {
+        const dIdx = diasArr.indexOf(d);
+        if (dIdx === -1) return false;
+        const hIdx = horasArr.indexOf(h.horaInicio);
+        const dur = h.horaFin - h.horaInicio;
+        for (let i = 0; i < dur; i++) {
+          if (celdasOtras.has(`${dIdx}-${hIdx + i}`)) return true;
+        }
+        return false;
+      });
+    });
+  };
+
   const handleDragStart = (e) => {
     if (!isDraggable) {
       e.preventDefault();
@@ -206,6 +297,34 @@ function ClassBlockComponent({
       return;
     }
 
+    // Verificar si existen grupos disponibles válidos (distintos al actual, con cupo y sin conflicto)
+    const grupoActual =
+      grupo !== null && typeof grupo !== "undefined"
+        ? grupo
+        : state.gruposSeleccionados[mat.codigo];
+
+    const availableGroups = (mat.grupos || []).filter((g) => {
+      if (
+        grupoActual !== null &&
+        typeof grupoActual !== "undefined" &&
+        String(g.numero) === String(grupoActual)
+      ) {
+        return false;
+      }
+      if (typeof g.cupoDisponible === "number" && g.cupoDisponible <= 0) {
+        return false;
+      }
+      return !checkGroupConflict(g, mat.codigo);
+    });
+
+    if (availableGroups.length === 0) {
+      e.preventDefault();
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500);
+      toast.error("No hay otros horarios disponibles para esta materia");
+      return;
+    }
+
     onLeave?.();
 
     e.dataTransfer.effectAllowed = "move";
@@ -215,7 +334,7 @@ function ClassBlockComponent({
     if (typeof document !== "undefined") {
       const isDark = document.documentElement.classList.contains("dark");
       const dragNode = document.createElement("div");
-      dragNode.style.position = "absolute";
+      dragNode.style.position = "fixed";
       dragNode.style.top = "-9999px";
       dragNode.style.left = "-9999px";
       dragNode.style.zIndex = "999999";
@@ -271,8 +390,11 @@ function ClassBlockComponent({
   };
 
   const handleDragEnd = () => {
-    const { clearDragState } = useMateriasStore.getState();
-    clearDragState?.();
+    const state = useMateriasStore.getState();
+    if (!state.lastDropSuccessful && state.draggingMateria?.codigo) {
+      state.triggerShakeMateria?.(state.draggingMateria.codigo);
+    }
+    state.clearDragState?.();
   };
 
   const blockColor = color || "#3b82f6";
@@ -292,7 +414,7 @@ function ClassBlockComponent({
       <motion.div
         ref={blockRef}
         onClick={handleBlockClick}
-        initial={!isPreview ? { scale: 0.86, opacity: 0 } : false}
+        initial={false}
         animate={
           isExploding
             ? {
@@ -305,12 +427,16 @@ function ClassBlockComponent({
                   "brightness(4) blur(8px)",
                 ],
               }
-            : { scale: 1, opacity: 1, filter: "brightness(1)", rotate: 0 }
+            : isShaking
+              ? { x: [0, -9, 9, -7, 7, -4, 4, 0] }
+              : { x: 0 }
         }
         transition={
           isExploding
             ? { duration: 0.4, ease: [0.05, 0.7, 0.1, 1] }
-            : { duration: 0.22, ease: [0.175, 0.885, 0.32, 1.15] }
+            : isShaking
+              ? { duration: 0.45, ease: "easeInOut" }
+              : { duration: 0.15 }
         }
         className={`w-full h-full rounded-md border border-l-[3.5px] flex flex-col justify-between items-center py-1 px-1.5 overflow-hidden hover:shadow-md select-none group transition-shadow duration-100 ease-out ${
           isPreview ? "border-dashed ring-2 ring-primary/40 shadow-md" : ""
@@ -323,7 +449,7 @@ function ClassBlockComponent({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={onLeave}
       >
-        {/* Badges y Botón de Eliminar */}
+        {/* Badges y Acciones (Grip & Delete) */}
         <div className="flex items-start w-full justify-between gap-1 z-10">
           <div className="flex items-center gap-1 flex-wrap min-w-0">
             {grupo !== null && typeof grupo !== "undefined" && (
@@ -346,34 +472,41 @@ function ClassBlockComponent({
             )}
           </div>
 
-          {isManual && !isExploding ? (
-            <Tooltip
-              content="Eliminar bloque"
-              position="top"
-              className="opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
-            >
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="p-1 rounded-md bg-red-500/90 hover:bg-red-600 active:scale-90 text-white shadow-xs transition-all flex items-center justify-center cursor-pointer"
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                }}
-                aria-label="Eliminar bloque manual"
+          {!isPreview && !isExploding && (
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 ml-auto flex items-center gap-0.5">
+              {isDraggable && (
+                <Tooltip content="Arrastrar materia al horario" position="top">
+                  <div
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center p-0.5 rounded text-zinc-400 dark:text-zinc-400 hover:text-primary dark:hover:text-primary cursor-grab"
+                    aria-label="Arrastrar materia al horario"
+                  >
+                    <GripIcon className="w-3.5 h-3.5" />
+                  </div>
+                </Tooltip>
+              )}
+              <Tooltip
+                content={
+                  manualId
+                    ? "Eliminar bloque manual"
+                    : "Quitar materia del horario"
+                }
+                position="top"
               >
-                <TrashIcon className="w-3.5 h-3.5" />
-              </button>
-            </Tooltip>
-          ) : (
-            isDraggable && (
-              <div
-                className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 ml-auto flex items-center justify-center p-0.5 text-zinc-400 dark:text-zinc-400 hover:text-primary dark:hover:text-primary cursor-grab"
-                title="Arrastrar bloque"
-              >
-                <GripIcon className="w-3.5 h-3.5" />
-              </div>
-            )
+                <button
+                  type="button"
+                  onClick={handleRemoveSubject}
+                  className="p-1 absolute top-1 right-1 rounded text-zinc-400 hover:text-red-500 hover:bg-red-500/10 active:scale-90 transition-all flex items-center justify-center cursor-pointer"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                  }}
+                  aria-label={
+                    manualId ? "Eliminar bloque manual" : "Quitar del horario"
+                  }
+                >
+                  <TrashIcon className="w-3.5 h-3.5" />
+                </button>
+              </Tooltip>
+            </div>
           )}
         </div>
 

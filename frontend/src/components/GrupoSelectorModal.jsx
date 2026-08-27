@@ -36,16 +36,16 @@ export default function GrupoSelectorModal() {
   // Filtrar grupos que no tengan conflicto usando la función centralizada
   const gruposSinConflicto = gruposConflicto.filter((grupo) => {
     if (!draggingMateria) return false;
-    if (grupo.cupoDisponible === 0) return false; // Excluir grupos sin cupo
+    if (typeof grupo.cupoDisponible === "number" && grupo.cupoDisponible <= 0) return false; // Excluir grupos sin cupo
     // Buscar la materia original por código
     const materiaOriginal = materias?.find(
-      (m) => m.codigo === draggingMateria.codigo,
+      (m) => String(m.codigo) === String(draggingMateria.codigo),
     );
-    if (!materiaOriginal) return false;
+    if (!materiaOriginal) return true;
     return !checkGrupoConflict(
       materiaOriginal,
       grupo,
-      gruposSeleccionados[draggingMateria.codigo],
+      gruposSeleccionados[draggingMateria.codigo] || gruposSeleccionados[String(draggingMateria.codigo)],
     );
   });
 
@@ -106,7 +106,6 @@ export default function GrupoSelectorModal() {
 
     // Cerrar el modal y limpiar TODO el estado
     setShowGrupoSelector(false, []);
-    // Ahora sí limpiar completamente incluyendo draggingMateria
     useMateriasStore.setState({
       draggingMateria: null,
       hoveredScheduleCell: null,
@@ -115,12 +114,16 @@ export default function GrupoSelectorModal() {
       showGrupoSelector: false,
       gruposConflicto: [],
       pendingModal: false,
+      lastDropSuccessful: true,
     });
   };
 
   const handleCancel = () => {
+    const cod = draggingMateria?.codigo;
+    if (cod) {
+      useMateriasStore.getState().triggerShakeMateria?.(cod);
+    }
     setShowGrupoSelector(false, []);
-    // Limpiar completamente todo el estado
     useMateriasStore.setState({
       draggingMateria: null,
       hoveredScheduleCell: null,
@@ -129,6 +132,7 @@ export default function GrupoSelectorModal() {
       showGrupoSelector: false,
       gruposConflicto: [],
       pendingModal: false,
+      lastDropSuccessful: false,
     });
   };
 
