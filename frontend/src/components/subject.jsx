@@ -14,6 +14,316 @@ import { ChevronDownIcon, GripIcon, InfoIcon } from "../icons/index.js";
 import Tooltip from "./Tooltip.jsx";
 import SelectionParticles from "./SelectionParticles.jsx";
 
+const DIAS = [
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+  "Domingo",
+];
+
+// Subcomponente aislado para los grupos expandidos: SOLO se monta y procesa cuando el acordeón está abierto
+const SubjectAccordionGroups = memo(function SubjectAccordionGroups({
+  materia,
+  grupoSeleccionado,
+  highlightedGrupo,
+  activeFilters = {},
+  grupoRefs,
+  onGrupoSelect,
+  showGroupParticles,
+}) {
+  const gruposSeleccionados = useMateriasStore((s) => s.gruposSeleccionados);
+  const manualBlocks = useMateriasStore((s) => s.manualBlocks);
+  const materias = useMateriasStore((s) => s.materias);
+
+  const occupiedScheduleCells = useMemo(() => {
+    if (!gruposSeleccionados) return new Map();
+    const map = new Map();
+    const allMaterias = Array.isArray(materias) ? materias : materia ? [materia] : [];
+
+    Object.entries(gruposSeleccionados).forEach(([cod, numGrp]) => {
+      if (!cod || !numGrp) return;
+      const mat = allMaterias.find((m) => String(m.codigo) === String(cod));
+      const g = mat?.grupos?.find((gr) => String(gr.numero) === String(numGrp));
+      (g?.horarios || []).forEach((h) => {
+        (h.dias || []).forEach((d) => {
+          const dIdx = DIAS.indexOf(d);
+          if (dIdx !== -1) {
+            for (let hr = h.horaInicio; hr < h.horaFin; hr++) {
+              map.set(`${dIdx}-${hr}`, String(cod));
+            }
+          }
+        });
+      });
+    });
+
+    return map;
+  }, [gruposSeleccionados, materias, materia]);
+
+  const occupiedManualCells = useMemo(() => {
+    const set = new Set();
+    if (manualBlocks && manualBlocks.length > 0) {
+      manualBlocks.forEach((b) => {
+        for (let k = 0; k < b.duracion; k++) {
+          set.add(`${b.diaIndex}-${b.horaIndex + 6 + k}`);
+        }
+      });
+    }
+    return set;
+  }, [manualBlocks]);
+
+  const checkGroupConflict = useCallback(
+    (grp) => {
+      if (!grp || !grp.horarios || grp.horarios.length === 0) return false;
+      return grp.horarios.some((horario) => {
+        return (horario.dias || []).some((dia) => {
+          const diaIndex = DIAS.indexOf(dia);
+          if (diaIndex === -1) return false;
+          for (let hr = horario.horaInicio; hr < horario.horaFin; hr++) {
+            const cellKey = `${diaIndex}-${hr}`;
+            const occupiedCod = occupiedScheduleCells.get(cellKey);
+            if (occupiedCod && String(occupiedCod) !== String(materia?.codigo)) {
+              return true;
+            }
+            if (occupiedManualCells.has(cellKey)) {
+              return true;
+            }
+          }
+          return false;
+        });
+      });
+    },
+    [occupiedScheduleCells, occupiedManualCells, materia?.codigo],
+  );
+
+  const hasActiveAdvancedFilters = Boolean(
+    (activeFilters.selectedDias && activeFilters.selectedDias.length > 0) ||
+      (activeFilters.horaMinimaFilter && activeFilters.horaMinimaFilter > 6) ||
+      (activeFilters.horaMaximaFilter && activeFilters.horaMaximaFilter < 22) ||
+      activeFilters.selectedJornada,
+  );
+
+  const checkGrupoMatchesFilter = useCallback(
+    (grupo) => {
+      if (!hasActiveAdvancedFilters || !grupo?.horarios) return true;
+
+      if (activeFilters.selectedDias?.length > 0) {
+        const hasDay = grupo.horarios.some((h) =>
+          (h.dias || []).some((d) => activeFilters.selectedDias.includes(d)),
+        );
+        if (!hasDay) return false;
+      }
+
+      const minH = activeFilters.horaMinimaFilter ?? 6;
+      const maxH = activeFilters.horaMaximaFilter ?? 22;
+      if (minH > 6 || maxH < 22) {
+        const hasValidHour = grupo.horarios.some(
+          (h) => h.horaInicio >= minH && h.horaFin <= maxH,
+        );
+        if (!hasValidHour) return false;
+      }
+
+      if (activeFilters.selectedJornada) {
+        const hasJornada = grupo.horarios.some((h) => {
+          if (activeFilters.selectedJornada === "manana") return h.horaInicio < 12;
+          if (activeFilters.selectedJornada === "tarde")
+            return h.horaInicio >= 12 && h.horaInicio < 18;
+          if (activeFilters.selectedJornada === "noche") return h.horaInicio >= 18;
+          return true;
+        });
+        if (!hasJornada) return false;
+      }
+
+      return true;
+    },
+    [hasActiveAdvancedFilters, activeFilters],
+  );
+
+  return (
+    <>
+      {(materia.grupos || []).map((grupo, idx) => {
+        const sinCupos = grupo.cupoDisponible === 0;
+        const isGrupoSelected = grupoSeleccionado === grupo.numero;
+        const tieneConflicto = checkGroupConflict(grupo);
+        const disabled = sinCupos || tieneConflicto;
+        const isFocusedGrupo =
+          highlightedGrupo && String(highlightedGrupo) === String(grupo.numero);
+        const matchesFilter = checkGrupoMatchesFilter(grupo);
+        const isFilteredMatch =
+          hasActiveAdvancedFilters &&
+          matchesFilter &&
+          !isGrupoSelected &&
+          !isFocusedGrupo;
+        const isFilteredNonMatch =
+          hasActiveAdvancedFilters &&
+          !matchesFilter &&
+          !isGrupoSelected &&
+          !isFocusedGrupo;
+
+        return (
+          <div
+            key={idx}
+            ref={(el) => {
+              if (el) grupoRefs.current[String(grupo.numero)] = el;
+            }}
+            onClick={
+              disabled ? undefined : () => onGrupoSelect(grupo.numero, tieneConflicto)
+            }
+            className={`relative p-2 rounded-md border text-xs duration-200 flex items-center justify-between gap-2.5 transition-all ${
+              isFocusedGrupo
+                ? "ring-2 ring-primary ring-offset-1 dark:ring-offset-zinc-900 border-primary bg-primary/20 text-primary dark:text-blue-100 font-bold shadow-md scale-[1.02]"
+                : disabled
+                  ? "opacity-40 cursor-not-allowed border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/40"
+                  : isGrupoSelected
+                    ? "border-primary bg-primary/10 text-primary dark:text-blue-100 font-semibold cursor-pointer shadow-2xs ring-1 ring-primary/30"
+                    : isFilteredMatch
+                      ? "border-purple-500 dark:border-purple-400/90 ring-1 ring-purple-500/20 bg-white dark:bg-zinc-900 hover:border-purple-600 dark:hover:border-purple-300 text-zinc-900 dark:text-zinc-100 cursor-pointer shadow-2xs"
+                      : isFilteredNonMatch
+                        ? "opacity-40 hover:opacity-75 border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 cursor-pointer"
+                        : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer"
+            }`}
+          >
+            {/* EXTREMO IZQUIERDO: Check / Radio Indicator + Badge Grupo */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="relative flex items-center justify-center">
+                <div
+                  className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
+                    isGrupoSelected
+                      ? "border-primary bg-primary text-white scale-110"
+                      : isFilteredMatch
+                        ? "border-purple-500 dark:border-purple-400 bg-white dark:bg-zinc-900 text-purple-600"
+                        : "border-zinc-300 dark:border-zinc-600 bg-white dark:bg-transparent"
+                  }`}
+                >
+                  {isGrupoSelected ? (
+                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                  ) : isFilteredMatch ? (
+                    <div className="w-1.5 h-1.5 rounded-full bg-purple-500 dark:bg-purple-400" />
+                  ) : null}
+                </div>
+                {showGroupParticles === grupo.numero && (
+                  <SelectionParticles
+                    color="#1392ec"
+                    count={10}
+                    radius={22}
+                  />
+                )}
+              </div>
+
+              <span
+                className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md ${
+                  isGrupoSelected
+                    ? "bg-primary text-white"
+                    : isFilteredMatch
+                      ? "bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shadow-2xs font-bold"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
+                }`}
+              >
+                G{grupo.numero}
+              </span>
+            </div>
+
+            {/* CENTRO: Horarios divididos en filas por cada bloque */}
+            <div className="flex-1 min-w-0 flex flex-col space-y-0.5 text-left font-mono">
+              {grupo.horarios && grupo.horarios.length > 0 ? (
+                grupo.horarios.map((h, hIdx) => {
+                  const start = String(h.horaInicio).padStart(2, "0");
+                  const end = String(h.horaFin).padStart(2, "0");
+
+                  return (
+                    <div
+                      key={hIdx}
+                      className="flex items-center gap-1 text-[10.5px] text-zinc-700 dark:text-zinc-300 truncate"
+                    >
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {(h.dias || []).map((d, dIdx) => {
+                          const isMatchingDay =
+                            activeFilters.selectedDias?.includes(d);
+                          return (
+                            <React.Fragment key={d}>
+                              {dIdx > 0 && ", "}
+                              <span
+                                className={
+                                  isMatchingDay
+                                    ? "px-1 py-0.2 rounded font-bold text-purple-700 dark:text-purple-300 bg-purple-100/80 dark:bg-purple-900/50"
+                                    : ""
+                                }
+                              >
+                                {d.slice(0, 3)}
+                              </span>
+                            </React.Fragment>
+                          );
+                        })}
+                      </span>
+                      <span className="text-zinc-500 dark:text-zinc-400">
+                        {start}:00-{end}:00
+                      </span>
+                    </div>
+                  );
+                })
+              ) : (
+                <span className="text-[10px] text-zinc-400">
+                  Sin horario
+                </span>
+              )}
+            </div>
+
+            {/* EXTREMO DERECHO: Badge de Cupos + Botón de Info Cuadrado con Tooltip Reutilizable */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <span
+                className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-md border tabular-nums ${
+                  sinCupos
+                    ? "bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/60"
+                    : tieneConflicto
+                      ? "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/60"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-primary dark:text-blue-400 border border-zinc-200 dark:border-zinc-700"
+                }`}
+              >
+                {grupo.cupoDisponible}/{grupo.cupoMaximo}
+              </span>
+
+              <Tooltip
+                position="top"
+                content={
+                  <div className="space-y-2 w-56">
+                    <div>
+                      <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-zinc-300 block mb-0.5">
+                        Docente
+                      </span>
+                      <span className="text-xs font-semibold text-white block leading-snug">
+                        {grupo.profesor || "Docente por asignar"}
+                      </span>
+                    </div>
+                    <div className="pt-1.5 border-t border-zinc-800">
+                      <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-zinc-300 block mb-0.5">
+                        Aula / Salón
+                      </span>
+                      <span className="text-xs font-mono text-primary dark:text-blue-400 font-bold block">
+                        {grupo.aula || "Por asignar"}
+                      </span>
+                    </div>
+                  </div>
+                }
+              >
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-6 w-6 rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white cursor-pointer flex items-center justify-center"
+                  aria-label="Información del grupo"
+                >
+                  <InfoIcon className="w-3.5 h-3.5" />
+                </button>
+              </Tooltip>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+});
+
 function SubjectComponent({
   materia,
   generationMode,
@@ -22,7 +332,7 @@ function SubjectComponent({
 }) {
   const materiaCodigo = materia?.codigo ? String(materia.codigo) : "";
 
-  // Selectores atómicos para rendimiento 60fps sin re-renderizar todas las materias
+  // Selectores atómicos: SOLO re-renderizan si cambia el estado específico de ESTA materia
   const isSelected = useMateriasStore(
     (s) =>
       Boolean(s.materiasSeleccionadas?.[materiaCodigo]) ||
@@ -45,15 +355,11 @@ function SubjectComponent({
   const selectGrupo = useMateriasStore((s) => s.selectGrupo);
   const setDraggingMateria = useMateriasStore((s) => s.setDraggingMateria);
   const clearDragState = useMateriasStore((s) => s.clearDragState);
-  const resetKey = useMateriasStore((s) => s.resetKey);
-  const manualBlocks = useMateriasStore((s) => s.manualBlocks);
   const focusedMateriaCodigo = useMateriasStore((s) => s.focusedMateriaCodigo);
   const focusedGrupoNumero = useMateriasStore((s) => s.focusedGrupoNumero);
   const focusTimestamp = useMateriasStore((s) => s.focusTimestamp);
   const shakeMateriaCodigo = useMateriasStore((s) => s.shakeMateriaCodigo);
   const shakeTimestamp = useMateriasStore((s) => s.shakeTimestamp);
-  const materias = useMateriasStore((s) => s.materias);
-  const gruposSeleccionados = useMateriasStore((s) => s.gruposSeleccionados);
 
   const setIsExpanded = (val) => toggleSubjectExpanded?.(materiaCodigo, val);
   const [isHighlighted, setIsHighlighted] = useState(false);
@@ -104,7 +410,7 @@ function SubjectComponent({
     }
   }, []);
 
-  // Auto-expandir, resaltar y centrar materia y grupo cada vez que se hace clic desde el horario (incluso clics sucesivos)
+  // Auto-expandir, resaltar y centrar materia y grupo cada vez que se hace clic desde el horario
   useEffect(() => {
     if (
       focusedMateriaCodigo &&
@@ -117,7 +423,6 @@ function SubjectComponent({
         const grp = String(focusedGrupoNumero);
         setHighlightedGrupo(grp);
 
-        // Centrado progresivo garantizado en clics repetidos
         const t1 = setTimeout(() => centerFocusedGrupo(grp), 40);
         const t2 = setTimeout(() => centerFocusedGrupo(grp), 180);
         const t3 = setTimeout(() => centerFocusedGrupo(grp), 360);
@@ -150,103 +455,6 @@ function SubjectComponent({
 
   const isManualMode = generationMode === GENERATION_MODES.MANUAL;
 
-  const hasActiveAdvancedFilters = Boolean(
-    (activeFilters.selectedDias && activeFilters.selectedDias.length > 0) ||
-      (activeFilters.horaMinimaFilter && activeFilters.horaMinimaFilter > 6) ||
-      (activeFilters.horaMaximaFilter && activeFilters.horaMaximaFilter < 22) ||
-      activeFilters.selectedJornada,
-  );
-
-  const checkGrupoMatchesFilter = useCallback(
-    (grupo) => {
-      if (!hasActiveAdvancedFilters || !grupo?.horarios) return true;
-
-      // Filtro por días
-      if (activeFilters.selectedDias?.length > 0) {
-        const hasDay = grupo.horarios.some((h) =>
-          (h.dias || []).some((d) => activeFilters.selectedDias.includes(d)),
-        );
-        if (!hasDay) return false;
-      }
-
-      // Filtro por horas
-      const minH = activeFilters.horaMinimaFilter ?? 6;
-      const maxH = activeFilters.horaMaximaFilter ?? 22;
-      if (minH > 6 || maxH < 22) {
-        const hasValidHour = grupo.horarios.some(
-          (h) => h.horaInicio >= minH && h.horaFin <= maxH,
-        );
-        if (!hasValidHour) return false;
-      }
-
-      // Filtro por jornada
-      if (activeFilters.selectedJornada) {
-        const hasJornada = grupo.horarios.some((h) => {
-          if (activeFilters.selectedJornada === "manana") return h.horaInicio < 12;
-          if (activeFilters.selectedJornada === "tarde")
-            return h.horaInicio >= 12 && h.horaInicio < 18;
-          if (activeFilters.selectedJornada === "noche") return h.horaInicio >= 18;
-          return true;
-        });
-        if (!hasJornada) return false;
-      }
-
-      return true;
-    },
-    [hasActiveAdvancedFilters, activeFilters],
-  );
-
-  // Celdas ocupadas calculadas sincrónicamente en tiempo real ante cualquier cambio del store
-  const occupiedScheduleCells = useMemo(() => {
-    if (!isManualMode || !gruposSeleccionados) return new Map();
-    const dias = [
-      "Lunes",
-      "Martes",
-      "Miércoles",
-      "Jueves",
-      "Viernes",
-      "Sábado",
-      "Domingo",
-    ];
-    const map = new Map();
-    const allMaterias =
-      materias && Array.isArray(materias)
-        ? materias
-        : materia
-          ? [materia]
-          : [];
-
-    Object.entries(gruposSeleccionados).forEach(([cod, numGrp]) => {
-      if (!cod || !numGrp) return;
-      const mat = allMaterias.find((m) => String(m.codigo) === String(cod));
-      const g = mat?.grupos?.find((gr) => String(gr.numero) === String(numGrp));
-      (g?.horarios || []).forEach((h) => {
-        (h.dias || []).forEach((d) => {
-          const dIdx = dias.indexOf(d);
-          if (dIdx !== -1) {
-            for (let hr = h.horaInicio; hr < h.horaFin; hr++) {
-              map.set(`${dIdx}-${hr}`, String(cod));
-            }
-          }
-        });
-      });
-    });
-
-    return map;
-  }, [gruposSeleccionados, isManualMode, materias, materia]);
-
-  const occupiedManualCells = useMemo(() => {
-    const set = new Set();
-    if (manualBlocks && manualBlocks.length > 0) {
-      manualBlocks.forEach((b) => {
-        for (let k = 0; k < b.duracion; k++) {
-          set.add(`${b.diaIndex}-${b.horaIndex + 6 + k}`);
-        }
-      });
-    }
-    return set;
-  }, [manualBlocks]);
-
   // Contar grupos disponibles vs totales
   const totalGrupos = materia?.grupos?.length || 0;
   const gruposConCupo = useMemo(() => {
@@ -274,52 +482,14 @@ function SubjectComponent({
     }
   };
 
-  const checkGroupConflict = useCallback(
-    (grp) => {
-      if (!grp || !grp.horarios || grp.horarios.length === 0) return false;
-      const dias = [
-        "Lunes",
-        "Martes",
-        "Miércoles",
-        "Jueves",
-        "Viernes",
-        "Sábado",
-        "Domingo",
-      ];
-      return grp.horarios.some((horario) => {
-        return (horario.dias || []).some((dia) => {
-          const diaIndex = dias.indexOf(dia);
-          if (diaIndex === -1) return false;
-          for (let hr = horario.horaInicio; hr < horario.horaFin; hr++) {
-            const cellKey = `${diaIndex}-${hr}`;
-            const occupiedCod = occupiedScheduleCells.get(cellKey);
-            if (occupiedCod && String(occupiedCod) !== String(materia?.codigo)) {
-              return true;
-            }
-            if (occupiedManualCells.has(cellKey)) {
-              return true;
-            }
-          }
-          return false;
-        });
-      });
-    },
-    [occupiedScheduleCells, occupiedManualCells, materia?.codigo],
-  );
-
-  const handleGrupoSelect = (numeroGrupo) => {
+  const handleGrupoSelectCallback = (numeroGrupo, tieneConflicto) => {
     if (grupoSeleccionado === numeroGrupo) {
       selectGrupo(materia.codigo, null);
       toggleMateriaSelected(materia.codigo);
       return;
     }
 
-    const grupo = materia.grupos?.find(
-      (g) => String(g.numero) === String(numeroGrupo),
-    );
-    if (!grupo) return;
-
-    if (checkGroupConflict(grupo)) {
+    if (tieneConflicto) {
       const { notify } = useMateriasStore.getState();
       if (notify)
         notify("⚠️ No se puede seleccionar: conflicto con otra materia");
@@ -333,62 +503,6 @@ function SubjectComponent({
 
     if (!isSelected) {
       toggleMateriaSelected(materia.codigo);
-    }
-  };
-
-  // Verificar si todos los grupos disponibles tienen conflicto de horario
-  const hasAllGroupsConflicted = useMemo(() => {
-    if (
-      hasZeroCuposGlobally ||
-      !materia?.grupos ||
-      materia.grupos.length === 0 ||
-      grupoSeleccionado ||
-      !isManualMode
-    ) {
-      return false;
-    }
-
-    const availableGroupsWithCupos = materia.grupos.filter(
-      (g) => typeof g.cupoDisponible !== "number" || g.cupoDisponible > 0,
-    );
-    if (availableGroupsWithCupos.length === 0) return false;
-
-    return availableGroupsWithCupos.every((g) => checkGroupConflict(g));
-  }, [
-    hasZeroCuposGlobally,
-    materia?.grupos,
-    grupoSeleccionado,
-    isManualMode,
-    gruposSeleccionados,
-    manualBlocks,
-    checkGroupConflict,
-  ]);
-
-  useEffect(() => {
-    setIsExpanded(false);
-  }, [resetKey]);
-
-  useEffect(() => {
-    if (dragEnabled) {
-      setIsExpanded(false);
-    }
-  }, [dragEnabled]);
-
-  const handleGroupSelect = (numeroGrupo) => {
-    const isAlreadySelected = grupoSeleccionado === numeroGrupo;
-
-    if (isAlreadySelected) {
-      selectGrupo(materia.codigo, null);
-      if (isSelected) {
-        toggleMateriaSelected(materia.codigo);
-      }
-    } else {
-      selectGrupo(materia.codigo, numeroGrupo);
-      setShowGroupParticles(numeroGrupo);
-      setTimeout(() => setShowGroupParticles(null), 500);
-      if (!isSelected) {
-        toggleMateriaSelected(materia.codigo);
-      }
     }
   };
 
@@ -406,7 +520,6 @@ function SubjectComponent({
       return;
     }
 
-    // 1. Si no tiene grupos o ninguno tiene horarios
     const hasAnyHorario = (materia?.grupos || []).some(
       (g) => g.horarios && g.horarios.length > 0,
     );
@@ -418,7 +531,6 @@ function SubjectComponent({
       return;
     }
 
-    // 2. Si globalmente no tiene cupos disponibles
     if (hasZeroCuposGlobally) {
       e.preventDefault();
       setIsShaking(true);
@@ -427,7 +539,35 @@ function SubjectComponent({
       return;
     }
 
-    // 3. Verificar si tiene al menos un grupo disponible sin conflicto con las materias actuales
+    // Comprobar conflictos con el estado global en el momento exacto del drag
+    const storeState = useMateriasStore.getState();
+    const currentGrupos = storeState.gruposSeleccionados || {};
+    const allManual = storeState.manualBlocks || [];
+    const allMaterias = storeState.materias || [];
+
+    const occupiedByOthers = new Set();
+    Object.entries(currentGrupos).forEach(([cod, numGrp]) => {
+      if (!cod || !numGrp || String(cod) === String(materia?.codigo)) return;
+      const mat = allMaterias.find((m) => String(m.codigo) === String(cod));
+      const g = mat?.grupos?.find((gr) => String(gr.numero) === String(numGrp));
+      (g?.horarios || []).forEach((h) => {
+        (h.dias || []).forEach((d) => {
+          const dIdx = DIAS.indexOf(d);
+          if (dIdx !== -1) {
+            for (let hr = h.horaInicio; hr < h.horaFin; hr++) {
+              occupiedByOthers.add(`${dIdx}-${hr}`);
+            }
+          }
+        });
+      });
+    });
+
+    allManual.forEach((b) => {
+      for (let k = 0; k < b.duracion; k++) {
+        occupiedByOthers.add(`${b.diaIndex}-${b.horaIndex + 6 + k}`);
+      }
+    });
+
     const availableGroups = (materia.grupos || []).filter((g) => {
       if (grupoSeleccionado && String(g.numero) === String(grupoSeleccionado)) {
         return false;
@@ -435,7 +575,19 @@ function SubjectComponent({
       if (typeof g.cupoDisponible === "number" && g.cupoDisponible <= 0) {
         return false;
       }
-      return !checkGroupConflict(g);
+      if (!g.horarios || g.horarios.length === 0) return false;
+      return !g.horarios.some((horario) => {
+        return (horario.dias || []).some((dia) => {
+          const diaIndex = DIAS.indexOf(dia);
+          if (diaIndex === -1) return false;
+          for (let hr = horario.horaInicio; hr < horario.horaFin; hr++) {
+            if (occupiedByOthers.has(`${diaIndex}-${hr}`)) {
+              return true;
+            }
+          }
+          return false;
+        });
+      });
     });
 
     if (availableGroups.length === 0) {
@@ -449,7 +601,6 @@ function SubjectComponent({
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", materia.codigo);
 
-    // Crear un drag preview sólido, nítido y 100% opaco sin transparencias
     if (typeof document !== "undefined") {
       const isDark = document.documentElement.classList.contains("dark");
       const dragNode = document.createElement("div");
@@ -546,10 +697,10 @@ function SubjectComponent({
         }
         onDragEnd={isManualMode && dragEnabled ? handleDragEnd : undefined}
         onClick={handleItemClick}
-        className="p-2.5 flex items-center justify-between gap-2.5  cursor-pointer"
+        className="p-2.5 flex items-center justify-between gap-2.5 cursor-pointer"
       >
         <div className="flex-1 min-w-0 flex flex-col text-left space-y-1">
-          {/* Fila 1: Badges superiores (Código gris, Grupos disp/total, Sin cupos, Con conflictos, Grupo elegido en AZUL) */}
+          {/* Fila 1: Badges superiores (Código gris, Grupos disp/total, Sin cupos, Grupo elegido en AZUL) */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {/* Badge gris con código */}
             {materia?.codigo && (
@@ -573,13 +724,6 @@ function SubjectComponent({
               </span>
             )}
 
-            {/* Badge Con Conflictos si todos los grupos disponibles tienen colisión */}
-            {!hasZeroCuposGlobally && hasAllGroupsConflicted && (
-              <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/80 dark:border-amber-900/60">
-                Con conflictos
-              </span>
-            )}
-
             {/* Badge de grupo seleccionado en AZUL */}
             {isManualMode && grupoSeleccionado && (
               <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-primary/15 text-primary border border-primary/30">
@@ -600,7 +744,7 @@ function SubjectComponent({
             dragEnabled ? (
               <Tooltip content="Arrastrar materia al horario" position="top">
                 <div
-                  className="p-1 rounded-md text-zinc-400 hover:text-primary  cursor-grab"
+                  className="p-1 rounded-md text-zinc-400 hover:text-primary cursor-grab"
                   aria-label="Arrastrar materia al horario"
                 >
                   <GripIcon className="w-4 h-4" />
@@ -617,34 +761,25 @@ function SubjectComponent({
                     e.stopPropagation();
                     setIsExpanded(!isExpanded);
                   }}
-                  className="p-1 rounded-md border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800  cursor-pointer"
-                  aria-label={
-                    isExpanded ? "Colapsar grupos" : "Expandir grupos"
-                  }
+                  className={`p-1 rounded-md transition-transform duration-200 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 ${
+                    isExpanded ? "rotate-180" : "rotate-0"
+                  }`}
+                  aria-label={isExpanded ? "Colapsar" : "Expandir"}
                 >
-                  <ChevronDownIcon
-                    className={`w-3.5 h-3.5 ${
-                      isExpanded ? "rotate-180 text-primary" : ""
-                    }`}
-                  />
+                  <ChevronDownIcon className="w-4 h-4" />
                 </button>
               </Tooltip>
             )
           ) : (
-            /* Checkbox Personalizado: Fondo blanco en light mode, azul al marcarse y centrado verticalmente con partículas */
-            <div className="relative inline-flex items-center justify-center">
+            <div className="relative flex items-center justify-center">
               <button
                 type="button"
-                role="checkbox"
-                aria-checked={isSelected}
-                disabled={hasZeroCuposGlobally}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (!hasZeroCuposGlobally) {
-                    handleChange();
-                  }
+                  if (!hasZeroCuposGlobally) handleChange();
                 }}
-                className={`w-4.5 h-4.5 rounded-md border flex items-center justify-center cursor-pointer transition-all duration-150 ${
+                disabled={hasZeroCuposGlobally}
+                className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all cursor-pointer ${
                   isSelected
                     ? "bg-primary border-primary text-white shadow-2xs scale-105"
                     : "bg-white dark:bg-zinc-800/80 border-zinc-300 dark:border-zinc-700 hover:border-primary/80 dark:hover:border-primary/80"
@@ -673,7 +808,7 @@ function SubjectComponent({
         </div>
       </div>
 
-      {/* Desplegable de Grupos: Acordeón */}
+      {/* Desplegable de Grupos: Acordeón optimizado con subcomponente aislado */}
       <AnimatePresence initial={false}>
         {isManualMode && !dragEnabled && materia?.grupos && isExpanded && (
           <motion.div
@@ -692,187 +827,15 @@ function SubjectComponent({
             }}
             className="px-2 pb-2.5 pt-0.5 space-y-1.5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60"
           >
-            {materia.grupos.map((grupo, idx) => {
-              const sinCupos = grupo.cupoDisponible === 0;
-              const isGrupoSelected = grupoSeleccionado === grupo.numero;
-              const tieneConflicto = checkGroupConflict(grupo);
-
-              const disabled = sinCupos || tieneConflicto;
-              const isFocusedGrupo =
-                highlightedGrupo &&
-                String(highlightedGrupo) === String(grupo.numero);
-              const matchesFilter = checkGrupoMatchesFilter(grupo);
-              const isFilteredMatch =
-                hasActiveAdvancedFilters &&
-                matchesFilter &&
-                !isGrupoSelected &&
-                !isFocusedGrupo;
-              const isFilteredNonMatch =
-                hasActiveAdvancedFilters &&
-                !matchesFilter &&
-                !isGrupoSelected &&
-                !isFocusedGrupo;
-
-              return (
-                <div
-                  key={idx}
-                  ref={(el) => {
-                    if (el) grupoRefs.current[String(grupo.numero)] = el;
-                  }}
-                  onClick={
-                    disabled ? undefined : () => handleGrupoSelect(grupo.numero)
-                  }
-                  className={`relative p-2 rounded-md border text-xs duration-200 flex items-center justify-between gap-2.5 transition-all ${
-                    isFocusedGrupo
-                      ? "ring-2 ring-primary ring-offset-1 dark:ring-offset-zinc-900 border-primary bg-primary/20 text-primary dark:text-blue-100 font-bold shadow-md scale-[1.02]"
-                      : disabled
-                        ? "opacity-40 cursor-not-allowed border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/40"
-                        : isGrupoSelected
-                          ? "border-primary bg-primary/10 text-primary dark:text-blue-100 font-semibold cursor-pointer shadow-2xs ring-1 ring-primary/30"
-                          : isFilteredMatch
-                            ? "border-purple-500 dark:border-purple-400/90 ring-1 ring-purple-500/20 bg-white dark:bg-zinc-900 hover:border-purple-600 dark:hover:border-purple-300 text-zinc-900 dark:text-zinc-100 cursor-pointer shadow-2xs"
-                            : isFilteredNonMatch
-                              ? "opacity-40 hover:opacity-75 border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 cursor-pointer"
-                              : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer"
-                  }`}
-                >
-                  {/* EXTREMO IZQUIERDO: Check / Radio Indicator + Badge Grupo */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <div className="relative flex items-center justify-center">
-                      <div
-                        className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
-                          isGrupoSelected
-                            ? "border-primary bg-primary text-white scale-110"
-                            : isFilteredMatch
-                              ? "border-purple-500 dark:border-purple-400 bg-white dark:bg-zinc-900 text-purple-600"
-                              : "border-zinc-300 dark:border-zinc-600 bg-white dark:bg-transparent"
-                        }`}
-                      >
-                        {isGrupoSelected ? (
-                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                        ) : isFilteredMatch ? (
-                          <div className="w-1.5 h-1.5 rounded-full bg-purple-500 dark:bg-purple-400" />
-                        ) : null}
-                      </div>
-                      {showGroupParticles === grupo.numero && (
-                        <SelectionParticles
-                          color="#1392ec"
-                          count={10}
-                          radius={22}
-                        />
-                      )}
-                    </div>
-
-                    <span
-                      className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md ${
-                        isGrupoSelected
-                          ? "bg-primary text-white"
-                          : isFilteredMatch
-                            ? "bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shadow-2xs font-bold"
-                            : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
-                      }`}
-                    >
-                      G{grupo.numero}
-                    </span>
-                  </div>
-
-                  {/* CENTRO: Horarios divididos en filas por cada bloque */}
-                  <div className="flex-1 min-w-0 flex flex-col space-y-0.5 text-left font-mono">
-                    {grupo.horarios && grupo.horarios.length > 0 ? (
-                      grupo.horarios.map((h, hIdx) => {
-                        const start = String(h.horaInicio).padStart(2, "0");
-                        const end = String(h.horaFin).padStart(2, "0");
-
-                        return (
-                          <div
-                            key={hIdx}
-                            className="flex items-center gap-1 text-[10.5px] text-zinc-700 dark:text-zinc-300 truncate"
-                          >
-                            <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                              {(h.dias || []).map((d, dIdx) => {
-                                const isMatchingDay =
-                                  activeFilters.selectedDias?.includes(d);
-                                return (
-                                  <React.Fragment key={d}>
-                                    {dIdx > 0 && ", "}
-                                    <span
-                                      className={
-                                        isMatchingDay
-                                          ? "px-1 py-0.2 rounded font-bold text-purple-700 dark:text-purple-300 bg-purple-100/80 dark:bg-purple-900/50"
-                                          : ""
-                                      }
-                                    >
-                                      {d.slice(0, 3)}
-                                    </span>
-                                  </React.Fragment>
-                                );
-                              })}
-                            </span>
-                            <span className="text-zinc-500 dark:text-zinc-400">
-                              {start}:00-{end}:00
-                            </span>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <span className="text-[10px] text-zinc-400">
-                        Sin horario
-                      </span>
-                    )}
-                  </div>
-
-                  {/* EXTREMO DERECHO: Badge de Cupos + Botón de Info Cuadrado con Tooltip Reutilizable */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {/* Badge de Cupos */}
-                    <span
-                      className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-md border tabular-nums ${
-                        sinCupos
-                          ? "bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/60"
-                          : tieneConflicto
-                            ? "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/60"
-                            : "bg-zinc-100 dark:bg-zinc-800 text-primary dark:text-blue-400 border border-zinc-200 dark:border-zinc-700"
-                      }`}
-                    >
-                      {grupo.cupoDisponible}/{grupo.cupoMaximo}
-                    </span>
-
-                    {/* Botón de Información Cuadrado envuelto en Tooltip */}
-                    <Tooltip
-                      position="top"
-                      content={
-                        <div className="space-y-2 w-56">
-                          <div>
-                            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-zinc-300 block mb-0.5">
-                              Docente
-                            </span>
-                            <span className="text-xs font-semibold text-white block leading-snug">
-                              {grupo.profesor || "Docente por asignar"}
-                            </span>
-                          </div>
-                          <div className="pt-1.5 border-t border-zinc-800">
-                            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-zinc-300 block mb-0.5">
-                              Aula / Salón
-                            </span>
-                            <span className="text-xs font-mono text-primary dark:text-blue-400 font-bold block">
-                              {grupo.aula || "Por asignar"}
-                            </span>
-                          </div>
-                        </div>
-                      }
-                    >
-                      <button
-                        type="button"
-                        onClick={(e) => e.stopPropagation()}
-                        className="h-6 w-6 rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white  cursor-pointer flex items-center justify-center"
-                        aria-label="Información del grupo"
-                      >
-                        <InfoIcon className="w-3.5 h-3.5" />
-                      </button>
-                    </Tooltip>
-                  </div>
-                </div>
-              );
-            })}
+            <SubjectAccordionGroups
+              materia={materia}
+              grupoSeleccionado={grupoSeleccionado}
+              highlightedGrupo={highlightedGrupo}
+              activeFilters={activeFilters}
+              grupoRefs={grupoRefs}
+              onGrupoSelect={handleGrupoSelectCallback}
+              showGroupParticles={showGroupParticles}
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -880,4 +843,11 @@ function SubjectComponent({
   );
 }
 
-export default memo(SubjectComponent);
+export default memo(SubjectComponent, (prev, next) => {
+  return (
+    prev.materia?.codigo === next.materia?.codigo &&
+    prev.generationMode === next.generationMode &&
+    prev.dragEnabled === next.dragEnabled &&
+    prev.activeFilters === next.activeFilters
+  );
+});

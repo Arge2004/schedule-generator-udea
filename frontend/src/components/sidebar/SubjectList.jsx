@@ -62,21 +62,30 @@ export default function SubjectList({
   // Letra activa en el scroll
   const [activeLetter, setActiveLetter] = useState(null);
 
-  const {
-    materias,
-    materiasSeleccionadas = {},
-    gruposSeleccionados = {},
-    resetMateriasSeleccionadas,
-    clearHorariosGenerados,
-    horariosGenerados = [],
-    setAllowManualBlocks,
-    clearAllowManualBlocksBySchedule,
-    unlockAllowManualBlocks,
-    focusedMateriaCodigo,
-    focusTimestamp,
-    collapseAllSubjects,
-    requestClearSchedule,
-  } = useMateriasStore();
+  // Selectores atómicos: SOLO se re-renderiza cuando cambian sus valores específicos
+  const focusedMateriaCodigo = useMateriasStore((s) => s.focusedMateriaCodigo);
+  const focusTimestamp = useMateriasStore((s) => s.focusTimestamp);
+  const collapseAllSubjects = useMateriasStore((s) => s.collapseAllSubjects);
+  const requestClearSchedule = useMateriasStore((s) => s.requestClearSchedule);
+  const resetMateriasSeleccionadas = useMateriasStore(
+    (s) => s.resetMateriasSeleccionadas,
+  );
+  const clearHorariosGenerados = useMateriasStore(
+    (s) => s.clearHorariosGenerados,
+  );
+  const setAllowManualBlocks = useMateriasStore((s) => s.setAllowManualBlocks);
+  const clearAllowManualBlocksBySchedule = useMateriasStore(
+    (s) => s.clearAllowManualBlocksBySchedule,
+  );
+  const unlockAllowManualBlocks = useMateriasStore(
+    (s) => s.unlockAllowManualBlocks,
+  );
+  const materiasSeleccionadas = useMateriasStore(
+    (s) => s.materiasSeleccionadas || {},
+  );
+  const gruposSeleccionados = useMateriasStore(
+    (s) => s.gruposSeleccionados || {},
+  );
 
   const hasExpandedSubjects = useMateriasStore(
     (s) => Object.keys(s.expandedSubjects || {}).length > 0,
@@ -84,18 +93,24 @@ export default function SubjectList({
 
   const selectedCount = useMemo(() => {
     if (generationMode === "manual") {
-      return Object.keys(gruposSeleccionados).filter(
-        (k) =>
-          gruposSeleccionados[k] !== null &&
-          typeof gruposSeleccionados[k] !== "undefined",
+      return Object.values(gruposSeleccionados).filter(
+        (v) => v !== null && typeof v !== "undefined",
       ).length;
     }
-    return Object.keys(materiasSeleccionadas).length;
-  }, [materiasSeleccionadas, gruposSeleccionados, generationMode]);
+    return Object.values(materiasSeleccionadas).filter(Boolean).length;
+  }, [gruposSeleccionados, materiasSeleccionadas, generationMode]);
 
-  const hasGeneratedSchedules =
-    Array.isArray(horariosGenerados) && horariosGenerados.length > 0;
-  const hasAnySelection = selectedCount > 0 || hasGeneratedSchedules;
+  const hasAnySelection = useMateriasStore((s) => {
+    const hasSchedules =
+      Array.isArray(s.horariosGenerados) && s.horariosGenerados.length > 0;
+    if (hasSchedules) return true;
+    if (generationMode === "manual") {
+      return Object.values(s.gruposSeleccionados || {}).some(
+        (v) => v !== null && typeof v !== "undefined",
+      );
+    }
+    return Object.values(s.materiasSeleccionadas || {}).some(Boolean);
+  });
 
   const handleReset = useCallback(() => {
     if (requestClearSchedule) {
