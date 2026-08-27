@@ -118,11 +118,17 @@ export default function SubjectList({
     return materiasFiltradas.filter((materia) => {
       // 1. Filtro Rápido
       if (quickFilter === "selected") {
+        const cod = String(materia.codigo);
         const isSel =
           generationMode === "manual"
-            ? gruposSeleccionados[materia.codigo] !== null &&
-              typeof gruposSeleccionados[materia.codigo] !== "undefined"
-            : !!materiasSeleccionadas[materia.codigo];
+            ? (gruposSeleccionados[cod] !== null &&
+                typeof gruposSeleccionados[cod] !== "undefined") ||
+              (gruposSeleccionados[materia.codigo] !== null &&
+                typeof gruposSeleccionados[materia.codigo] !== "undefined")
+            : Boolean(
+                materiasSeleccionadas[cod] ||
+                  materiasSeleccionadas[materia.codigo],
+              );
         if (!isSel) return false;
       } else if (quickFilter === "available") {
         const hasCupos = (materia.grupos || []).some(

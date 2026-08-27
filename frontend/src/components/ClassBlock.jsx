@@ -175,8 +175,7 @@ function ClassBlockComponent({
   };
 
   const handleRemoveSubject = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
+    e?.stopPropagation();
     onLeave?.();
 
     if (onDelete) {
@@ -184,15 +183,12 @@ function ClassBlockComponent({
       return;
     }
 
-    setIsExploding(true);
-    setTimeout(() => {
-      if (manualId) {
-        if (onDelete) onDelete();
-      } else if (codigoMateria) {
-        const state = useMateriasStore.getState();
-        state.deleteMateriaFromSchedule?.(codigoMateria);
-      }
-    }, 420);
+    if (manualId) {
+      if (onDelete) onDelete();
+    } else if (codigoMateria) {
+      const state = useMateriasStore.getState();
+      state.deleteMateriaFromSchedule?.(codigoMateria);
+    }
   };
 
   const commitEdit = () => {

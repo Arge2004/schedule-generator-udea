@@ -63,20 +63,12 @@ export default function Schedule() {
 
   const handleDeleteSubjectWithAnimation = (codigoMateria) => {
     if (!codigoMateria) return;
-    setExplodingCodigo(codigoMateria);
-    setTimeout(() => {
-      deleteMateriaFromSchedule(codigoMateria);
-      setExplodingCodigo(null);
-    }, 420);
+    deleteMateriaFromSchedule(codigoMateria);
   };
 
   const handleDeleteManualBlockWithAnimation = (manualId) => {
     if (!manualId) return;
-    setExplodingManualId(manualId);
-    setTimeout(() => {
-      removeManualBlock(manualId);
-      setExplodingManualId(null);
-    }, 420);
+    removeManualBlock(manualId);
   };
 
   // Tooltip flotante atómico

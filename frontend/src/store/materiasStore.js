@@ -174,11 +174,22 @@ export const useMateriasStore = create(
       deleteMateriaFromSchedule: (codigoMateria) => set((state) => {
         const newGrupos = { ...state.gruposSeleccionados };
         delete newGrupos[codigoMateria];
+        delete newGrupos[String(codigoMateria)];
+        delete newGrupos[Number(codigoMateria)];
+
         const newMaterias = { ...state.materiasSeleccionadas };
         delete newMaterias[codigoMateria];
+        delete newMaterias[String(codigoMateria)];
+        delete newMaterias[Number(codigoMateria)];
+
+        const newExpanded = { ...(state.expandedSubjects || {}) };
+        delete newExpanded[codigoMateria];
+        delete newExpanded[String(codigoMateria)];
+
         return {
           gruposSeleccionados: newGrupos,
           materiasSeleccionadas: newMaterias,
+          expandedSubjects: newExpanded,
           resetKey: (state.resetKey || 0) + 1,
         };
       }),
