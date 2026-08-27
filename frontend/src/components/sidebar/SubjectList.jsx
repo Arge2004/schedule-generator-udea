@@ -48,6 +48,17 @@ export default function SubjectList({
   const [selectedJornada, setSelectedJornada] = useState(null);
   const [selectedDias, setSelectedDias] = useState([]);
 
+  // Objeto de filtros avanzados activo para propagar a cada componente Subject
+  const activeFilters = useMemo(
+    () => ({
+      selectedDias,
+      horaMinimaFilter,
+      horaMaximaFilter,
+      selectedJornada,
+    }),
+    [selectedDias, horaMinimaFilter, horaMaximaFilter, selectedJornada],
+  );
+
   // Letra activa en el scroll
   const [activeLetter, setActiveLetter] = useState(null);
 
@@ -597,6 +608,7 @@ export default function SubjectList({
                       materia={materia}
                       generationMode={generationMode}
                       dragEnabled={dragEnabled}
+                      activeFilters={activeFilters}
                     />
                   ))}
                 </div>

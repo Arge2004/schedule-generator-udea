@@ -14,7 +14,12 @@ import { ChevronDownIcon, GripIcon, InfoIcon } from "../icons/index.js";
 import Tooltip from "./Tooltip.jsx";
 import SelectionParticles from "./SelectionParticles.jsx";
 
-function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
+function SubjectComponent({
+  materia,
+  generationMode,
+  dragEnabled = true,
+  activeFilters = {},
+}) {
   const materiaCodigo = materia?.codigo ? String(materia.codigo) : "";
 
   // Selectores atómicos para rendimiento 60fps sin re-renderizar todas las materias
@@ -145,6 +150,52 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
   ]);
 
   const isManualMode = generationMode === GENERATION_MODES.MANUAL;
+
+  const hasActiveAdvancedFilters = Boolean(
+    (activeFilters.selectedDias && activeFilters.selectedDias.length > 0) ||
+      (activeFilters.horaMinimaFilter && activeFilters.horaMinimaFilter > 6) ||
+      (activeFilters.horaMaximaFilter && activeFilters.horaMaximaFilter < 22) ||
+      activeFilters.selectedJornada,
+  );
+
+  const checkGrupoMatchesFilter = useCallback(
+    (grupo) => {
+      if (!hasActiveAdvancedFilters || !grupo?.horarios) return true;
+
+      // Filtro por días
+      if (activeFilters.selectedDias?.length > 0) {
+        const hasDay = grupo.horarios.some((h) =>
+          (h.dias || []).some((d) => activeFilters.selectedDias.includes(d)),
+        );
+        if (!hasDay) return false;
+      }
+
+      // Filtro por horas
+      const minH = activeFilters.horaMinimaFilter ?? 6;
+      const maxH = activeFilters.horaMaximaFilter ?? 22;
+      if (minH > 6 || maxH < 22) {
+        const hasValidHour = grupo.horarios.some(
+          (h) => h.horaInicio >= minH && h.horaFin <= maxH,
+        );
+        if (!hasValidHour) return false;
+      }
+
+      // Filtro por jornada
+      if (activeFilters.selectedJornada) {
+        const hasJornada = grupo.horarios.some((h) => {
+          if (activeFilters.selectedJornada === "manana") return h.horaInicio < 12;
+          if (activeFilters.selectedJornada === "tarde")
+            return h.horaInicio >= 12 && h.horaInicio < 18;
+          if (activeFilters.selectedJornada === "noche") return h.horaInicio >= 18;
+          return true;
+        });
+        if (!hasJornada) return false;
+      }
+
+      return true;
+    },
+    [hasActiveAdvancedFilters, activeFilters],
+  );
 
   // Sincronizar celdas ocupadas con los grupos seleccionados solo si el acordeón está expandido
   useEffect(() => {
@@ -677,6 +728,17 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
               const isFocusedGrupo =
                 highlightedGrupo &&
                 String(highlightedGrupo) === String(grupo.numero);
+              const matchesFilter = checkGrupoMatchesFilter(grupo);
+              const isFilteredMatch =
+                hasActiveAdvancedFilters &&
+                matchesFilter &&
+                !isGrupoSelected &&
+                !isFocusedGrupo;
+              const isFilteredNonMatch =
+                hasActiveAdvancedFilters &&
+                !matchesFilter &&
+                !isGrupoSelected &&
+                !isFocusedGrupo;
 
               return (
                 <div
@@ -694,7 +756,11 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
                         ? "opacity-40 cursor-not-allowed border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/40"
                         : isGrupoSelected
                           ? "border-primary bg-primary/10 text-primary dark:text-blue-100 font-semibold cursor-pointer shadow-2xs ring-1 ring-primary/30"
-                          : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer"
+                          : isFilteredMatch
+                            ? "border-purple-500 dark:border-purple-400/90 ring-1 ring-purple-500/20 bg-white dark:bg-zinc-900 hover:border-purple-600 dark:hover:border-purple-300 text-zinc-900 dark:text-zinc-100 cursor-pointer shadow-2xs"
+                            : isFilteredNonMatch
+                              ? "opacity-40 hover:opacity-75 border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 cursor-pointer"
+                              : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer"
                   }`}
                 >
                   {/* EXTREMO IZQUIERDO: Check / Radio Indicator + Badge Grupo */}
@@ -704,12 +770,16 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
                         className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
                           isGrupoSelected
                             ? "border-primary bg-primary text-white scale-110"
-                            : "border-zinc-300 dark:border-zinc-600 bg-white dark:bg-transparent"
+                            : isFilteredMatch
+                              ? "border-purple-500 dark:border-purple-400 bg-white dark:bg-zinc-900 text-purple-600"
+                              : "border-zinc-300 dark:border-zinc-600 bg-white dark:bg-transparent"
                         }`}
                       >
-                        {isGrupoSelected && (
+                        {isGrupoSelected ? (
                           <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                        )}
+                        ) : isFilteredMatch ? (
+                          <div className="w-1.5 h-1.5 rounded-full bg-purple-500 dark:bg-purple-400" />
+                        ) : null}
                       </div>
                       {showGroupParticles === grupo.numero && (
                         <SelectionParticles
@@ -724,7 +794,9 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
                       className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md ${
                         isGrupoSelected
                           ? "bg-primary text-white"
-                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
+                          : isFilteredMatch
+                            ? "bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shadow-2xs font-bold"
+                            : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
                       }`}
                     >
                       G{grupo.numero}
@@ -735,9 +807,6 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
                   <div className="flex-1 min-w-0 flex flex-col space-y-0.5 text-left font-mono">
                     {grupo.horarios && grupo.horarios.length > 0 ? (
                       grupo.horarios.map((h, hIdx) => {
-                        const diasStr = (h.dias || [])
-                          .map((d) => d.slice(0, 3))
-                          .join(", ");
                         const start = String(h.horaInicio).padStart(2, "0");
                         const end = String(h.horaFin).padStart(2, "0");
 
@@ -747,7 +816,24 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
                             className="flex items-center gap-1 text-[10.5px] text-zinc-700 dark:text-zinc-300 truncate"
                           >
                             <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                              {diasStr}
+                              {(h.dias || []).map((d, dIdx) => {
+                                const isMatchingDay =
+                                  activeFilters.selectedDias?.includes(d);
+                                return (
+                                  <React.Fragment key={d}>
+                                    {dIdx > 0 && ", "}
+                                    <span
+                                      className={
+                                        isMatchingDay
+                                          ? "px-1 py-0.2 rounded font-bold text-purple-700 dark:text-purple-300 bg-purple-100/80 dark:bg-purple-900/50"
+                                          : ""
+                                      }
+                                    >
+                                      {d.slice(0, 3)}
+                                    </span>
+                                  </React.Fragment>
+                                );
+                              })}
                             </span>
                             <span className="text-zinc-500 dark:text-zinc-400">
                               {start}:00-{end}:00
