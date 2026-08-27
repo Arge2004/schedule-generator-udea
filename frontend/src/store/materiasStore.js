@@ -58,6 +58,12 @@ export const useMateriasStore = create(
           return { expandedSubjects: current };
         }),
       collapseAllSubjects: () => set({ expandedSubjects: {} }),
+      triggerClearScheduleSequence: 0,
+      requestClearSchedule: () =>
+        set((state) => ({
+          triggerClearScheduleSequence:
+            (state.triggerClearScheduleSequence || 0) + 1,
+        })),
       shakeMateriaCodigo: null,
       shakeTimestamp: 0,
       lastDropSuccessful: false,

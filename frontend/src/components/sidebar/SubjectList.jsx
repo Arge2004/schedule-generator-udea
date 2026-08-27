@@ -64,6 +64,7 @@ export default function SubjectList({
     focusedMateriaCodigo,
     focusTimestamp,
     collapseAllSubjects,
+    requestClearSchedule,
   } = useMateriasStore();
 
   const hasExpandedSubjects = useMateriasStore(
@@ -86,12 +87,17 @@ export default function SubjectList({
   const hasAnySelection = selectedCount > 0 || hasGeneratedSchedules;
 
   const handleReset = useCallback(() => {
-    resetMateriasSeleccionadas();
-    clearHorariosGenerados();
-    setAllowManualBlocks(false);
-    clearAllowManualBlocksBySchedule();
-    unlockAllowManualBlocks();
+    if (requestClearSchedule) {
+      requestClearSchedule();
+    } else {
+      resetMateriasSeleccionadas();
+      clearHorariosGenerados();
+      setAllowManualBlocks(false);
+      clearAllowManualBlocksBySchedule();
+      unlockAllowManualBlocks();
+    }
   }, [
+    requestClearSchedule,
     resetMateriasSeleccionadas,
     clearHorariosGenerados,
     setAllowManualBlocks,

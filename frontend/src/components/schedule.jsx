@@ -351,6 +351,21 @@ export default function Schedule() {
     }, totalTime);
   };
 
+  const triggerClearScheduleSequence = useMateriasStore(
+    (s) => s.triggerClearScheduleSequence,
+  );
+  const lastClearTriggerRef = useRef(triggerClearScheduleSequence || 0);
+
+  useEffect(() => {
+    if (
+      triggerClearScheduleSequence &&
+      triggerClearScheduleSequence !== lastClearTriggerRef.current
+    ) {
+      lastClearTriggerRef.current = triggerClearScheduleSequence;
+      handleClearSchedule();
+    }
+  }, [triggerClearScheduleSequence]);
+
   const hasContentToClear =
     !isClearingSequence &&
     ((horariosGenerados && horariosGenerados.length > 0) ||
