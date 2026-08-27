@@ -8,7 +8,6 @@ import {
   TrashIcon,
   SunIcon,
   MoonIcon,
-  SparklesIcon,
 } from "../../icons/index.js";
 
 export default function ScheduleToolbar({
@@ -22,7 +21,6 @@ export default function ScheduleToolbar({
   hasContentToClear = false,
   darkTheme,
   onToggleDarkTheme,
-  onToggleColorBlobs,
 }) {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportContainerRef = useRef(null);
@@ -151,18 +149,6 @@ export default function ScheduleToolbar({
           <TrashIcon className="w-3.5 h-3.5" />
           <span className="hidden sm:inline text-[11px]">Limpiar horario</span>
         </button>
-
-        {/* Botón Efectos de Fondo (Sparkles) */}
-        <Tooltip content="Efectos de fondo dinámicos" position="top-left">
-          <button
-            type="button"
-            onClick={onToggleColorBlobs}
-            className="h-8 w-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200  cursor-pointer flex items-center justify-center"
-            aria-label="Alternar efectos de fondo"
-          >
-            <SparklesIcon className="w-3.5 h-3.5" />
-          </button>
-        </Tooltip>
 
         {/* Botón Tema Claro/Oscuro */}
         <Tooltip

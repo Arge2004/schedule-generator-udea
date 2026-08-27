@@ -5,7 +5,6 @@ import toast, { Toaster } from "react-hot-toast";
 import { AnimatePresence, motion } from "framer-motion";
 import { TrashIcon } from "../icons/index.js";
 
-import ColorBlobs from "./ColorBlobs.jsx";
 import { ScheduleProvider } from "./ScheduleContext.jsx";
 import ClassBlock from "./ClassBlock.jsx";
 import ClassTooltip from "./ClassTooltip.jsx";
@@ -510,18 +509,6 @@ export default function Schedule() {
     }
   };
 
-  // Alternar bolitas de fondo
-  const handleToggleColorBlobs = () => {
-    try {
-      const cur = localStorage.getItem("colorBlobsDebug") === "true";
-      localStorage.setItem("colorBlobsDebug", (!cur).toString());
-      window.dispatchEvent(new Event("colorBlobs:update"));
-      toast.success(
-        !cur ? "Efectos de fondo activados" : "Efectos de fondo desactivados",
-      );
-    } catch (e) {}
-  };
-
   // Drag and Drop & Manual selection coordinates
   const getCellFromClient = (clientX, clientY) => {
     if (!gridRef.current) return null;
@@ -961,9 +948,6 @@ export default function Schedule() {
           data-schedule-export
           className="flex-1 flex flex-col overflow-hidden relative"
         >
-          {/* Bolitas de fondo sutiles */}
-          <ColorBlobs dark={darkTheme} className="z-0 pointer-events-none" />
-
           {/* Cabecera de Días (Lunes - Domingo) */}
           <ScheduleHeader dias={DIAS} />
 
@@ -1193,7 +1177,6 @@ export default function Schedule() {
           hasContentToClear={hasContentToClear}
           darkTheme={darkTheme}
           onToggleDarkTheme={toggleDarkTheme}
-          onToggleColorBlobs={handleToggleColorBlobs}
         />
 
         {/* Modal de selección de grupos */}
