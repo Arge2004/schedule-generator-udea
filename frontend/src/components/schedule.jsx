@@ -279,23 +279,67 @@ export default function Schedule() {
     return found ? found.codigo : undefined;
   };
 
-  // Limpiar horarios, selecciones y bloques
+  const [clearingExplosions, setClearingExplosions] = useState(new Set());
+  const [isClearingSequence, setIsClearingSequence] = useState(false);
+
+  // Limpiar horarios, selecciones y bloques con efecto dominó/explosión 1 por 1
   const handleClearSchedule = () => {
-    resetMateriasSeleccionadas();
-    clearHorariosGenerados();
-    clearManualBlocks();
-    clearAllowManualBlocksBySchedule();
-    toast.success("Horario limpiado correctamente");
+    if (isClearingSequence) return;
+
+    if (!clasesParaRenderizar || clasesParaRenderizar.length === 0) {
+      resetMateriasSeleccionadas();
+      clearHorariosGenerados();
+      clearManualBlocks();
+      clearAllowManualBlocksBySchedule();
+      toast.success("Horario limpiado correctamente");
+      return;
+    }
+
+    setIsClearingSequence(true);
+    setTooltipState(null);
+
+    // Obtener keys únicas de todos los bloques a explotar en orden
+    const blockKeys = clasesParaRenderizar.map((clase) =>
+      clase.manualId
+        ? `manual-${clase.manualId}`
+        : `block-${clase.codigoMateria || clase.materia}-d${clase.diaIndex}-h${clase.horaInicio}-${clase.horaFin}-g${clase.grupo || "0"}-${clase.isPreview ? "prev" : "perm"}`
+    );
+
+    const count = blockKeys.length;
+    // Escalonamiento óptimo para cualquier cantidad de bloques y dispositivo
+    const stagger = Math.min(80, Math.max(35, 550 / count));
+
+    blockKeys.forEach((key, index) => {
+      setTimeout(() => {
+        setClearingExplosions((prev) => {
+          const next = new Set(prev);
+          next.add(key);
+          return next;
+        });
+      }, index * stagger);
+    });
+
+    const totalTime = count * stagger + 380;
+    setTimeout(() => {
+      resetMateriasSeleccionadas();
+      clearHorariosGenerados();
+      clearManualBlocks();
+      clearAllowManualBlocksBySchedule();
+      setClearingExplosions(new Set());
+      setIsClearingSequence(false);
+      toast.success("Horario limpiado correctamente");
+    }, totalTime);
   };
 
   const hasContentToClear =
-    (horariosGenerados && horariosGenerados.length > 0) ||
-    (manualBlocks && manualBlocks.length > 0) ||
-    (gruposSeleccionados &&
-      Object.values(gruposSeleccionados).some(
-        (v) => v !== null && v !== undefined,
-      )) ||
-    (materiasSeleccionadas && Object.keys(materiasSeleccionadas).length > 0);
+    !isClearingSequence &&
+    ((horariosGenerados && horariosGenerados.length > 0) ||
+      (manualBlocks && manualBlocks.length > 0) ||
+      (gruposSeleccionados &&
+        Object.values(gruposSeleccionados).some(
+          (v) => v !== null && v !== undefined,
+        )) ||
+      (materiasSeleccionadas && Object.keys(materiasSeleccionadas).length > 0));
 
   // Handlers para Tooltip con callback memorizado
   const handleClassHover = React.useCallback((clase, position) => {
@@ -322,8 +366,38 @@ export default function Schedule() {
     }
     hideTimeoutRef.current = setTimeout(() => {
       setTooltipState(null);
-    }, 20);
+    }, 30);
   }, []);
+
+  // Limpiar tooltip al hacer scroll, resize, blur o click
+  useEffect(() => {
+    if (!tooltipState) return;
+
+    const clearTooltip = () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
+      setTooltipState(null);
+    };
+
+    window.addEventListener("scroll", clearTooltip, true);
+    window.addEventListener("resize", clearTooltip);
+    window.addEventListener("blur", clearTooltip);
+    window.addEventListener("pointerdown", clearTooltip);
+
+    return () => {
+      window.removeEventListener("scroll", clearTooltip, true);
+      window.removeEventListener("resize", clearTooltip);
+      window.removeEventListener("blur", clearTooltip);
+      window.removeEventListener("pointerdown", clearTooltip);
+    };
+  }, [tooltipState]);
+
+  // Limpiar tooltip si cambia el horario actual o la interacción de drag o bloques
+  useEffect(() => {
+    setTooltipState(null);
+  }, [horarioActualIndex, draggingMateria, manualBlocks]);
 
   // Exportar PNG
   const handleExportPNG = async () => {
@@ -830,12 +904,12 @@ export default function Schedule() {
                     <div
                       data-manual-id={clase.manualId || undefined}
                       key={blockKey}
-                      className="relative"
+                      className="relative overflow-hidden rounded-md [contain:paint]"
                       style={{
                         gridColumn: clase.diaIndex + 2,
                         gridRow: `${clase.horaIndex + 1} / span ${clase.duracion}`,
                         zIndex: clase.isPreview ? 6 : 10,
-                        pointerEvents: draggingMateria ? "none" : "auto",
+                        pointerEvents: (draggingMateria || isClearingSequence) ? "none" : "auto",
                       }}
                     >
                       <ClassBlock
@@ -854,6 +928,7 @@ export default function Schedule() {
                         }
                         autoEdit={editingManualId === clase.manualId}
                         onEditComplete={() => setEditingManualId(null)}
+                        isForceExploding={clearingExplosions.has(blockKey)}
                       />
                     </div>
                   );

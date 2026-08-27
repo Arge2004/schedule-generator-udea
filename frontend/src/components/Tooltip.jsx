@@ -34,17 +34,21 @@ export default function Tooltip({
     setIsVisible(false);
   };
 
-  // Ocultar inmediatamente al hacer scroll en cualquier contenedor
+  // Ocultar inmediatamente al hacer scroll, resize, click o blur en cualquier contenedor
   useEffect(() => {
     if (!isVisible) return;
-    const handleScroll = () => {
+    const handleClose = () => {
       setIsVisible(false);
     };
-    window.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", handleScroll);
+    window.addEventListener("scroll", handleClose, true);
+    window.addEventListener("resize", handleClose);
+    window.addEventListener("pointerdown", handleClose);
+    window.addEventListener("blur", handleClose);
     return () => {
-      window.removeEventListener("scroll", handleScroll, true);
-      window.removeEventListener("resize", handleScroll);
+      window.removeEventListener("scroll", handleClose, true);
+      window.removeEventListener("resize", handleClose);
+      window.removeEventListener("pointerdown", handleClose);
+      window.removeEventListener("blur", handleClose);
     };
   }, [isVisible]);
 
@@ -71,8 +75,8 @@ export default function Tooltip({
         style.left = `${Math.min(
           window.innerWidth - 120,
           Math.max(120, coords.left + coords.width / 2),
-        )}px`;
-        style.transform = "translateX(-50%)";
+        ) + gap}px`;
+        style.transform = "translate(-150%, 50%)";
         break;
       case "left":
         style.top = `${coords.top + coords.height / 2}px`;

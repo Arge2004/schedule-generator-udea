@@ -22,6 +22,11 @@ export default function MobileScheduleModal({ isOpen, onClose }) {
     materias,
   } = useMateriasStore();
 
+  // Limpiar tooltip al cambiar de día, cambiar de horario o al abrir/cerrar modal
+  React.useEffect(() => {
+    setTooltipData(null);
+  }, [activeDay, horarioActualIndex, isOpen]);
+
   // Determinar si estamos en modo manual (gruposSeleccionados) o automático (horariosGenerados)
   const isManualMode =
     (!horariosGenerados || horariosGenerados.length === 0) &&
@@ -31,7 +36,7 @@ export default function MobileScheduleModal({ isOpen, onClose }) {
   const hasSchedule =
     (horariosGenerados && horariosGenerados.length > 0) || isManualMode;
 
-  if (!hasSchedule) return null;
+  if (!hasSchedule || !isOpen) return null;
 
   let currentSchedule;
 
@@ -124,9 +129,12 @@ export default function MobileScheduleModal({ isOpen, onClose }) {
   };
 
   const handleClassLeave = () => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
     hideTimeoutRef.current = setTimeout(() => {
       setTooltipData(null);
-    }, 100);
+    }, 40);
   };
 
   // Organizar clases por día

@@ -1,6 +1,42 @@
 import { useState, useEffect, useRef, memo } from "react";
+import { motion } from "framer-motion";
 import { useMateriasStore } from "../store/materiasStore.js";
 import { TrashIcon } from "../icons/index.js";
+import Tooltip from "./Tooltip.jsx";
+
+const EXPLOSION_PARTICLES = Array.from({ length: 24 }).map((_, i) => {
+  const angle = (i / 24) * 360 + ((i % 5) * 8 - 16);
+  const rad = (angle * Math.PI) / 180;
+  const distance = 50 + ((i * 17) % 45); // Mayor dispersión (25px a 70px)
+  const isShard = i % 3 === 0; // Esquirlas cuadradas
+  const isSpark = i % 4 === 0; // Destellos brillantes
+
+  return {
+    id: i,
+    x: Math.cos(rad) * distance,
+    y: Math.sin(rad) * distance + (isShard ? 12 : 0), // Simula caída por gravedad en esquirlas
+    size: isShard ? 4 + (i % 3) * 3 : 3 + (i % 4) * 2,
+    rotateX: (i % 2 === 0 ? 1 : -1) * (180 + i * 45),
+    rotateZ: (i % 2 === 0 ? 1 : -1) * (90 + i * 30),
+    duration: 0.38 + (i % 4) * 0.04,
+    delay: (i % 5) * 0.008,
+    type: isSpark ? "spark" : "shard",
+  };
+});
+
+const ENTRANCE_PARTICLES = Array.from({ length: 14 }).map((_, i) => {
+  const angle = (i / 14) * 360 + ((i % 3) * 10 - 10);
+  const rad = (angle * Math.PI) / 180;
+  const distance = 75 + ((i * 11) % 36);
+  return {
+    id: i,
+    x: Math.cos(rad) * distance,
+    y: Math.sin(rad) * distance,
+    size: 3 + (i % 3) * 1.8,
+    duration: 0.42 + (i % 3) * 0.05,
+    delay: (i % 4) * 0.015,
+  };
+});
 
 function ClassBlockComponent({
   clase,
@@ -10,6 +46,7 @@ function ClassBlockComponent({
   onRename,
   autoEdit,
   onEditComplete,
+  isForceExploding = false,
 }) {
   const {
     materia,
@@ -23,14 +60,29 @@ function ClassBlockComponent({
     pulsing,
   } = clase;
 
-  const { darkTheme } = useMateriasStore();
-
   const blockRef = useRef(null);
   const inputRef = useRef(null);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(materia || "");
   const [displayName, setDisplayName] = useState(materia || "");
+  const [isExploding, setIsExploding] = useState(false);
+  const [showEntranceParticles, setShowEntranceParticles] =
+    useState(!isPreview);
+
+  useEffect(() => {
+    if (isForceExploding && !isExploding) {
+      onLeave?.();
+      setIsExploding(true);
+    }
+  }, [isForceExploding]);
+
+  useEffect(() => {
+    if (!isPreview) {
+      const timer = setTimeout(() => setShowEntranceParticles(false), 550);
+      return () => clearTimeout(timer);
+    }
+  }, [isPreview]);
 
   useEffect(() => {
     setEditText(materia || "");
@@ -40,13 +92,13 @@ function ClassBlockComponent({
   const isManual = source === "manual" && Boolean(manualId);
 
   useEffect(() => {
+    return () => onLeave?.();
+  }, [onLeave]);
+
+  useEffect(() => {
     if (autoEdit && isManual) {
       setIsEditing(true);
-      setTimeout(() => {
-        try {
-          inputRef.current?.focus();
-        } catch (e) {}
-      }, 0);
+      setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [autoEdit, isManual]);
 
@@ -54,7 +106,7 @@ function ClassBlockComponent({
     typeof window !== "undefined" ? window.innerWidth <= 768 : false;
 
   const handleMouseEnter = () => {
-    if (isMobile) return;
+    if (isMobile || isExploding) return;
     if (blockRef.current && onHover) {
       const rect = blockRef.current.getBoundingClientRect();
       onHover(clase, {
@@ -79,6 +131,7 @@ function ClassBlockComponent({
   const handleDelete = (e) => {
     e.stopPropagation();
     e.preventDefault();
+    onLeave?.();
 
     if (codigoMateria) {
       handleGrupoSelect();
@@ -86,6 +139,11 @@ function ClassBlockComponent({
     }
 
     if (onDelete) {
+      if (isManual) {
+        setIsExploding(true);
+        setTimeout(() => onDelete(), 420);
+        return;
+      }
       onDelete();
       return;
     }
@@ -96,24 +154,16 @@ function ClassBlockComponent({
   const commitEdit = () => {
     const newName = editText?.trim();
     const finalName = newName && newName.length > 0 ? newName : "Bloque manual";
-    if (onRename) {
-      try {
-        onRename(finalName);
-      } catch (err) {}
-    }
+    if (onRename) onRename(finalName);
     setEditText(finalName);
     setDisplayName(finalName);
     setIsEditing(false);
-
-    try {
-      if (onEditComplete) onEditComplete(finalName);
-    } catch (err) {}
+    if (onEditComplete) onEditComplete(finalName);
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      commitEdit();
-    } else if (e.key === "Escape") {
+    if (e.key === "Enter") commitEdit();
+    else if (e.key === "Escape") {
       setIsEditing(false);
       setEditText(materia || "");
     }
@@ -121,6 +171,7 @@ function ClassBlockComponent({
 
   const handleBlockClick = (e) => {
     if (e.target.closest("button") || e.target.closest("input")) return;
+    onLeave?.();
     if (codigoMateria) {
       const { focusMateria } = useMateriasStore.getState();
       if (focusMateria) focusMateria(codigoMateria);
@@ -130,88 +181,232 @@ function ClassBlockComponent({
   const blockColor = color || "#3b82f6";
 
   return (
-    <div
-      ref={blockRef}
-      onClick={handleBlockClick}
-      className={`absolute inset-1 rounded-md border border-l-[3.5px] flex flex-col justify-between items-center py-1 px-1.5 overflow-hidden hover:shadow-md hover:scale-[1.01] hover:z-20 cursor-pointer select-none group transition-transform duration-75 ease-out ${
-        isPreview ? "border-dashed ring-2 ring-primary/40 shadow-md" : ""
-      } ${pulsing ? "pulse-animate" : ""}`}
-      data-no-select
-      style={{
-        backgroundColor: isPreview ? `${blockColor}22` : `${blockColor}12`,
-        borderColor: blockColor,
-      }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={onLeave}
-    >
-      {/* 1. Fila Superior: Badges (Grupo, Aula, Preview) */}
-      <div className="flex absolute left-1 items-start w-full justify-between gap-1 flex-wrap">
-        <div className="flex items-center gap-1 flex-wrap min-w-0">
-          {/* Badge de Grupo */}
-          {grupo !== null && typeof grupo !== "undefined" && (
-            <span
-              className="font-mono text-xs font-bold px-1.5 py-0.5 rounded leading-none text-white shadow-2xs"
-              style={{ backgroundColor: blockColor }}
+    <div className="absolute inset-1 overflow-visible rounded-md">
+      {/* Contenedor principal con animación de destructuración física */}
+      <motion.div
+        ref={blockRef}
+        onClick={handleBlockClick}
+        initial={!isPreview ? { scale: 0.86, opacity: 0 } : false}
+        animate={
+          isExploding
+            ? {
+                scale: [1, 1.18, 0],
+                opacity: [1, 1, 0],
+                rotate: [0, -6, 8, -4],
+                filter: [
+                  "brightness(1) drop-shadow(0 0 0px transparent)",
+                  "brightness(2.5) contrast(1.5) drop-shadow(0 0 12px rgba(255,255,255,0.9))",
+                  "brightness(4) blur(8px)",
+                ],
+              }
+            : { scale: 1, opacity: 1, filter: "brightness(1)", rotate: 0 }
+        }
+        transition={
+          isExploding
+            ? { duration: 0.4, ease: [0.05, 0.7, 0.1, 1] }
+            : { duration: 0.22, ease: [0.175, 0.885, 0.32, 1.15] }
+        }
+        className={`w-full h-full rounded-md border border-l-[3.5px] flex flex-col justify-between items-center py-1 px-1.5 overflow-hidden hover:shadow-md hover:scale-[1.01] hover:z-20 cursor-pointer select-none group transition-transform duration-75 ease-out ${
+          isPreview ? "border-dashed ring-2 ring-primary/40 shadow-md" : ""
+        } ${pulsing ? "pulse-animate" : ""}`}
+        data-no-select
+        style={{
+          backgroundColor: isPreview ? `${blockColor}22` : `${blockColor}12`,
+          borderColor: blockColor,
+        }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={onLeave}
+      >
+        {/* Badges y Botón de Eliminar */}
+        <div className="flex items-start w-full justify-between gap-1 z-10">
+          <div className="flex items-center gap-1 flex-wrap min-w-0">
+            {grupo !== null && typeof grupo !== "undefined" && (
+              <span
+                className="font-mono text-xs font-bold px-1.5 py-0.5 rounded leading-none text-white shadow-2xs"
+                style={{ backgroundColor: blockColor }}
+              >
+                G{grupo}
+              </span>
+            )}
+            {aula && (
+              <span className="font-mono text-xs font-medium text-primary dark:text-zinc-100 bg-primary/5 border-primary/40 border px-1 py-0.5 rounded leading-none truncate max-w-[85px]">
+                {aula}
+              </span>
+            )}
+            {isPreview && (
+              <span className="font-mono text-[8.5px] font-bold text-white bg-primary px-1.5 py-0.5 rounded leading-none">
+                PREVIEW
+              </span>
+            )}
+          </div>
+
+          {isManual && !isExploding && (
+            <Tooltip
+              content="Eliminar bloque"
+              position="top"
+              className="opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
             >
-              G{grupo}
-            </span>
-          )}
-
-          {/* Badge de Aula */}
-          {aula && (
-            <span className="font-mono text-xs font-medium text-primary dark:text-zinc-100 bg-primary/5 border-primary/40 dark:border-primary/40 border px-1 py-0.5 rounded leading-none truncate max-w-[85px]">
-              {aula}
-            </span>
-          )}
-
-          {/* Badge de Preview */}
-          {isPreview && (
-            <span className="font-mono text-[8.5px] font-bold text-white bg-primary px-1.5 py-0.5 rounded leading-none">
-              PREVIEW
-            </span>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="p-1 rounded-md bg-red-500/90 hover:bg-red-600 active:scale-90 text-white shadow-xs transition-all flex items-center justify-center cursor-pointer"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                aria-label="Eliminar bloque manual"
+              >
+                <TrashIcon className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
           )}
         </div>
 
-        {/* Botón de eliminar (para bloques manuales) */}
-        {isManual && (
-          <button
-            type="button"
-            onClick={handleDelete}
-            title="Eliminar bloque"
-            aria-label="Eliminar bloque"
-            className="h-4.5 w-4.5 rounded bg-red-600/90 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex-shrink-0"
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-            }}
-          >
-            <TrashIcon className="w-2.5 h-2.5" />
-          </button>
-        )}
-      </div>
+        {/* Nombre del Bloque */}
+        <div className="flex-1 min-w-0 my-1 flex items-center w-full">
+          {isEditing && isManual ? (
+            <input
+              ref={inputRef}
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+              className="w-full text-xs font-semibold p-1 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-primary"
+              onMouseDown={(e) => e.stopPropagation()}
+              aria-label="Editar nombre del bloque"
+            />
+          ) : (
+            <p
+              onDoubleClick={() => isManual && setIsEditing(true)}
+              className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 leading-snug line-clamp-2"
+            >
+              {displayName}
+            </p>
+          )}
+        </div>
+      </motion.div>
 
-      {/* 2. Cuerpo: Nombre de la Materia */}
-      <div className="flex-1 min-w-0 my-1 flex items-center">
-        {isEditing && isManual ? (
-          <input
-            ref={inputRef}
-            value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            onBlur={commitEdit}
-            onKeyDown={handleKeyDown}
-            className="w-full text-xs font-semibold p-1 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-primary"
-            onMouseDown={(e) => e.stopPropagation()}
-            aria-label="Editar nombre del bloque"
+      {/* 💥 EXPLOSIÓN MEJORADA */}
+      {isExploding && (
+        <div className="absolute inset-0 pointer-events-none z-50 flex items-center justify-center overflow-visible">
+          {/* Flash Blanco Inicial (Impacto) */}
+          <motion.div
+            initial={{ scale: 0.3, opacity: 1 }}
+            animate={{ scale: 2.2, opacity: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="absolute w-12 h-12 rounded-full bg-white shadow-[0_0_25px_#ffffff]"
           />
-        ) : (
-          <p
-            onDoubleClick={() => isManual && setIsEditing(true)}
-            className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 leading-snug line-clamp-2"
-          >
-            {displayName}
-          </p>
-        )}
-      </div>
+
+          {/* Shockwave Principal (Onda rápida) */}
+          <motion.div
+            initial={{ scale: 0.1, opacity: 1, borderWidth: "4px" }}
+            animate={{ scale: 3.2, opacity: 0, borderWidth: "0.5px" }}
+            transition={{ duration: 0.38, ease: [0.1, 0.8, 0.3, 1] }}
+            className="absolute w-14 h-14 rounded-full border"
+            style={{
+              borderColor: blockColor,
+              boxShadow: `0 0 15px ${blockColor}`,
+            }}
+          />
+
+          {/* Shockwave Secundaria (Onda expansiva suave) */}
+          <motion.div
+            initial={{ scale: 0.2, opacity: 0.8, borderWidth: "2px" }}
+            animate={{ scale: 2.4, opacity: 0, borderWidth: "0px" }}
+            transition={{ duration: 0.42, delay: 0.04, ease: "easeOut" }}
+            className="absolute w-14 h-14 rounded-full border border-white"
+          />
+
+          {/* Sistema de Partículas Avanzado */}
+          {EXPLOSION_PARTICLES.map((p) => {
+            const isSpark = p.type === "spark";
+            const isShard = p.type === "shard";
+
+            return (
+              <motion.div
+                key={p.id}
+                initial={{
+                  x: 0,
+                  y: 0,
+                  scale: 0.2,
+                  opacity: 1,
+                  rotateX: 0,
+                  rotateZ: 0,
+                }}
+                animate={{
+                  x: p.x,
+                  y: p.y,
+                  scale: [0.4, 1.4, 0],
+                  opacity: [1, 1, 0],
+                  rotateX: p.rotateX,
+                  rotateZ: p.rotateZ,
+                }}
+                transition={{
+                  duration: p.duration,
+                  delay: p.delay,
+                  ease: [0.05, 0.85, 0.15, 1],
+                }}
+                className={`absolute pointer-events-none ${
+                  isShard ? "rounded-xs" : "rounded-full"
+                }`}
+                style={{
+                  width: p.size,
+                  height: p.size,
+                  backgroundColor: isSpark
+                    ? "#ffffff"
+                    : p.id % 3 === 0
+                      ? "#fbbf24"
+                      : blockColor,
+                  boxShadow: isSpark
+                    ? `0 0 10px #ffffff, 0 0 18px ${blockColor}`
+                    : `0 0 8px ${blockColor}`,
+                  clipPath: isSpark
+                    ? "polygon(50% 0%, 65% 35%, 100% 50%, 65% 65%, 50% 100%, 35% 65%, 0% 50%, 35% 35%)"
+                    : "none",
+                }}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {/* Partículas de entrada */}
+      {showEntranceParticles && !isExploding && !isPreview && (
+        <div className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center overflow-visible">
+          <motion.div
+            initial={{ scale: 0.2, opacity: 0.9, borderWidth: "2.5px" }}
+            animate={{ scale: 1.9, opacity: 0, borderWidth: "1px" }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+            className="absolute w-12 h-12 rounded-full border pointer-events-none"
+            style={{ borderColor: blockColor }}
+          />
+
+          {ENTRANCE_PARTICLES.map((p) => (
+            <motion.div
+              key={`enter-${p.id}`}
+              initial={{ x: 0, y: 0, scale: 0.4, opacity: 1 }}
+              animate={{
+                x: p.x,
+                y: p.y,
+                scale: [0.4, 1.25, 0],
+                opacity: [1, 1, 0],
+              }}
+              transition={{
+                duration: p.duration,
+                delay: p.delay,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="absolute rounded-full pointer-events-none"
+              style={{
+                width: p.size,
+                height: p.size,
+                backgroundColor: p.id % 2 === 0 ? "#ffffff" : blockColor,
+                boxShadow: `0 0 6px ${blockColor}`,
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

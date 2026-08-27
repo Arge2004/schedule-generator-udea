@@ -25,7 +25,7 @@ export default function ClassTooltip({ clase, color, position }) {
       className="rounded-md shadow-2xl border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 min-w-[240px] max-w-xs pointer-events-none text-left select-none animate-in fade-in zoom-in-95 duration-75"
       style={tooltipStyle}
     >
-      {/* 1. Header con Badge de Grupo y Código */}
+      {grupo || codigoMateria || aula ? (
       <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-zinc-100 dark:border-zinc-800">
         <div className="flex items-center gap-1.5 min-w-0">
           {grupo !== null && typeof grupo !== "undefined" && (
@@ -48,6 +48,7 @@ export default function ClassTooltip({ clase, color, position }) {
           </span>
         )}
       </div>
+      ):null}
 
       {/* 2. Título de la Materia */}
       <h3 className="font-bold text-xs leading-snug text-zinc-900 dark:text-zinc-100 mb-2">

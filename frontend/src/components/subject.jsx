@@ -4,6 +4,7 @@ import { useMateriasStore } from "../store/materiasStore";
 import { GENERATION_MODES } from "../constants/sidebar";
 import { ChevronDownIcon, GripIcon, InfoIcon } from "../icons/index.js";
 import Tooltip from "./Tooltip.jsx";
+import SelectionParticles from "./SelectionParticles.jsx";
 
 function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
   const {
@@ -23,6 +24,8 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
   const isSelected = !!materiasSeleccionadas[materia?.codigo];
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHighlighted, setIsHighlighted] = useState(false);
+  const [showSelectParticles, setShowSelectParticles] = useState(false);
+  const [showGroupParticles, setShowGroupParticles] = useState(null);
   const grupoSeleccionado = gruposSeleccionados[materia?.codigo];
   const [celdasMateriaHorario, setCeldasMateriaHorario] = useState(new Map());
 
@@ -107,8 +110,12 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
 
   const handleChange = () => {
     if (materia?.codigo) {
+      const willBeSelected = !isSelected;
       toggleMateriaSelected(materia.codigo);
-      if (isSelected) {
+      if (willBeSelected) {
+        setShowSelectParticles(true);
+        setTimeout(() => setShowSelectParticles(false), 500);
+      } else {
         setIsExpanded(false);
       }
     }
@@ -175,6 +182,9 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
     }
 
     selectGrupo(materia.codigo, numeroGrupo);
+    setShowGroupParticles(numeroGrupo);
+    setTimeout(() => setShowGroupParticles(null), 500);
+
     if (!isSelected) {
       toggleMateriaSelected(materia.codigo);
     }
@@ -366,39 +376,44 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
               </Tooltip>
             )
           ) : (
-            /* Checkbox Personalizado: Fondo blanco en light mode, azul al marcarse y centrado verticalmente */
-            <button
-              type="button"
-              role="checkbox"
-              aria-checked={isSelected}
-              disabled={hasZeroCuposGlobally}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!hasZeroCuposGlobally) {
-                  handleChange();
-                }
-              }}
-              className={`w-4.5 h-4.5 rounded-md border flex items-center justify-center cursor-pointer ${
-                isSelected
-                  ? "bg-primary border-primary text-white shadow-2xs"
-                  : "bg-white dark:bg-zinc-800/80 border-zinc-300 dark:border-zinc-700 hover:border-primary/80 dark:hover:border-primary/80"
-              } ${hasZeroCuposGlobally ? "opacity-30 cursor-not-allowed" : ""}`}
-              aria-label={`Seleccionar ${materia?.nombre}`}
-            >
-              {isSelected && (
-                <svg
-                  className="w-3 h-3 text-white"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="3.5 8.5 6.5 11.5 12.5 4.5" />
-                </svg>
+            /* Checkbox Personalizado: Fondo blanco en light mode, azul al marcarse y centrado verticalmente con partículas */
+            <div className="relative inline-flex items-center justify-center">
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={isSelected}
+                disabled={hasZeroCuposGlobally}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!hasZeroCuposGlobally) {
+                    handleChange();
+                  }
+                }}
+                className={`w-4.5 h-4.5 rounded-md border flex items-center justify-center cursor-pointer transition-all duration-150 ${
+                  isSelected
+                    ? "bg-primary border-primary text-white shadow-2xs scale-105"
+                    : "bg-white dark:bg-zinc-800/80 border-zinc-300 dark:border-zinc-700 hover:border-primary/80 dark:hover:border-primary/80"
+                } ${hasZeroCuposGlobally ? "opacity-30 cursor-not-allowed" : ""}`}
+                aria-label={`Seleccionar ${materia?.nombre}`}
+              >
+                {isSelected && (
+                  <svg
+                    className="w-3 h-3 text-white"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="3.5 8.5 6.5 11.5 12.5 4.5" />
+                  </svg>
+                )}
+              </button>
+              {showSelectParticles && (
+                <SelectionParticles color="#1392ec" count={12} radius={26} />
               )}
-            </button>
+            </div>
           )}
         </div>
       </div>
@@ -484,15 +499,20 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
                 >
                   {/* EXTREMO IZQUIERDO: Check / Radio Indicator + Badge Grupo */}
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <div
-                      className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center  ${
-                        isGrupoSelected
-                          ? "border-primary bg-primary text-white"
-                          : "border-zinc-300 dark:border-zinc-600 bg-white dark:bg-transparent"
-                      }`}
-                    >
-                      {isGrupoSelected && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    <div className="relative flex items-center justify-center">
+                      <div
+                        className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
+                          isGrupoSelected
+                            ? "border-primary bg-primary text-white scale-110"
+                            : "border-zinc-300 dark:border-zinc-600 bg-white dark:bg-transparent"
+                        }`}
+                      >
+                        {isGrupoSelected && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                        )}
+                      </div>
+                      {showGroupParticles === grupo.numero && (
+                        <SelectionParticles color="#1392ec" count={10} radius={22} />
                       )}
                     </div>
 
