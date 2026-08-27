@@ -8,32 +8,47 @@ import Tooltip from "./Tooltip.jsx";
 import SelectionParticles from "./SelectionParticles.jsx";
 
 function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
-  const {
-    materiasSeleccionadas,
-    toggleMateriaSelected,
-    gruposSeleccionados,
-    selectGrupo,
-    resetKey,
-    setDraggingMateria,
-    clearDragState,
-    materias,
-    manualBlocks,
-    focusedMateriaCodigo,
-    focusTimestamp,
-    darkTheme,
-  } = useMateriasStore();
+  const materiaCodigo = materia?.codigo ? String(materia.codigo) : "";
 
-  const isSelected = !!materiasSeleccionadas[materia?.codigo];
-  const [isExpanded, setIsExpanded] = useState(false);
+  // Selectores atómicos para rendimiento 60fps sin re-renderizar todas las materias
+  const isSelected = useMateriasStore(
+    (s) =>
+      Boolean(s.materiasSeleccionadas?.[materiaCodigo]) ||
+      Boolean(s.materiasSeleccionadas?.[materia?.codigo]),
+  );
+  const grupoSeleccionado = useMateriasStore(
+    (s) =>
+      s.gruposSeleccionados?.[materiaCodigo] ??
+      s.gruposSeleccionados?.[materia?.codigo],
+  );
+  const isExpanded = useMateriasStore(
+    (s) => Boolean(s.expandedSubjects?.[materiaCodigo]),
+  );
+  const toggleSubjectExpanded = useMateriasStore(
+    (s) => s.toggleSubjectExpanded,
+  );
+  const toggleMateriaSelected = useMateriasStore(
+    (s) => s.toggleMateriaSelected,
+  );
+  const selectGrupo = useMateriasStore((s) => s.selectGrupo);
+  const setDraggingMateria = useMateriasStore((s) => s.setDraggingMateria);
+  const clearDragState = useMateriasStore((s) => s.clearDragState);
+  const resetKey = useMateriasStore((s) => s.resetKey);
+  const manualBlocks = useMateriasStore((s) => s.manualBlocks);
+  const focusedMateriaCodigo = useMateriasStore((s) => s.focusedMateriaCodigo);
+  const focusTimestamp = useMateriasStore((s) => s.focusTimestamp);
+  const shakeMateriaCodigo = useMateriasStore((s) => s.shakeMateriaCodigo);
+  const shakeTimestamp = useMateriasStore((s) => s.shakeTimestamp);
+  const materias = useMateriasStore((s) => s.materias);
+  const gruposSeleccionados = useMateriasStore((s) => s.gruposSeleccionados);
+
+  const setIsExpanded = (val) => toggleSubjectExpanded?.(materiaCodigo, val);
   const [isHighlighted, setIsHighlighted] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
   const [showSelectParticles, setShowSelectParticles] = useState(false);
   const [showGroupParticles, setShowGroupParticles] = useState(null);
-  const grupoSeleccionado = gruposSeleccionados[materia?.codigo];
   const [celdasMateriaHorario, setCeldasMateriaHorario] = useState(new Map());
 
-  const shakeMateriaCodigo = useMateriasStore((s) => s.shakeMateriaCodigo);
-  const shakeTimestamp = useMateriasStore((s) => s.shakeTimestamp);
   const lastShakeTimestampRef = useRef(shakeTimestamp || 0);
 
   useEffect(() => {
@@ -67,9 +82,9 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
 
   const isManualMode = generationMode === GENERATION_MODES.MANUAL;
 
-  // Sincronizar celdas ocupadas con los grupos seleccionados
+  // Sincronizar celdas ocupadas con los grupos seleccionados solo si el acordeón está expandido
   useEffect(() => {
-    if (isManualMode && gruposSeleccionados) {
+    if (isManualMode && isExpanded && gruposSeleccionados) {
       const diasArr = [
         "Lunes",
         "Martes",
@@ -90,9 +105,9 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
 
       Object.entries(gruposSeleccionados).forEach(([codigo, grupoNum]) => {
         if (!codigo || !grupoNum) return;
-        const mat = todasMaterias.find((m) => m.codigo === codigo);
+        const mat = todasMaterias.find((m) => String(m.codigo) === String(codigo));
         if (!mat) return;
-        const grupo = mat.grupos?.find((g) => g.numero === grupoNum);
+        const grupo = mat.grupos?.find((g) => String(g.numero) === String(grupoNum));
         if (!grupo || !grupo.horarios) return;
 
         grupo.horarios.forEach((horario) => {
@@ -110,10 +125,10 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
         });
       });
       setCeldasMateriaHorario(map);
-    } else {
+    } else if (!isExpanded) {
       setCeldasMateriaHorario(new Map());
     }
-  }, [gruposSeleccionados, isManualMode, materia, materias]);
+  }, [gruposSeleccionados, isManualMode, isExpanded, materia, materias]);
 
   // Contar grupos disponibles vs totales
   const totalGrupos = materia?.grupos?.length || 0;

@@ -43,6 +43,21 @@ export const useMateriasStore = create(
       pendingModal: false,
       focusedMateriaCodigo: null,
       focusTimestamp: 0,
+      expandedSubjects: {},
+      toggleSubjectExpanded: (codigo, isExpanded) =>
+        set((state) => {
+          const current = { ...(state.expandedSubjects || {}) };
+          const key = String(codigo);
+          const shouldExpand =
+            typeof isExpanded === "boolean" ? isExpanded : !current[key];
+          if (shouldExpand) {
+            current[key] = true;
+          } else {
+            delete current[key];
+          }
+          return { expandedSubjects: current };
+        }),
+      collapseAllSubjects: () => set({ expandedSubjects: {} }),
       shakeMateriaCodigo: null,
       shakeTimestamp: 0,
       lastDropSuccessful: false,
@@ -146,6 +161,7 @@ export const useMateriasStore = create(
       resetMateriasSeleccionadas: () => set((state) => ({
         materiasSeleccionadas: {},
         gruposSeleccionados: {},
+        expandedSubjects: {},
         resetKey: state.resetKey + 1,
       })),
 
