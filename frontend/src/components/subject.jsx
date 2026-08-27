@@ -342,7 +342,7 @@ function SubjectComponent({
   };
 
   const checkGroupConflict = (grp) => {
-    if (!grp || !grp.horarios) return false;
+    if (!grp || !grp.horarios || grp.horarios.length === 0) return true;
     const dias = [
       "Lunes",
       "Martes",
@@ -352,20 +352,43 @@ function SubjectComponent({
       "Sábado",
       "Domingo",
     ];
-    const horas = Array.from({ length: 16 }, (_, i) => i + 6);
+    const storeState = useMateriasStore.getState();
+    const currentGrupos = storeState.gruposSeleccionados || {};
+    const allManual = storeState.manualBlocks || [];
+    const allMaterias = storeState.materias || [];
+
+    // Celdas ocupadas por otras materias
+    const occupiedByOthers = new Set();
+    Object.entries(currentGrupos).forEach(([cod, numGrp]) => {
+      if (!cod || !numGrp || String(cod) === String(materia?.codigo)) return;
+      const mat = allMaterias.find((m) => String(m.codigo) === String(cod));
+      const g = mat?.grupos?.find((gr) => String(gr.numero) === String(numGrp));
+      (g?.horarios || []).forEach((h) => {
+        (h.dias || []).forEach((d) => {
+          const dIdx = dias.indexOf(d);
+          if (dIdx !== -1) {
+            for (let hr = h.horaInicio; hr < h.horaFin; hr++) {
+              occupiedByOthers.add(`${dIdx}-${hr}`);
+            }
+          }
+        });
+      });
+    });
+
+    // Celdas ocupadas por bloques manuales
+    allManual.forEach((b) => {
+      for (let k = 0; k < b.duracion; k++) {
+        occupiedByOthers.add(`${b.diaIndex}-${b.horaIndex + 6 + k}`);
+      }
+    });
+
+    // Verificar si este grupo colisiona con el horario actual
     return grp.horarios.some((horario) => {
       return (horario.dias || []).some((dia) => {
         const diaIndex = dias.indexOf(dia);
         if (diaIndex === -1) return false;
-        const horaInicioIdx = horas.indexOf(horario.horaInicio);
-        const duracion = horario.horaFin - horario.horaInicio;
-        for (let i = 0; i < duracion; i++) {
-          const celdaKey = `${diaIndex}-${horaInicioIdx + i}`;
-          const materiaEnCeldaCodigo = celdasMateriaHorario.get(celdaKey);
-          if (
-            materiaEnCeldaCodigo &&
-            String(materiaEnCeldaCodigo) !== String(materia?.codigo)
-          ) {
+        for (let hr = horario.horaInicio; hr < horario.horaFin; hr++) {
+          if (occupiedByOthers.has(`${diaIndex}-${hr}`)) {
             return true;
           }
         }
@@ -411,11 +434,33 @@ function SubjectComponent({
   };
 
   const handleDragStart = (e) => {
-    if (hasZeroCuposGlobally || !isManualMode || !materia?.grupos?.length) {
+    if (!isManualMode) {
       e.preventDefault();
       return;
     }
 
+    // 1. Si no tiene grupos o ninguno tiene horarios
+    const hasAnyHorario = (materia?.grupos || []).some(
+      (g) => g.horarios && g.horarios.length > 0,
+    );
+    if (!hasAnyHorario) {
+      e.preventDefault();
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500);
+      toast.error("Esta materia no tiene horarios registrados");
+      return;
+    }
+
+    // 2. Si globalmente no tiene cupos disponibles
+    if (hasZeroCuposGlobally) {
+      e.preventDefault();
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500);
+      toast.error("Esta materia no tiene cupos disponibles");
+      return;
+    }
+
+    // 3. Verificar si tiene al menos un grupo disponible sin conflicto con las materias actuales
     const availableGroups = (materia.grupos || []).filter((g) => {
       if (grupoSeleccionado && String(g.numero) === String(grupoSeleccionado)) {
         return false;
@@ -430,7 +475,7 @@ function SubjectComponent({
       e.preventDefault();
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 500);
-      toast.error("No hay otros horarios disponibles para esta materia");
+      toast.error("Todos los grupos tienen conflicto con tu horario actual");
       return;
     }
 
