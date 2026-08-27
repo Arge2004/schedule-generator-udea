@@ -190,8 +190,27 @@ export default function SubjectList({
     return groupedSections.map((s) => s.letter);
   }, [groupedSections]);
 
+  const isProgrammaticScrollRef = useRef(false);
+  const scrollEndTimerRef = useRef(null);
+  const targetLetterRef = useRef(null);
+
   // Observer para detectar qué sección de letra está activa durante el scroll
   const handleScroll = useCallback(() => {
+    // Si estamos en un scroll programático por clic en una letra, renovar el detector de finalización de scroll
+    if (isProgrammaticScrollRef.current) {
+      if (scrollEndTimerRef.current) {
+        clearTimeout(scrollEndTimerRef.current);
+      }
+      // Cuando no haya eventos de scroll por 150ms consecutivos, el scroll suave ha terminado totalmente
+      scrollEndTimerRef.current = setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
+        if (targetLetterRef.current) {
+          setActiveLetter(targetLetterRef.current);
+        }
+      }, 150);
+      return;
+    }
+
     if (!scrollContainerRef.current) return;
     const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
 
@@ -209,6 +228,15 @@ export default function SubjectList({
     }
     setActiveLetter(currentLetter);
   }, [availableLetters]);
+
+  // Limpiar timer al desmontar
+  useEffect(() => {
+    return () => {
+      if (scrollEndTimerRef.current) {
+        clearTimeout(scrollEndTimerRef.current);
+      }
+    };
+  }, []);
 
   // Navegar y hacer scroll automáticamente hacia la materia seleccionada desde el horario
   useEffect(() => {
@@ -238,12 +266,26 @@ export default function SubjectList({
     return () => clearTimeout(timer);
   }, [focusTimestamp, focusedMateriaCodigo]);
 
-  // Scroll suave hacia una letra seleccionada
+  // Scroll suave hacia una letra seleccionada con activación visual instantánea y retención estricta
   const scrollToLetter = (letter) => {
     const el = sectionRefs.current[letter];
     if (el && scrollContainerRef.current) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Activar la letra instantáneamente sin retraso ni parpadeo
       setActiveLetter(letter);
+      targetLetterRef.current = letter;
+      isProgrammaticScrollRef.current = true;
+
+      if (scrollEndTimerRef.current) {
+        clearTimeout(scrollEndTimerRef.current);
+      }
+
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      // Timeout de respaldo por si el scroll ya estaba en la posición y no dispara eventos
+      scrollEndTimerRef.current = setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
+        setActiveLetter(letter);
+      }, 200);
     }
   };
 
