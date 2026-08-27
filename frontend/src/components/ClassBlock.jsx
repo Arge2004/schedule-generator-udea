@@ -134,11 +134,11 @@ function ClassBlockComponent({
       ref={blockRef}
       onClick={handleBlockClick}
       className={`absolute inset-1 rounded-md border border-l-[3.5px] flex flex-col justify-between items-center py-1 px-1.5 overflow-hidden hover:shadow-md hover:scale-[1.01] hover:z-20 cursor-pointer select-none group transition-transform duration-75 ease-out ${
-        isPreview ? "border-dashed opacity-80" : ""
+        isPreview ? "border-dashed ring-2 ring-primary/40 shadow-md" : ""
       } ${pulsing ? "pulse-animate" : ""}`}
       data-no-select
       style={{
-        backgroundColor: `${blockColor}12`,
+        backgroundColor: isPreview ? `${blockColor}22` : `${blockColor}12`,
         borderColor: blockColor,
       }}
       onMouseEnter={handleMouseEnter}
