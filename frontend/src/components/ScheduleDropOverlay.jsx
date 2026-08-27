@@ -1,18 +1,29 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useMateriasStore } from '../store/materiasStore';
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useMateriasStore } from "../store/materiasStore";
 
 /**
  * Componente que muestra una superposición visual sobre el schedule
  * cuando se está arrastrando una materia, resaltando los horarios disponibles
  */
-export default function ScheduleDropOverlay({ availableHorarios, dias, horas, onBlockDrop, showToastMessage, celdasMateria, hoveredCell, hoveredValidKeys, hoveredValidGroupNumbers }) {
-  const { setPreviewGrupo, draggingMateria, clearDragState } = useMateriasStore();
-  
+export default function ScheduleDropOverlay({
+  availableHorarios,
+  dias,
+  horas,
+  onBlockDrop,
+  showToastMessage,
+  celdasMateria,
+  hoveredCell,
+  hoveredValidKeys,
+  hoveredValidGroupNumbers,
+}) {
+  const { setPreviewGrupo, draggingMateria, clearDragState } =
+    useMateriasStore();
+
   if (!availableHorarios || availableHorarios.length === 0) {
     return null;
   }
-  
+
   // Handler para drops en el backdrop (áreas sin horarios disponibles)
   const handleBackdropDrop = (e) => {
     e.preventDefault();
@@ -27,7 +38,12 @@ export default function ScheduleDropOverlay({ availableHorarios, dias, horas, on
     const diaIndex = Math.floor(x / cellWidth);
     const horaIndex = Math.floor(y / cellHeight);
 
-    if (diaIndex >= 0 && diaIndex < 7 && horaIndex >= 0 && horaIndex < horas.length) {
+    if (
+      diaIndex >= 0 &&
+      diaIndex < 7 &&
+      horaIndex >= 0 &&
+      horaIndex < horas.length
+    ) {
       // Delegar al mismo handler de drop que maneja solapamientos y modal
       if (onBlockDrop) {
         onBlockDrop(e, diaIndex, horaIndex);
@@ -37,10 +53,15 @@ export default function ScheduleDropOverlay({ availableHorarios, dias, horas, on
       // Fallback — si no hay handler, mostrar mensajes simples
       const celdaKey = `${diaIndex}-${horaIndex}`;
       const materiaEnCeldaCodigo = celdasMateria?.get(celdaKey);
-      if (materiaEnCeldaCodigo && materiaEnCeldaCodigo !== draggingMateria?.codigo) {
-        showToastMessage?.('⚠️ No se puede colocar: hay un conflicto con otra materia');
+      if (
+        materiaEnCeldaCodigo &&
+        materiaEnCeldaCodigo !== draggingMateria?.codigo
+      ) {
+        showToastMessage?.(
+          "⚠️ No se puede colocar: hay un conflicto con otra materia",
+        );
       } else {
-        showToastMessage?.('⚠️ Esta materia no tiene clases en este horario');
+        showToastMessage?.("⚠️ Esta materia no tiene clases en este horario");
       }
     }
 
@@ -92,18 +113,18 @@ export default function ScheduleDropOverlay({ availableHorarios, dias, horas, on
       <div
         className="absolute inset-0"
         style={{
-          gridColumn: '2 / span 7',
-          gridRow: '1 / -1',
+          gridColumn: "2 / span 7",
+          gridRow: "1 / -1",
           zIndex: 12,
-          pointerEvents: 'auto',
+          pointerEvents: "auto",
         }}
         onDrop={handleBackdropDrop}
         onDragOver={(e) => {
           e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
+          e.dataTransfer.dropEffect = "move";
         }}
       />
-      
+
       {/* Bloques agrupados de horarios disponibles */}
       <AnimatePresence>
         {bloques.map((bloque, idx) => (
@@ -122,13 +143,13 @@ export default function ScheduleDropOverlay({ availableHorarios, dias, horas, on
               gridColumn: bloque.diaIndex + 2,
               gridRow: `${bloque.horaInicioIndex + 1} / span ${bloque.duracion}`,
               zIndex: 15,
-              pointerEvents: 'auto',
-              cursor: 'copy',
+              pointerEvents: "auto",
+              cursor: "copy",
             }}
             onDrop={(e) => handleDrop(e, bloque)}
             onDragOver={(e) => {
               e.preventDefault();
-              e.dataTransfer.dropEffect = 'copy';
+              e.dataTransfer.dropEffect = "copy";
             }}
           >
             <div className="flex items-center gap-1">

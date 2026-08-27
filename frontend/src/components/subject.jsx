@@ -319,10 +319,13 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
       dragNode.style.pointerEvents = "none";
       dragNode.style.background = isDark ? "#18181b" : "#ffffff";
       dragNode.style.color = isDark ? "#f4f4f5" : "#09090b";
-      dragNode.style.border = isDark ? "1.5px solid #3f3f46" : "1.5px solid #cbd5e1";
+      dragNode.style.border = isDark
+        ? "1.5px solid #3f3f46"
+        : "1.5px solid #cbd5e1";
       dragNode.style.borderRadius = "8px";
       dragNode.style.padding = "7px 12px";
-      dragNode.style.boxShadow = "0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2)";
+      dragNode.style.boxShadow =
+        "0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2)";
       dragNode.style.display = "flex";
       dragNode.style.alignItems = "center";
       dragNode.style.gap = "8px";
@@ -376,11 +379,7 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
   return (
     <motion.div
       id={`subject-card-${materia?.codigo}`}
-      animate={
-        isShaking
-          ? { x: [0, -8, 8, -6, 6, -3, 3, 0] }
-          : { x: 0 }
-      }
+      animate={isShaking ? { x: [0, -8, 8, -6, 6, -3, 3, 0] } : { x: 0 }}
       transition={{ duration: 0.45, ease: "easeInOut" }}
       className={`rounded-md border select-none duration-200 ${
         isHighlighted
@@ -621,7 +620,11 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
                         )}
                       </div>
                       {showGroupParticles === grupo.numero && (
-                        <SelectionParticles color="#1392ec" count={10} radius={22} />
+                        <SelectionParticles
+                          color="#1392ec"
+                          count={10}
+                          radius={22}
+                        />
                       )}
                     </div>
 

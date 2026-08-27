@@ -101,7 +101,7 @@ export default function Schedule() {
     horariosGenerados && horariosGenerados.length > 0
       ? Boolean(
           allowManualBlocksBySchedule &&
-            allowManualBlocksBySchedule[horarioActualIndex],
+          allowManualBlocksBySchedule[horarioActualIndex],
         )
       : Boolean(allowManualBlocks);
 
@@ -251,7 +251,10 @@ export default function Schedule() {
     clasesParaRenderizar.forEach((clase) => {
       if (!clase.isPreview) {
         for (let i = 0; i < clase.duracion; i++) {
-          ocupadas.set(`${clase.diaIndex}-${clase.horaIndex + i}`, clase.materia);
+          ocupadas.set(
+            `${clase.diaIndex}-${clase.horaIndex + i}`,
+            clase.materia,
+          );
         }
       }
     });
@@ -327,7 +330,7 @@ export default function Schedule() {
     const blockKeys = clasesParaRenderizar.map((clase) =>
       clase.manualId
         ? `manual-${clase.manualId}`
-        : `block-${clase.codigoMateria || clase.materia}-d${clase.diaIndex}-h${clase.horaInicio}-${clase.horaFin}-g${clase.grupo || "0"}-${clase.isPreview ? "prev" : "perm"}`
+        : `block-${clase.codigoMateria || clase.materia}-d${clase.diaIndex}-h${clase.horaInicio}-${clase.horaFin}-g${clase.grupo || "0"}-${clase.isPreview ? "prev" : "perm"}`,
     );
 
     const count = blockKeys.length;
@@ -379,7 +382,8 @@ export default function Schedule() {
 
     const finalPosition = {
       ...position,
-      placement: spaceAbove < minSpaceAbove && spaceRight > 260 ? "right" : "top",
+      placement:
+        spaceAbove < minSpaceAbove && spaceRight > 260 ? "right" : "top",
     };
 
     setTooltipState({ clase, position: finalPosition });
@@ -702,7 +706,8 @@ export default function Schedule() {
     if (
       target &&
       target.closest &&
-      (target.closest("[data-no-select]") || target.closest("[data-class-block]"))
+      (target.closest("[data-no-select]") ||
+        target.closest("[data-class-block]"))
     ) {
       return;
     }
@@ -784,7 +789,11 @@ export default function Schedule() {
         // Excluir el grupo que ya está puesto actualmente en el schedule
         if (grupoActual && String(grupo.numero) === String(grupoActual)) return;
         // Excluir grupos sin cupos si tienen cupoDisponible === 0
-        if (typeof grupo.cupoDisponible === "number" && grupo.cupoDisponible <= 0) return;
+        if (
+          typeof grupo.cupoDisponible === "number" &&
+          grupo.cupoDisponible <= 0
+        )
+          return;
         // Excluir grupos con conflicto con otras materias en el horario
         if (groupHasConflict(grupo, draggingMateria.codigo)) return;
 
@@ -820,9 +829,7 @@ export default function Schedule() {
 
     const storeState = useMateriasStore.getState();
     const currentDragging =
-      overrideMateria ||
-      storeState.draggingMateria ||
-      draggingMateria;
+      overrideMateria || storeState.draggingMateria || draggingMateria;
 
     if (!currentDragging) return false;
 
@@ -835,8 +842,10 @@ export default function Schedule() {
 
     const gruposEnEstaCelda = (currentDragging.grupos || []).filter((grupo) => {
       // Excluir el grupo actual ya colocado
-      if (grupoActual && String(grupo.numero) === String(grupoActual)) return false;
-      if (typeof grupo.cupoDisponible === "number" && grupo.cupoDisponible <= 0) return false;
+      if (grupoActual && String(grupo.numero) === String(grupoActual))
+        return false;
+      if (typeof grupo.cupoDisponible === "number" && grupo.cupoDisponible <= 0)
+        return false;
       if (groupHasConflict(grupo, currentDragging.codigo)) return false;
       return (grupo.horarios || []).some((horario) => {
         return (
@@ -852,7 +861,7 @@ export default function Schedule() {
 
       // 1. ¿El grupo actual de esta materia ocupa esta celda?
       const grupoActualObj = (currentDragging.grupos || []).find(
-        (g) => grupoActual && String(g.numero) === String(grupoActual)
+        (g) => grupoActual && String(g.numero) === String(grupoActual),
       );
       const isCurrentGroupCell =
         grupoActualObj &&
@@ -874,7 +883,7 @@ export default function Schedule() {
           (b) =>
             b.diaIndex === diaIndex &&
             horaIndex >= b.horaIndex &&
-            horaIndex < b.horaIndex + b.duracion
+            horaIndex < b.horaIndex + b.duracion,
         );
 
       // 3. ¿Algún grupo de esta materia tiene clases aquí?
@@ -883,8 +892,8 @@ export default function Schedule() {
           (h) =>
             (h.dias || []).includes(dia) &&
             hora >= h.horaInicio &&
-            hora < h.horaFin
-        )
+            hora < h.horaFin,
+        ),
       );
 
       if (isCurrentGroupCell) {
@@ -903,7 +912,10 @@ export default function Schedule() {
 
     if (gruposEnEstaCelda.length > 1) {
       // Asegurar que draggingMateria esté en el store antes de abrir el modal
-      useMateriasStore.setState({ draggingMateria: currentDragging, lastDropSuccessful: true });
+      useMateriasStore.setState({
+        draggingMateria: currentDragging,
+        lastDropSuccessful: true,
+      });
       setShowGrupoSelector(true, gruposEnEstaCelda);
       return true;
     } else if (gruposEnEstaCelda.length === 1) {
@@ -1038,8 +1050,14 @@ export default function Schedule() {
                         onLeave={handleClassLeave}
                         onDelete={
                           clase.manualId
-                            ? () => handleDeleteManualBlockWithAnimation(clase.manualId)
-                            : () => handleDeleteSubjectWithAnimation(clase.codigoMateria)
+                            ? () =>
+                                handleDeleteManualBlockWithAnimation(
+                                  clase.manualId,
+                                )
+                            : () =>
+                                handleDeleteSubjectWithAnimation(
+                                  clase.codigoMateria,
+                                )
                         }
                         onRename={
                           clase.manualId
@@ -1048,12 +1066,14 @@ export default function Schedule() {
                         }
                         autoEdit={editingManualId === clase.manualId}
                         onEditComplete={() => setEditingManualId(null)}
-                        isForceExploding={
-                          Boolean(
-                            (clase.codigoMateria && explodingCodigo && String(explodingCodigo) === String(clase.codigoMateria)) ||
-                            (clase.manualId && explodingManualId === clase.manualId)
-                          )
-                        }
+                        isForceExploding={Boolean(
+                          (clase.codigoMateria &&
+                            explodingCodigo &&
+                            String(explodingCodigo) ===
+                              String(clase.codigoMateria)) ||
+                          (clase.manualId &&
+                            explodingManualId === clase.manualId),
+                        )}
                       />
                     </div>
                   );
@@ -1078,20 +1098,29 @@ export default function Schedule() {
             {draggingMateria && (
               <motion.div
                 initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  scale: isHoveringTrash ? 1.06 : 1,
+                }}
                 exit={{ opacity: 0, y: 50, scale: 0.9 }}
-                transition={{ duration: 0.22, ease: "easeOut" }}
-                className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-full border shadow-2xl flex items-center gap-3 backdrop-blur-md transition-all duration-200 cursor-pointer select-none ${
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-full border shadow-lg flex items-center gap-3 backdrop-blur-md cursor-pointer select-none transition-colors duration-150 ${
                   isHoveringTrash
-                    ? "bg-red-500 text-white border-red-600 ring-4 ring-red-500/30 scale-105"
+                    ? "bg-red-500 text-white border-red-600 ring-4 ring-red-500/30"
                     : "bg-white/95 dark:bg-zinc-900/95 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/60 ring-1 ring-red-500/20"
                 }`}
                 onDragOver={(e) => {
                   e.preventDefault();
                   e.dataTransfer.dropEffect = "move";
-                  setIsHoveringTrash(true);
+                  if (!isHoveringTrash) {
+                    setIsHoveringTrash(true);
+                  }
                 }}
-                onDragLeave={() => setIsHoveringTrash(false)}
+                onDragLeave={(e) => {
+                  if (e.currentTarget.contains(e.relatedTarget)) return;
+                  setIsHoveringTrash(false);
+                }}
                 onDrop={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -1103,8 +1132,10 @@ export default function Schedule() {
                   clearDragState();
                 }}
               >
-                <TrashIcon className={`w-5 h-5 ${isHoveringTrash ? "animate-bounce" : ""}`} />
-                <span className="font-semibold text-sm">
+                <TrashIcon
+                  className="w-4 h-4 pointer-events-none"
+                />
+                <span className="text-sm pointer-events-none font-medium">
                   {isHoveringTrash
                     ? "¡Soltar para eliminar del horario!"
                     : "Arrastra aquí para eliminar del horario"}
