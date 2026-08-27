@@ -512,7 +512,7 @@ function ClassBlockComponent({
         </div>
 
         {/* Nombre del Bloque */}
-        <div className="flex-1 min-w-0 my-1 flex items-center w-full">
+        <div className="flex-1 min-w-0 flex items-center justify-center w-full">
           {isEditing && isManual ? (
             <input
               ref={inputRef}
