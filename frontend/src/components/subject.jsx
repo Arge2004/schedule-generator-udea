@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef, useMemo, memo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+  memo,
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { useMateriasStore } from "../store/materiasStore";
@@ -36,6 +43,7 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
   const resetKey = useMateriasStore((s) => s.resetKey);
   const manualBlocks = useMateriasStore((s) => s.manualBlocks);
   const focusedMateriaCodigo = useMateriasStore((s) => s.focusedMateriaCodigo);
+  const focusedGrupoNumero = useMateriasStore((s) => s.focusedGrupoNumero);
   const focusTimestamp = useMateriasStore((s) => s.focusTimestamp);
   const shakeMateriaCodigo = useMateriasStore((s) => s.shakeMateriaCodigo);
   const shakeTimestamp = useMateriasStore((s) => s.shakeTimestamp);
@@ -44,10 +52,12 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
 
   const setIsExpanded = (val) => toggleSubjectExpanded?.(materiaCodigo, val);
   const [isHighlighted, setIsHighlighted] = useState(false);
+  const [highlightedGrupo, setHighlightedGrupo] = useState(null);
   const [isShaking, setIsShaking] = useState(false);
   const [showSelectParticles, setShowSelectParticles] = useState(false);
   const [showGroupParticles, setShowGroupParticles] = useState(null);
   const [celdasMateriaHorario, setCeldasMateriaHorario] = useState(new Map());
+  const grupoRefs = useRef({});
 
   const lastShakeTimestampRef = useRef(shakeTimestamp || 0);
 
@@ -65,20 +75,74 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
     }
   }, [shakeMateriaCodigo, shakeTimestamp, materia?.codigo]);
 
-  // Auto-expandir y resaltar cuando se hace clic desde el horario
+  const centerFocusedGrupo = useCallback((grupoNum) => {
+    if (!grupoNum) return;
+    const targetEl = grupoRefs.current[String(grupoNum)];
+    if (!targetEl) return;
+
+    const containerEl = targetEl.closest(".overflow-y-auto");
+    if (!containerEl) {
+      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    const targetRect = targetEl.getBoundingClientRect();
+    const containerRect = containerEl.getBoundingClientRect();
+    const targetCenter = targetRect.top + targetRect.height / 2;
+    const containerCenter = containerRect.top + containerRect.height / 2;
+    const offset = targetCenter - containerCenter;
+
+    if (Math.abs(offset) > 4) {
+      containerEl.scrollBy({
+        top: offset,
+        behavior: "smooth",
+      });
+    }
+  }, []);
+
+  // Auto-expandir, resaltar y centrar materia y grupo cada vez que se hace clic desde el horario (incluso clics sucesivos)
   useEffect(() => {
     if (
       focusedMateriaCodigo &&
-      String(focusedMateriaCodigo) === String(materia?.codigo)
+      String(focusedMateriaCodigo) === String(materia?.codigo) &&
+      focusTimestamp
     ) {
       setIsExpanded(true);
       setIsHighlighted(true);
+      if (focusedGrupoNumero) {
+        const grp = String(focusedGrupoNumero);
+        setHighlightedGrupo(grp);
+
+        // Centrado progresivo garantizado en clics repetidos
+        const t1 = setTimeout(() => centerFocusedGrupo(grp), 40);
+        const t2 = setTimeout(() => centerFocusedGrupo(grp), 180);
+        const t3 = setTimeout(() => centerFocusedGrupo(grp), 360);
+
+        const clearTimer = setTimeout(() => {
+          setIsHighlighted(false);
+          setHighlightedGrupo(null);
+        }, 1800);
+
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+          clearTimeout(t3);
+          clearTimeout(clearTimer);
+        };
+      }
+
       const timer = setTimeout(() => {
         setIsHighlighted(false);
-      }, 1600);
+      }, 1800);
       return () => clearTimeout(timer);
     }
-  }, [focusedMateriaCodigo, focusTimestamp, materia?.codigo]);
+  }, [
+    focusedMateriaCodigo,
+    focusedGrupoNumero,
+    focusTimestamp,
+    materia?.codigo,
+    centerFocusedGrupo,
+  ]);
 
   const isManualMode = generationMode === GENERATION_MODES.MANUAL;
 
@@ -553,6 +617,11 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
               height: { duration: 0.15, ease: "easeOut" },
               opacity: { duration: 0.15, ease: "easeOut" },
             }}
+            onAnimationComplete={() => {
+              if (highlightedGrupo) {
+                centerFocusedGrupo(highlightedGrupo);
+              }
+            }}
             className="px-2 pb-2.5 pt-0.5 space-y-1.5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60"
           >
             {materia.grupos.map((grupo, idx) => {
@@ -605,19 +674,27 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
               }
 
               const disabled = sinCupos || tieneConflicto;
+              const isFocusedGrupo =
+                highlightedGrupo &&
+                String(highlightedGrupo) === String(grupo.numero);
 
               return (
                 <div
                   key={idx}
+                  ref={(el) => {
+                    if (el) grupoRefs.current[String(grupo.numero)] = el;
+                  }}
                   onClick={
                     disabled ? undefined : () => handleGrupoSelect(grupo.numero)
                   }
-                  className={`relative p-2 rounded-md border text-xs duration-150 flex items-center justify-between gap-2.5 ${
-                    disabled
-                      ? "opacity-40 cursor-not-allowed border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/40"
-                      : isGrupoSelected
-                        ? "border-primary bg-primary/10 text-primary dark:text-blue-100 font-semibold cursor-pointer shadow-2xs ring-1 ring-primary/30"
-                        : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer"
+                  className={`relative p-2 rounded-md border text-xs duration-200 flex items-center justify-between gap-2.5 transition-all ${
+                    isFocusedGrupo
+                      ? "ring-2 ring-primary ring-offset-1 dark:ring-offset-zinc-900 border-primary bg-primary/20 text-primary dark:text-blue-100 font-bold shadow-md scale-[1.02]"
+                      : disabled
+                        ? "opacity-40 cursor-not-allowed border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/40"
+                        : isGrupoSelected
+                          ? "border-primary bg-primary/10 text-primary dark:text-blue-100 font-semibold cursor-pointer shadow-2xs ring-1 ring-primary/30"
+                          : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer"
                   }`}
                 >
                   {/* EXTREMO IZQUIERDO: Check / Radio Indicator + Badge Grupo */}

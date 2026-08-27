@@ -272,15 +272,22 @@ export default function SubjectList({
       if (searchTerm) onClearSearch();
     }
 
-    // Scroll suave hacia la materia
+    // Scroll suave hacia la materia en el sidebar
     const timer = setTimeout(() => {
       const el = document.getElementById(
         `subject-card-${focusedMateriaCodigo}`,
       );
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const container = scrollContainerRef.current;
+      if (el && container) {
+        const targetRect = el.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const offset =
+          targetRect.top +
+          targetRect.height / 2 -
+          (containerRect.top + containerRect.height / 2);
+        container.scrollBy({ top: offset, behavior: "smooth" });
       }
-    }, 70);
+    }, 40);
 
     return () => clearTimeout(timer);
   }, [focusTimestamp, focusedMateriaCodigo]);

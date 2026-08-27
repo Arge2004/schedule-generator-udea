@@ -78,8 +78,24 @@ export const useMateriasStore = create(
       setNotifier: (fn) => set({ notify: fn }),
 
       // Navegación y scroll interactivo hacia materias
-      focusMateria: (codigo) => set({ focusedMateriaCodigo: codigo, focusTimestamp: Date.now() }),
-      clearFocusedMateria: () => set({ focusedMateriaCodigo: null }),
+      focusMateria: (codigo, grupoNumero = null) =>
+        set((state) => {
+          const currentExpanded = { ...(state.expandedSubjects || {}) };
+          if (codigo) {
+            currentExpanded[String(codigo)] = true;
+          }
+          return {
+            focusedMateriaCodigo: codigo ? String(codigo) : null,
+            focusedGrupoNumero:
+              grupoNumero !== null && typeof grupoNumero !== "undefined"
+                ? String(grupoNumero)
+                : null,
+            focusTimestamp: Date.now(),
+            expandedSubjects: currentExpanded,
+          };
+        }),
+      clearFocusedMateria: () =>
+        set({ focusedMateriaCodigo: null, focusedGrupoNumero: null }),
 
       // Acciones de tema con actualización síncrona del DOM
       setDarkTheme: (isDark) => {

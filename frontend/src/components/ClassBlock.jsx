@@ -218,7 +218,7 @@ function ClassBlockComponent({
     onLeave?.();
     if (codigoMateria) {
       const { focusMateria } = useMateriasStore.getState();
-      if (focusMateria) focusMateria(codigoMateria);
+      if (focusMateria) focusMateria(codigoMateria, grupo);
     }
   };
 
@@ -406,6 +406,7 @@ function ClassBlockComponent({
       draggable={isDraggable}
       onDragStart={isDraggable ? handleDragStart : undefined}
       onDragEnd={isDraggable ? handleDragEnd : undefined}
+      onClick={handleBlockClick}
       className={`absolute inset-1 rounded-md pointer-events-auto select-none ${
         isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
       }`}
