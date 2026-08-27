@@ -136,7 +136,10 @@ export default function PreferencesPopover({
               </div>
 
               {/* Evitar Huecos */}
-              <div className="flex items-center justify-between gap-3 pt-1 border-t border-zinc-100 dark:border-zinc-800">
+              <div
+                className="flex items-center justify-between gap-3 pt-1 border-t border-zinc-100 dark:border-zinc-800 cursor-pointer select-none"
+                onClick={() => setEvitarHuecos(!evitarHuecos)}
+              >
                 <div className="flex flex-col text-left">
                   <span className="font-medium text-zinc-700 dark:text-zinc-300">
                     Evitar huecos extensos
@@ -154,7 +157,10 @@ export default function PreferencesPopover({
 
               {/* Bloques Manuales por Horario (Desktop) */}
               {!isMobile && (
-                <div className="flex items-center justify-between gap-3 pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                <div
+                  className={`flex items-center justify-between gap-3 pt-1 border-t border-zinc-100 dark:border-zinc-800 cursor-pointer select-none ${!hasHorarios ? "opacity-50 cursor-not-allowed" : ""}`}
+                  onClick={() => hasHorarios && handleToggleManualBlocksSchedule()}
+                >
                   <div className="flex flex-col text-left">
                     <span className="font-medium text-zinc-700 dark:text-zinc-300">
                       Bloques manuales por horario
@@ -176,10 +182,13 @@ export default function PreferencesPopover({
             <>
               {/* Drag & Drop */}
               {!isMobile && (
-                <div className="flex items-center justify-between gap-3">
+                <div
+                  className="flex items-center justify-between gap-3 cursor-pointer select-none"
+                  onClick={() => setDragEnabled(!dragEnabled)}
+                >
                   <div className="flex flex-col text-left">
                     <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                      Arrastrar al horario (Drag & Drop)
+                      Arrastrar al horario (Drag &amp; Drop)
                     </span>
                     <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
                       Arrastra materias directamente a la cuadrícula
@@ -195,7 +204,10 @@ export default function PreferencesPopover({
 
               {/* Bloques Manuales Globales */}
               {!isMobile && (
-                <div className="flex items-center justify-between gap-3 pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                <div
+                  className={`flex items-center justify-between gap-3 pt-1 border-t border-zinc-100 dark:border-zinc-800 cursor-pointer select-none ${allowManualBlocksLocked ? "opacity-50 cursor-not-allowed" : ""}`}
+                  onClick={() => !allowManualBlocksLocked && setAllowManualBlocks(!allowManualBlocks)}
+                >
                   <div className="flex flex-col text-left">
                     <span className="font-medium text-zinc-700 dark:text-zinc-300">
                       Crear bloques manuales

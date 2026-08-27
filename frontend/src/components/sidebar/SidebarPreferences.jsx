@@ -102,7 +102,10 @@ export default function SidebarPreferences({
           </div>
 
           {/* Toggle Evitar Huecos */}
-          <div className="flex items-center justify-between gap-2">
+          <div
+            className="flex items-center justify-between gap-2 cursor-pointer select-none"
+            onClick={() => setEvitarHuecos(!evitarHuecos)}
+          >
             <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
               Evitar horarios con huecos extensos
             </span>
@@ -115,7 +118,10 @@ export default function SidebarPreferences({
 
           {/* Toggle Bloques Manuales (Desktop) */}
           {!isMobile && (
-            <div className="flex items-center justify-between gap-2">
+            <div
+              className={`flex items-center justify-between gap-2 cursor-pointer select-none ${!hasHorarios ? "opacity-50 cursor-not-allowed" : ""}`}
+              onClick={() => hasHorarios && handleToggleManualBlocksSchedule()}
+            >
               <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
                 Permitir crear bloques manuales (por horario)
               </span>
@@ -141,7 +147,10 @@ export default function SidebarPreferences({
 
         <div className="space-y-3">
           {/* Toggle Drag & Drop */}
-          <div className="flex items-center justify-between gap-2">
+          <div
+            className="flex items-center justify-between gap-2 cursor-pointer select-none"
+            onClick={() => setDragEnabled(!dragEnabled)}
+          >
             <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
               Permitir arrastrar materias al horario
             </span>
@@ -153,7 +162,10 @@ export default function SidebarPreferences({
           </div>
 
           {/* Toggle Bloques Manuales */}
-          <div className="flex items-center justify-between gap-2">
+          <div
+            className={`flex items-center justify-between gap-2 cursor-pointer select-none ${allowManualBlocksLocked ? "opacity-50 cursor-not-allowed" : ""}`}
+            onClick={() => !allowManualBlocksLocked && setAllowManualBlocks(!allowManualBlocks)}
+          >
             <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
               Permitir crear bloques manuales
             </span>
