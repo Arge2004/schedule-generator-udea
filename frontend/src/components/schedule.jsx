@@ -49,6 +49,8 @@ export default function Schedule() {
     resetMateriasSeleccionadas,
     clearHorariosGenerados,
     clearAllowManualBlocksBySchedule,
+    dragEnabled,
+    setDraggingMateria,
   } = useMateriasStore();
 
   const [exporting, setExporting] = useState(false);
@@ -483,19 +485,24 @@ export default function Schedule() {
     if (!gridRef.current) return null;
     const rect = gridRef.current.getBoundingClientRect();
     const leftDays = rect.left + 72;
+
+    // Verificar si el puntero está dentro de la cuadrícula de días
+    if (
+      clientX < leftDays ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
+    ) {
+      return null;
+    }
+
     const widthDays = rect.width - 72;
     const cellWidth = widthDays / 7;
     const cellHeight = rect.height / HORAS.length;
     const x = clientX - leftDays;
     const y = clientY - rect.top;
-    let diaIndex = Math.floor(x / cellWidth);
-    let horaIndex = Math.floor(y / cellHeight);
-
-    diaIndex = Math.max(0, Math.min(6, isNaN(diaIndex) ? -1 : diaIndex));
-    horaIndex = Math.max(
-      0,
-      Math.min(HORAS.length - 1, isNaN(horaIndex) ? -1 : horaIndex),
-    );
+    const diaIndex = Math.floor(x / cellWidth);
+    const horaIndex = Math.floor(y / cellHeight);
 
     if (
       isNaN(diaIndex) ||
@@ -669,7 +676,13 @@ export default function Schedule() {
 
   const handleMouseDown = (e) => {
     const target = e.target;
-    if (target && target.closest && target.closest("[data-no-select]")) return;
+    if (
+      target &&
+      target.closest &&
+      (target.closest("[data-no-select]") || target.closest("[data-class-block]"))
+    ) {
+      return;
+    }
     if (!effectiveAllowManualBlocks) return;
 
     if (
@@ -709,7 +722,11 @@ export default function Schedule() {
     );
   };
 
-  const groupHasConflict = (grupo) => {
+  const groupHasConflict = (grupo, targetMateriaCodigo = null) => {
+    const activeCodigo =
+      targetMateriaCodigo ||
+      useMateriasStore.getState().draggingMateria?.codigo ||
+      draggingMateria?.codigo;
     for (const horario of grupo.horarios || []) {
       for (const dia of horario.dias || []) {
         const diaIndex = DIAS.indexOf(dia);
@@ -722,7 +739,7 @@ export default function Schedule() {
           const materiaEnCeldaCodigo = getCodigoFromValor(materiaEnCeldaValor);
           if (
             materiaEnCeldaCodigo &&
-            materiaEnCeldaCodigo !== draggingMateria.codigo
+            materiaEnCeldaCodigo !== activeCodigo
           ) {
             return true;
           }
@@ -732,12 +749,12 @@ export default function Schedule() {
     return false;
   };
 
-  const handleDragEnter = (e) => {
-    e.preventDefault();
-    if (draggingMateria && availableHorarios.length === 0) {
+  // Actualizar inmediatamente availableHorarios al iniciar drag (desde sidebar o desde el schedule)
+  useEffect(() => {
+    if (draggingMateria) {
       const todosLosHorarios = [];
       (draggingMateria.grupos || []).forEach((grupo) => {
-        if (groupHasConflict(grupo)) return;
+        if (groupHasConflict(grupo, draggingMateria.codigo)) return;
         (grupo.horarios || []).forEach((horario) => {
           todosLosHorarios.push({
             ...horario,
@@ -746,7 +763,13 @@ export default function Schedule() {
         });
       });
       setAvailableHorarios(todosLosHorarios);
+    } else {
+      setAvailableHorarios([]);
     }
+  }, [draggingMateria]);
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
   };
 
   const handleDragOver = (e) => {
@@ -756,19 +779,26 @@ export default function Schedule() {
 
   const handleDragLeave = (e) => {
     if (e.currentTarget.contains(e.relatedTarget)) return;
-    setAvailableHorarios([]);
   };
 
-  const handleDrop = (e, diaIndex, horaIndex) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!draggingMateria) return;
+  const handleDrop = (e, diaIndex, horaIndex, overrideMateria = null) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+
+    const storeState = useMateriasStore.getState();
+    const currentDragging =
+      overrideMateria ||
+      storeState.draggingMateria ||
+      draggingMateria ||
+      blockDragMateriaRef.current;
+
+    if (!currentDragging) return false;
 
     const dia = DIAS[diaIndex];
     const hora = HORAS[horaIndex];
 
-    const gruposEnEstaCelda = (draggingMateria.grupos || []).filter((grupo) => {
-      if (groupHasConflict(grupo)) return false;
+    const gruposEnEstaCelda = (currentDragging.grupos || []).filter((grupo) => {
+      if (groupHasConflict(grupo, currentDragging.codigo)) return false;
       return (grupo.horarios || []).some((horario) => {
         const cellStart = hora;
         const cellEnd = hora + 1;
@@ -781,21 +811,27 @@ export default function Schedule() {
     });
 
     if (gruposEnEstaCelda.length === 0) {
-      toast.error("No se puede colocar en este horario.");
+      toast.error("⚠️ No se puede colocar en este horario.");
       clearDragState();
-      return;
+      return false;
     }
 
     if (gruposEnEstaCelda.length > 1) {
+      // Asegurar que draggingMateria esté en el store antes de abrir el modal
+      useMateriasStore.setState({ draggingMateria: currentDragging });
       setShowGrupoSelector(true, gruposEnEstaCelda);
+      return true;
     } else if (gruposEnEstaCelda.length === 1) {
       const grupo = gruposEnEstaCelda[0];
-      selectGrupo(draggingMateria.codigo, grupo.numero);
-      if (!gruposSeleccionados[draggingMateria.codigo]) {
-        toggleMateriaSelected(draggingMateria.codigo);
+      selectGrupo(currentDragging.codigo, grupo.numero);
+      if (!storeState.gruposSeleccionados[currentDragging.codigo]) {
+        toggleMateriaSelected(currentDragging.codigo);
       }
       clearDragState();
+      toast.success(`Materia agregada: Grupo ${grupo.numero}`);
+      return true;
     }
+    return false;
   };
 
   return (
@@ -858,11 +894,7 @@ export default function Schedule() {
                         data-cell={`${diaIdx}-${horaIdx}`}
                         data-day={diaIdx}
                         data-hour={horaIdx}
-                        className={`bg-transparent ${
-                          tieneClase
-                            ? ""
-                            : "border-r border-b border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/40 dark:hover:bg-zinc-800/20"
-                        }`}
+                        className="bg-transparent border-r border-b border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100/40 dark:hover:bg-zinc-800/20"
                         style={{
                           gridColumn: diaIdx + 2,
                           gridRow: horaIdx + 1,
@@ -903,13 +935,15 @@ export default function Schedule() {
                   return (
                     <div
                       data-manual-id={clase.manualId || undefined}
+                      data-no-select
+                      data-class-block="true"
                       key={blockKey}
-                      className="relative overflow-hidden rounded-md [contain:paint]"
+                      className="relative rounded-md pointer-events-auto"
                       style={{
                         gridColumn: clase.diaIndex + 2,
                         gridRow: `${clase.horaIndex + 1} / span ${clase.duracion}`,
                         zIndex: clase.isPreview ? 6 : 10,
-                        pointerEvents: (draggingMateria || isClearingSequence) ? "none" : "auto",
+                        pointerEvents: isClearingSequence ? "none" : "auto",
                       }}
                     >
                       <ClassBlock

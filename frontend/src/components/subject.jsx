@@ -14,6 +14,7 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
     selectGrupo,
     resetKey,
     setDraggingMateria,
+    clearDragState,
     materias,
     manualBlocks,
     focusedMateriaCodigo,
@@ -213,11 +214,6 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
       e.preventDefault();
       return;
     }
-    setDraggingMateria({
-      codigo: materia.codigo,
-      nombre: materia.nombre,
-      grupos: materia.grupos,
-    });
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", materia.codigo);
 
@@ -225,7 +221,7 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
     if (typeof document !== "undefined") {
       const isDark = document.documentElement.classList.contains("dark");
       const dragNode = document.createElement("div");
-      dragNode.style.position = "fixed";
+      dragNode.style.position = "absolute";
       dragNode.style.top = "-9999px";
       dragNode.style.left = "-9999px";
       dragNode.style.zIndex = "999999";
@@ -266,6 +262,20 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
         }
       }, 0);
     }
+
+    setTimeout(() => {
+      setDraggingMateria({
+        codigo: materia.codigo,
+        nombre: materia.nombre,
+        grupos: materia.grupos,
+      });
+    }, 0);
+  };
+
+  const handleDragEnd = () => {
+    // Limpiar estado de drag siempre que termine el arrastre,
+    // independientemente de si se soltó en el schedule o fuera de él
+    clearDragState?.();
   };
 
   const isCardActive =
@@ -297,6 +307,7 @@ function SubjectComponent({ materia, generationMode, dragEnabled = true }) {
             ? handleDragStart
             : undefined
         }
+        onDragEnd={isManualMode && dragEnabled ? handleDragEnd : undefined}
         onClick={handleItemClick}
         className="p-2.5 flex items-center justify-between gap-2.5  cursor-pointer"
       >

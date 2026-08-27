@@ -72,13 +72,20 @@ export default function GrupoSelectorModal() {
         gruposConflicto: [],
         pendingModal: false,
       });
+    } else if (
+      showGrupoSelector &&
+      gruposConflicto.length > 0 &&
+      gruposSinConflicto.length === 0
+    ) {
+      if (showToastMessage) {
+        showToastMessage("⚠️ No hay grupos disponibles sin conflicto de horario");
+      }
+      setShowGrupoSelector(false, []);
+      clearDragState();
     }
-  }, [showGrupoSelector, gruposSinConflicto, draggingMateria]);
+  }, [showGrupoSelector, gruposSinConflicto, draggingMateria, gruposConflicto.length, showToastMessage, setShowGrupoSelector, clearDragState, selectGrupo, toggleMateriaSelected, gruposSeleccionados]);
 
   if (!showGrupoSelector || gruposSinConflicto.length === 0) {
-    if (showGrupoSelector && gruposConflicto.length > 0 && showToastMessage) {
-      showToastMessage("⚠️ No hay grupos disponibles sin conflicto de horario");
-    }
     return null;
   }
 

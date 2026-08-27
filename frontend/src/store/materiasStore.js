@@ -33,6 +33,7 @@ export const useMateriasStore = create(
       themeSyncEnabled: false,
       
       // Estados transitorios de drag and drop y navegación
+      dragEnabled: false,
       draggingMateria: null,
       hoveredScheduleCell: null,
       availableHorarios: [],
@@ -190,6 +191,8 @@ export const useMateriasStore = create(
       }),
 
       // Acciones de drag and drop
+      setDragEnabled: (value) => set({ dragEnabled: !!value }),
+
       setDraggingMateria: (materia) => set({
         draggingMateria: materia,
         availableHorarios: materia ? [] : [],

@@ -18,7 +18,6 @@ export default function Sidebar() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [generationMode, setGenerationMode] = useState(GENERATION_MODES.MANUAL);
-  const [dragEnabled, setDragEnabled] = useState(false);
   const [horaMinima, setHoraMinima] = useState(6);
   const [evitarHuecos, setEvitarHuecos] = useState(false);
   const [showConfirmModeModal, setShowConfirmModeModal] = useState(false);
@@ -41,6 +40,8 @@ export default function Sidebar() {
     clearMaterias,
     clearRemovedGroups,
     setAllowManualBlocks,
+    dragEnabled,
+    setDragEnabled,
   } = useMateriasStore();
 
   // Detección responsiva de dispositivo móvil

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, memo } from "react";
 import { motion } from "framer-motion";
 import { useMateriasStore } from "../store/materiasStore.js";
-import { TrashIcon } from "../icons/index.js";
+import { TrashIcon, GripIcon } from "../icons/index.js";
 import Tooltip from "./Tooltip.jsx";
 
 const EXPLOSION_PARTICLES = Array.from({ length: 24 }).map((_, i) => {
@@ -47,6 +47,8 @@ function ClassBlockComponent({
   autoEdit,
   onEditComplete,
   isForceExploding = false,
+  onInitDrag,
+  onPointerDown: onPointerDownProp,
 }) {
   const {
     materia,
@@ -178,10 +180,114 @@ function ClassBlockComponent({
     }
   };
 
+  const dragEnabled = useMateriasStore((s) => s.dragEnabled);
+
+  const isDraggable =
+    Boolean(codigoMateria || materia) &&
+    !isEditing &&
+    !isExploding &&
+    !isPreview &&
+    !manualId &&
+    dragEnabled;
+
+  const handleDragStart = (e) => {
+    if (!isDraggable) {
+      e.preventDefault();
+      return;
+    }
+
+    const state = useMateriasStore.getState();
+    const mat =
+      state.materias?.find((m) => String(m.codigo) === String(codigoMateria)) ||
+      state.materias?.find((m) => m.nombre === materia);
+
+    if (!mat || !mat.grupos || mat.grupos.length === 0) {
+      e.preventDefault();
+      return;
+    }
+
+    onLeave?.();
+
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(mat.codigo));
+
+    // Crear un drag preview sólido, nítido y 100% opaco idéntico al del sidebar
+    if (typeof document !== "undefined") {
+      const isDark = document.documentElement.classList.contains("dark");
+      const dragNode = document.createElement("div");
+      dragNode.style.position = "absolute";
+      dragNode.style.top = "-9999px";
+      dragNode.style.left = "-9999px";
+      dragNode.style.zIndex = "999999";
+      dragNode.style.opacity = "1";
+      dragNode.style.pointerEvents = "none";
+      dragNode.style.background = isDark ? "#18181b" : "#ffffff";
+      dragNode.style.color = isDark ? "#f4f4f5" : "#09090b";
+      dragNode.style.border = isDark
+        ? "1.5px solid #3f3f46"
+        : "1.5px solid #cbd5e1";
+      dragNode.style.borderRadius = "8px";
+      dragNode.style.padding = "7px 12px";
+      dragNode.style.boxShadow =
+        "0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2)";
+      dragNode.style.display = "flex";
+      dragNode.style.alignItems = "center";
+      dragNode.style.gap = "8px";
+      dragNode.style.fontFamily = "ui-sans-serif, system-ui, sans-serif";
+      dragNode.style.fontSize = "12px";
+      dragNode.style.fontWeight = "600";
+      dragNode.style.whiteSpace = "nowrap";
+
+      dragNode.innerHTML = `
+        <span style="
+          background: #1392ec;
+          color: #ffffff;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-family: ui-monospace, monospace;
+          font-size: 10px;
+          font-weight: 700;
+        ">#${mat.codigo || ""}</span>
+        <span>${mat.nombre}</span>
+      `;
+
+      document.body.appendChild(dragNode);
+      e.dataTransfer.setDragImage(dragNode, 24, 18);
+      setTimeout(() => {
+        if (document.body.contains(dragNode)) {
+          document.body.removeChild(dragNode);
+        }
+      }, 0);
+    }
+
+    // Actualizar el estado en el siguiente tick para que dragstart se complete en <1ms
+    setTimeout(() => {
+      state.setDraggingMateria({
+        codigo: mat.codigo,
+        nombre: mat.nombre,
+        grupos: mat.grupos,
+      });
+    }, 0);
+  };
+
+  const handleDragEnd = () => {
+    const { clearDragState } = useMateriasStore.getState();
+    clearDragState?.();
+  };
+
   const blockColor = color || "#3b82f6";
 
   return (
-    <div className="absolute inset-1 overflow-visible rounded-md">
+    <div
+      data-no-select
+      data-class-block="true"
+      draggable={isDraggable}
+      onDragStart={isDraggable ? handleDragStart : undefined}
+      onDragEnd={isDraggable ? handleDragEnd : undefined}
+      className={`absolute inset-1 rounded-md pointer-events-auto select-none ${
+        isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+      }`}
+    >
       {/* Contenedor principal con animación de destructuración física */}
       <motion.div
         ref={blockRef}
@@ -206,7 +312,7 @@ function ClassBlockComponent({
             ? { duration: 0.4, ease: [0.05, 0.7, 0.1, 1] }
             : { duration: 0.22, ease: [0.175, 0.885, 0.32, 1.15] }
         }
-        className={`w-full h-full rounded-md border border-l-[3.5px] flex flex-col justify-between items-center py-1 px-1.5 overflow-hidden hover:shadow-md hover:scale-[1.01] hover:z-20 cursor-pointer select-none group transition-transform duration-75 ease-out ${
+        className={`w-full h-full rounded-md border border-l-[3.5px] flex flex-col justify-between items-center py-1 px-1.5 overflow-hidden hover:shadow-md select-none group transition-shadow duration-100 ease-out ${
           isPreview ? "border-dashed ring-2 ring-primary/40 shadow-md" : ""
         } ${pulsing ? "pulse-animate" : ""}`}
         data-no-select
@@ -240,7 +346,7 @@ function ClassBlockComponent({
             )}
           </div>
 
-          {isManual && !isExploding && (
+          {isManual && !isExploding ? (
             <Tooltip
               content="Eliminar bloque"
               position="top"
@@ -259,6 +365,15 @@ function ClassBlockComponent({
                 <TrashIcon className="w-3.5 h-3.5" />
               </button>
             </Tooltip>
+          ) : (
+            isDraggable && (
+              <div
+                className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 ml-auto flex items-center justify-center p-0.5 text-zinc-400 dark:text-zinc-400 hover:text-primary dark:hover:text-primary cursor-grab"
+                title="Arrastrar bloque"
+              >
+                <GripIcon className="w-3.5 h-3.5" />
+              </div>
+            )
           )}
         </div>
 
