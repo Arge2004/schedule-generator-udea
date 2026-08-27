@@ -330,12 +330,12 @@ export default function Schedule() {
     const blockKeys = clasesParaRenderizar.map((clase) =>
       clase.manualId
         ? `manual-${clase.manualId}`
-        : `block-${clase.codigoMateria || clase.materia}-d${clase.diaIndex}-h${clase.horaInicio}-${clase.horaFin}-g${clase.grupo || "0"}-${clase.isPreview ? "prev" : "perm"}`,
+        : `block-${clase.codigoMateria || clase.materia}-d${clase.diaIndex}-h${clase.horaIndex}-${clase.duracion}-g${clase.grupo || "0"}`,
     );
 
     const count = blockKeys.length;
-    // Escalonamiento óptimo para cualquier cantidad de bloques y dispositivo
-    const stagger = Math.min(80, Math.max(35, 550 / count));
+    // Escalonamiento óptimo para que se vea el efecto dominó 1 por 1
+    const stagger = Math.min(90, Math.max(45, 600 / count));
 
     blockKeys.forEach((key, index) => {
       setTimeout(() => {
@@ -1044,37 +1044,49 @@ export default function Schedule() {
                         pointerEvents: isClearingSequence ? "none" : "auto",
                       }}
                     >
-                      <ClassBlock
-                        clase={clase}
-                        onHover={handleClassHover}
-                        onLeave={handleClassLeave}
-                        onDelete={
-                          clase.manualId
-                            ? () =>
-                                handleDeleteManualBlockWithAnimation(
-                                  clase.manualId,
-                                )
-                            : () =>
-                                handleDeleteSubjectWithAnimation(
-                                  clase.codigoMateria,
-                                )
-                        }
-                        onRename={
-                          clase.manualId
-                            ? (name) => renameManualBlock(clase.manualId, name)
-                            : undefined
-                        }
-                        autoEdit={editingManualId === clase.manualId}
-                        onEditComplete={() => setEditingManualId(null)}
-                        isForceExploding={Boolean(
-                          (clase.codigoMateria &&
-                            explodingCodigo &&
-                            String(explodingCodigo) ===
-                              String(clase.codigoMateria)) ||
-                          (clase.manualId &&
-                            explodingManualId === clase.manualId),
-                        )}
-                      />
+                      {(() => {
+                        const blockKey = clase.manualId
+                          ? `manual-${clase.manualId}`
+                          : `block-${clase.codigoMateria || clase.materia}-d${clase.diaIndex}-h${clase.horaIndex}-${clase.duracion}-g${clase.grupo || "0"}`;
+
+                        const isExploding = Boolean(
+                          clearingExplosions.has(blockKey) ||
+                            (clase.codigoMateria &&
+                              explodingCodigo &&
+                              String(explodingCodigo) ===
+                                String(clase.codigoMateria)) ||
+                            (clase.manualId &&
+                              explodingManualId === clase.manualId),
+                        );
+
+                        return (
+                          <ClassBlock
+                            clase={clase}
+                            onHover={handleClassHover}
+                            onLeave={handleClassLeave}
+                            onDelete={
+                              clase.manualId
+                                ? () =>
+                                    handleDeleteManualBlockWithAnimation(
+                                      clase.manualId,
+                                    )
+                                : () =>
+                                    handleDeleteSubjectWithAnimation(
+                                      clase.codigoMateria,
+                                    )
+                            }
+                            onRename={
+                              clase.manualId
+                                ? (name) =>
+                                    renameManualBlock(clase.manualId, name)
+                                : undefined
+                            }
+                            autoEdit={editingManualId === clase.manualId}
+                            onEditComplete={() => setEditingManualId(null)}
+                            isForceExploding={isExploding}
+                          />
+                        );
+                      })()}
                     </div>
                   );
                 })}
