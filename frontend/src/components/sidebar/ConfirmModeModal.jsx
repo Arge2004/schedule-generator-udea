@@ -1,7 +1,4 @@
-/* Hallmark · component: ConfirmModeModal · genre: modern-minimal · theme: custom
- * states: default · hover · focus-visible · active
- * contrast: pass (4.5:1+)
- */
+import { createPortal } from "react-dom";
 import { useMateriasStore } from "../../store/materiasStore.js";
 import { MODES } from "../../constants/sidebar.js";
 
@@ -11,7 +8,7 @@ export default function ConfirmModeModal({
   onConfirm,
   onCancel,
 }) {
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
   const { materiasSeleccionadas = {}, horariosGenerados = [] } =
     useMateriasStore();
@@ -25,9 +22,10 @@ export default function ConfirmModeModal({
     scheduleCount > 0 ? "horarios generados" : "materias seleccionadas";
   const targetMode = MODES.find((m) => m.id === pendingMode)?.label || "";
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+      className="fixed inset-0 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+      style={{ zIndex: 99999 }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-mode-title"

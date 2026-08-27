@@ -183,12 +183,16 @@ function ClassBlockComponent({
       return;
     }
 
-    if (manualId) {
-      if (onDelete) onDelete();
-    } else if (codigoMateria) {
-      const state = useMateriasStore.getState();
-      state.deleteMateriaFromSchedule?.(codigoMateria);
-    }
+    setIsExploding(true);
+    setTimeout(() => {
+      if (manualId) {
+        const state = useMateriasStore.getState();
+        state.removeManualBlock?.(manualId);
+      } else if (codigoMateria) {
+        const state = useMateriasStore.getState();
+        state.deleteMateriaFromSchedule?.(codigoMateria);
+      }
+    }, 240);
   };
 
   const commitEdit = () => {
