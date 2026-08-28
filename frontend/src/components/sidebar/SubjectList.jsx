@@ -80,6 +80,8 @@ export default function SubjectList({
   const unlockAllowManualBlocks = useMateriasStore(
     (s) => s.unlockAllowManualBlocks,
   );
+  const materias = useMateriasStore((s) => s.materias || []);
+  const manualBlocks = useMateriasStore((s) => s.manualBlocks || []);
   const materiasSeleccionadas = useMateriasStore(
     (s) => s.materiasSeleccionadas || {},
   );
@@ -99,6 +101,56 @@ export default function SubjectList({
     }
     return Object.values(materiasSeleccionadas).filter(Boolean).length;
   }, [gruposSeleccionados, materiasSeleccionadas, generationMode]);
+
+  const DIAS_LIST = useMemo(
+    () => [
+      "Lunes",
+      "Martes",
+      "Miércoles",
+      "Jueves",
+      "Viernes",
+      "Sábado",
+      "Domingo",
+    ],
+    [],
+  );
+
+  // Mapa centralizado de celdas ocupadas en el horario (calculado 1 sola vez para todas las materias)
+  const occupiedScheduleCells = useMemo(() => {
+    if (generationMode !== "manual" || !gruposSeleccionados) return new Map();
+    const map = new Map();
+    const allMaterias = Array.isArray(materias) ? materias : [];
+
+    Object.entries(gruposSeleccionados).forEach(([cod, numGrp]) => {
+      if (!cod || !numGrp) return;
+      const mat = allMaterias.find((m) => String(m.codigo) === String(cod));
+      const g = mat?.grupos?.find((gr) => String(gr.numero) === String(numGrp));
+      (g?.horarios || []).forEach((h) => {
+        (h.dias || []).forEach((d) => {
+          const dIdx = DIAS_LIST.indexOf(d);
+          if (dIdx !== -1) {
+            for (let hr = h.horaInicio; hr < h.horaFin; hr++) {
+              map.set(`${dIdx}-${hr}`, String(cod));
+            }
+          }
+        });
+      });
+    });
+
+    return map;
+  }, [gruposSeleccionados, generationMode, materias, DIAS_LIST]);
+
+  const occupiedManualCells = useMemo(() => {
+    const set = new Set();
+    if (manualBlocks && manualBlocks.length > 0) {
+      manualBlocks.forEach((b) => {
+        for (let k = 0; k < b.duracion; k++) {
+          set.add(`${b.diaIndex}-${b.horaIndex + 6 + k}`);
+        }
+      });
+    }
+    return set;
+  }, [manualBlocks]);
 
   const hasAnySelection = useMateriasStore((s) => {
     const hasSchedules =
@@ -624,6 +676,8 @@ export default function SubjectList({
                       generationMode={generationMode}
                       dragEnabled={dragEnabled}
                       activeFilters={activeFilters}
+                      occupiedScheduleCells={occupiedScheduleCells}
+                      occupiedManualCells={occupiedManualCells}
                     />
                   ))}
                 </div>

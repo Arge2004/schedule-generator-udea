@@ -33,47 +33,9 @@ const SubjectAccordionGroups = memo(function SubjectAccordionGroups({
   grupoRefs,
   onGrupoSelect,
   showGroupParticles,
+  occupiedScheduleCells,
+  occupiedManualCells,
 }) {
-  const gruposSeleccionados = useMateriasStore((s) => s.gruposSeleccionados);
-  const manualBlocks = useMateriasStore((s) => s.manualBlocks);
-  const materias = useMateriasStore((s) => s.materias);
-
-  const occupiedScheduleCells = useMemo(() => {
-    if (!gruposSeleccionados) return new Map();
-    const map = new Map();
-    const allMaterias = Array.isArray(materias) ? materias : materia ? [materia] : [];
-
-    Object.entries(gruposSeleccionados).forEach(([cod, numGrp]) => {
-      if (!cod || !numGrp) return;
-      const mat = allMaterias.find((m) => String(m.codigo) === String(cod));
-      const g = mat?.grupos?.find((gr) => String(gr.numero) === String(numGrp));
-      (g?.horarios || []).forEach((h) => {
-        (h.dias || []).forEach((d) => {
-          const dIdx = DIAS.indexOf(d);
-          if (dIdx !== -1) {
-            for (let hr = h.horaInicio; hr < h.horaFin; hr++) {
-              map.set(`${dIdx}-${hr}`, String(cod));
-            }
-          }
-        });
-      });
-    });
-
-    return map;
-  }, [gruposSeleccionados, materias, materia]);
-
-  const occupiedManualCells = useMemo(() => {
-    const set = new Set();
-    if (manualBlocks && manualBlocks.length > 0) {
-      manualBlocks.forEach((b) => {
-        for (let k = 0; k < b.duracion; k++) {
-          set.add(`${b.diaIndex}-${b.horaIndex + 6 + k}`);
-        }
-      });
-    }
-    return set;
-  }, [manualBlocks]);
-
   const checkGroupConflict = useCallback(
     (grp) => {
       if (!grp || !grp.horarios || grp.horarios.length === 0) return false;
@@ -83,11 +45,11 @@ const SubjectAccordionGroups = memo(function SubjectAccordionGroups({
           if (diaIndex === -1) return false;
           for (let hr = horario.horaInicio; hr < horario.horaFin; hr++) {
             const cellKey = `${diaIndex}-${hr}`;
-            const occupiedCod = occupiedScheduleCells.get(cellKey);
+            const occupiedCod = occupiedScheduleCells?.get(cellKey);
             if (occupiedCod && String(occupiedCod) !== String(materia?.codigo)) {
               return true;
             }
-            if (occupiedManualCells.has(cellKey)) {
+            if (occupiedManualCells?.has(cellKey)) {
               return true;
             }
           }
@@ -329,6 +291,8 @@ function SubjectComponent({
   generationMode,
   dragEnabled = true,
   activeFilters = {},
+  occupiedScheduleCells,
+  occupiedManualCells,
 }) {
   const materiaCodigo = materia?.codigo ? String(materia.codigo) : "";
 
@@ -468,6 +432,53 @@ function SubjectComponent({
   }, [materia]);
 
   const hasZeroCuposGlobally = totalCupos === 0;
+
+  // Comprobar si todos los grupos con cupo tienen conflicto con el horario ocupado actual
+  const hasAllGroupsConflicted = useMemo(() => {
+    if (
+      !isManualMode ||
+      hasZeroCuposGlobally ||
+      !materia?.grupos ||
+      materia.grupos.length === 0 ||
+      grupoSeleccionado
+    ) {
+      return false;
+    }
+
+    const availableWithCupos = materia.grupos.filter(
+      (g) => typeof g.cupoDisponible !== "number" || g.cupoDisponible > 0,
+    );
+    if (availableWithCupos.length === 0) return false;
+
+    return availableWithCupos.every((g) => {
+      if (!g.horarios || g.horarios.length === 0) return false;
+      return g.horarios.some((horario) => {
+        return (horario.dias || []).some((dia) => {
+          const diaIndex = DIAS.indexOf(dia);
+          if (diaIndex === -1) return false;
+          for (let hr = horario.horaInicio; hr < horario.horaFin; hr++) {
+            const cellKey = `${diaIndex}-${hr}`;
+            const occupiedCod = occupiedScheduleCells?.get(cellKey);
+            if (occupiedCod && String(occupiedCod) !== String(materia?.codigo)) {
+              return true;
+            }
+            if (occupiedManualCells?.has(cellKey)) {
+              return true;
+            }
+          }
+          return false;
+        });
+      });
+    });
+  }, [
+    isManualMode,
+    hasZeroCuposGlobally,
+    materia?.grupos,
+    materia?.codigo,
+    grupoSeleccionado,
+    occupiedScheduleCells,
+    occupiedManualCells,
+  ]);
 
   const handleChange = () => {
     if (materia?.codigo) {
@@ -699,7 +710,7 @@ function SubjectComponent({
         className="p-2.5 flex items-center justify-between gap-2.5 cursor-pointer"
       >
         <div className="flex-1 min-w-0 flex flex-col text-left space-y-1">
-          {/* Fila 1: Badges superiores (Código gris, Grupos disp/total, Sin cupos, Grupo elegido en AZUL) */}
+          {/* Fila 1: Badges superiores (Código gris, Grupos disp/total, Sin cupos, Con conflictos, Grupo elegido en AZUL) */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {/* Badge gris con código */}
             {materia?.codigo && (
@@ -720,6 +731,13 @@ function SubjectComponent({
             {hasZeroCuposGlobally && (
               <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 border border-red-200/60 dark:border-red-900/60">
                 Sin cupos
+              </span>
+            )}
+
+            {/* Badge Con Conflictos si todos los grupos con cupo tienen colisión de horario */}
+            {!hasZeroCuposGlobally && hasAllGroupsConflicted && !grupoSeleccionado && (
+              <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/80 dark:border-amber-900/60">
+                Con conflictos
               </span>
             )}
 
@@ -834,6 +852,8 @@ function SubjectComponent({
               grupoRefs={grupoRefs}
               onGrupoSelect={handleGrupoSelectCallback}
               showGroupParticles={showGroupParticles}
+              occupiedScheduleCells={occupiedScheduleCells}
+              occupiedManualCells={occupiedManualCells}
             />
           </motion.div>
         )}
@@ -847,6 +867,8 @@ export default memo(SubjectComponent, (prev, next) => {
     prev.materia?.codigo === next.materia?.codigo &&
     prev.generationMode === next.generationMode &&
     prev.dragEnabled === next.dragEnabled &&
-    prev.activeFilters === next.activeFilters
+    prev.activeFilters === next.activeFilters &&
+    prev.occupiedScheduleCells === next.occupiedScheduleCells &&
+    prev.occupiedManualCells === next.occupiedManualCells
   );
 });
