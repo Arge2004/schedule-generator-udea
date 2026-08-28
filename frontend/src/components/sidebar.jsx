@@ -114,16 +114,7 @@ export default function Sidebar() {
         removedNames.length === 1
           ? `La materia ${names} fue omitida: no tiene grupos desde las ${horaMinima}:00.`
           : `Se omitieron ${removedNames.length} materias por hora mínima (${horaMinima}:00): ${names}.`;
-      toast.error(message, {
-        duration: 6000,
-        position: "bottom-center",
-        style: {
-          background: "#18181b",
-          color: "#f4f4f5",
-          border: "1px solid #27272a",
-          fontSize: "12px",
-        },
-      });
+      toast.error(message, { duration: 5000 });
     }
 
     setIsGenerating(true);
@@ -138,16 +129,7 @@ export default function Sidebar() {
       if (horarios.length === 0) {
         toast.error(
           "No se pudieron generar horarios válidos con las materias seleccionadas.",
-          {
-            duration: 6000,
-            position: "bottom-center",
-            style: {
-              background: "#18181b",
-              color: "#f4f4f5",
-              border: "1px solid #27272a",
-              fontSize: "12px",
-            },
-          },
+          { duration: 5000 },
         );
       } else {
         setHorariosGenerados(horarios);
@@ -224,7 +206,6 @@ export default function Sidebar() {
 
   return (
     <>
-      <Toaster />
       <aside className="w-full sm:w-sm h-full select-none md:border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex flex-col relative z-20">
         {/* Cabecera: Mode Toggle + Botón Volver envuelto con Tooltip */}
         <div className="p-3 border-b border-zinc-200/80 dark:border-zinc-800 flex items-center gap-1.5 flex-shrink-0 bg-white dark:bg-zinc-950">

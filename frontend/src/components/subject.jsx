@@ -486,13 +486,11 @@ function SubjectComponent({
     if (grupoSeleccionado === numeroGrupo) {
       selectGrupo(materia.codigo, null);
       toggleMateriaSelected(materia.codigo);
+      toast.success(`${materia?.nombre || "Materia"} removida del horario`);
       return;
     }
 
     if (tieneConflicto) {
-      const { notify } = useMateriasStore.getState();
-      if (notify)
-        notify("⚠️ No se puede seleccionar: conflicto con otra materia");
       toast.error("Conflicto con otra materia en el horario");
       return;
     }
@@ -504,6 +502,7 @@ function SubjectComponent({
     if (!isSelected) {
       toggleMateriaSelected(materia.codigo);
     }
+    toast.success(`${materia?.nombre || "Materia"}: Grupo ${numeroGrupo}`);
   };
 
   const handleItemClick = () => {

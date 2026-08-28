@@ -66,6 +66,7 @@ export default function Schedule() {
     setTimeout(() => {
       deleteMateriaFromSchedule(codigoMateria);
       setExplodingCodigo(null);
+      toast.success("Materia eliminada del horario");
     }, 240);
   };
 
@@ -75,6 +76,7 @@ export default function Schedule() {
     setTimeout(() => {
       removeManualBlock(manualId);
       setExplodingManualId(null);
+      toast.success("Bloque manual eliminado");
     }, 240);
   };
 
@@ -905,7 +907,7 @@ export default function Schedule() {
       } else if (!anyGroupAtThisTime) {
         toast.error("Esta materia no tiene clases en este horario");
       } else {
-        toast.error("⚠️ No hay grupos disponibles sin conflicto de horario");
+        toast.error("No hay grupos disponibles sin conflicto de horario");
       }
 
       clearDragState();
@@ -940,7 +942,6 @@ export default function Schedule() {
       showToastMessage={(msg) => toast(msg)}
     >
       <div className="flex-1 h-full flex flex-col bg-white dark:bg-zinc-950 relative overflow-hidden select-none">
-        <Toaster />
 
         {/* Área del Horario */}
         <div

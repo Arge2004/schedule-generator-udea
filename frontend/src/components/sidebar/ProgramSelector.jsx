@@ -117,11 +117,8 @@ export default function ProgramSelector({ onMenuOpenChange }) {
       );
 
       if (!data?.materias || data.materias.length === 0) {
-        toast("No hay horarios disponibles para la selección actual", {
-          icon: "ℹ️",
+        toast.error("No hay horarios disponibles para la selección actual", {
           duration: 4000,
-          position: "top-center",
-          style: { background: "#3b82f6", color: "#fff" },
         });
         return;
       }
@@ -132,19 +129,11 @@ export default function ProgramSelector({ onMenuOpenChange }) {
 
       toast.success(
         `Se actualizaron ${data.materias.length} materias y se reiniciaron las selecciones`,
-        {
-          duration: 5000,
-          position: "bottom-center",
-          style: {
-            background: darkTheme ? "#065f46" : "#16a34a",
-            color: "#fff",
-          },
-        }
+        { duration: 4500 },
       );
     } catch (error) {
       toast.error(`Error al obtener horarios: ${error.message}`, {
         duration: 4000,
-        position: "top-center",
       });
     } finally {
       setIsScraping(false);
