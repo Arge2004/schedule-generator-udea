@@ -71,12 +71,9 @@ export default function Tooltip({
 
     switch (position) {
       case "bottom":
-        style.top = `${coords.bottom + gap}px`;
-        style.left = `${Math.min(
-          window.innerWidth - 120,
-          Math.max(120, coords.left + coords.width / 2),
-        ) + gap}px`;
-        style.transform = "translate(-150%, 50%)";
+        style.top = `${gap * 2.5 + coords.height / 2}px`;
+        style.left = `${coords.left + coords.width / 2}px`;
+        style.transform = "translate(-50%, 50%)";
         break;
       case "left":
         style.top = `${coords.top + coords.height / 2}px`;
