@@ -66,7 +66,6 @@ export default function Schedule() {
     setTimeout(() => {
       deleteMateriaFromSchedule(codigoMateria);
       setExplodingCodigo(null);
-      toast.success("Materia eliminada del horario");
     }, 240);
   };
 
@@ -1138,7 +1137,6 @@ export default function Schedule() {
                   setIsHoveringTrash(false);
                   if (draggingMateria?.codigo) {
                     deleteMateriaFromSchedule?.(draggingMateria.codigo);
-                    toast.success("Materia eliminada del horario");
                   }
                   clearDragState();
                 }}

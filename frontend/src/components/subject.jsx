@@ -497,7 +497,6 @@ function SubjectComponent({
     if (grupoSeleccionado === numeroGrupo) {
       selectGrupo(materia.codigo, null);
       toggleMateriaSelected(materia.codigo);
-      toast.success(`${materia?.nombre || "Materia"} removida del horario`);
       return;
     }
 
