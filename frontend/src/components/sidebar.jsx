@@ -250,17 +250,22 @@ export default function Sidebar() {
           />
         </div>
 
-        {/* Dock Inferior en Móvil: Botón para ver Horario en Modo Manual */}
+        {/* Dock Inferior en Móvil: Previsualizador y Botón para ver Horario en Modo Manual */}
         {isMobile && generationMode === GENERATION_MODES.MANUAL && (
-          <div className="p-3 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-zinc-800 flex-shrink-0 z-20">
-            <button
-              type="button"
-              onClick={() => setMobileActiveView("schedule")}
-              className="w-full h-10 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md active:scale-98 transition-transform cursor-pointer"
-            >
-              <CalendarIcon className="w-4 h-4" />
-              <span>Ver Horario</span>
-            </button>
+          <div className="bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-zinc-800 flex-shrink-0 z-20 flex flex-col">
+            <MobileMiniSchedulePreview
+              onOpenSchedule={() => setMobileActiveView("schedule")}
+            />
+            <div className="p-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setMobileActiveView("schedule")}
+                className="w-full h-10 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md active:scale-98 transition-transform cursor-pointer"
+              >
+                <CalendarIcon className="w-4 h-4" />
+                <span>Ver Horario</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -279,13 +284,6 @@ export default function Sidebar() {
           onCancel={handleCancelModeChange}
         />
       </aside>
-
-      {/* Previsualizador miniatura flotante arrastrable para móvil en modo manual */}
-      {isMobile && generationMode === GENERATION_MODES.MANUAL && (
-        <MobileMiniSchedulePreview
-          onOpenSchedule={() => setMobileActiveView("schedule")}
-        />
-      )}
     </>
   );
 }

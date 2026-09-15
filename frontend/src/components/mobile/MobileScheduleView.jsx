@@ -315,9 +315,8 @@ export default function MobileScheduleView() {
     setHorarioActualIndex(nextIdx);
   };
 
-  // Regresar a materias con animación inversa delegada al previsualizador del sidebar
+  // Regresar a la vista de materias (sidebar)
   const handleBackToMaterias = () => {
-    setMobileTransition("shrinking");
     setMobileActiveView("sidebar");
   };
 
