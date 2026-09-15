@@ -930,7 +930,6 @@ export default function Schedule() {
         toggleMateriaSelected(currentDragging.codigo);
       }
       clearDragState();
-      toast.success(`Materia agregada: Grupo ${grupo.numero}`);
       return true;
     }
     return false;
