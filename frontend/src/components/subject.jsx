@@ -46,7 +46,10 @@ const SubjectAccordionGroups = memo(function SubjectAccordionGroups({
           for (let hr = horario.horaInicio; hr < horario.horaFin; hr++) {
             const cellKey = `${diaIndex}-${hr}`;
             const occupiedCod = occupiedScheduleCells?.get(cellKey);
-            if (occupiedCod && String(occupiedCod) !== String(materia?.codigo)) {
+            if (
+              occupiedCod &&
+              String(occupiedCod) !== String(materia?.codigo)
+            ) {
               return true;
             }
             if (occupiedManualCells?.has(cellKey)) {
@@ -62,9 +65,9 @@ const SubjectAccordionGroups = memo(function SubjectAccordionGroups({
 
   const hasActiveAdvancedFilters = Boolean(
     (activeFilters.selectedDias && activeFilters.selectedDias.length > 0) ||
-      (activeFilters.horaMinimaFilter && activeFilters.horaMinimaFilter > 6) ||
-      (activeFilters.horaMaximaFilter && activeFilters.horaMaximaFilter < 22) ||
-      activeFilters.selectedJornada,
+    (activeFilters.horaMinimaFilter && activeFilters.horaMinimaFilter > 6) ||
+    (activeFilters.horaMaximaFilter && activeFilters.horaMaximaFilter < 22) ||
+    activeFilters.selectedJornada,
   );
 
   const checkGrupoMatchesFilter = useCallback(
@@ -89,10 +92,12 @@ const SubjectAccordionGroups = memo(function SubjectAccordionGroups({
 
       if (activeFilters.selectedJornada) {
         const hasJornada = grupo.horarios.some((h) => {
-          if (activeFilters.selectedJornada === "manana") return h.horaInicio < 12;
+          if (activeFilters.selectedJornada === "manana")
+            return h.horaInicio < 12;
           if (activeFilters.selectedJornada === "tarde")
             return h.horaInicio >= 12 && h.horaInicio < 18;
-          if (activeFilters.selectedJornada === "noche") return h.horaInicio >= 18;
+          if (activeFilters.selectedJornada === "noche")
+            return h.horaInicio >= 18;
           return true;
         });
         if (!hasJornada) return false;
@@ -131,7 +136,9 @@ const SubjectAccordionGroups = memo(function SubjectAccordionGroups({
               if (el) grupoRefs.current[String(grupo.numero)] = el;
             }}
             onClick={
-              disabled ? undefined : () => onGrupoSelect(grupo.numero, tieneConflicto)
+              disabled
+                ? undefined
+                : () => onGrupoSelect(grupo.numero, tieneConflicto)
             }
             className={`relative p-2 rounded-md border text-xs duration-200 flex items-center justify-between gap-2.5 transition-all ${
               isFocusedGrupo
@@ -166,11 +173,7 @@ const SubjectAccordionGroups = memo(function SubjectAccordionGroups({
                   ) : null}
                 </div>
                 {showGroupParticles === grupo.numero && (
-                  <SelectionParticles
-                    color="#1392ec"
-                    count={10}
-                    radius={22}
-                  />
+                  <SelectionParticles color="#1392ec" count={10} radius={22} />
                 )}
               </div>
 
@@ -226,9 +229,7 @@ const SubjectAccordionGroups = memo(function SubjectAccordionGroups({
                   );
                 })
               ) : (
-                <span className="text-[10px] text-zinc-400">
-                  Sin horario
-                </span>
+                <span className="text-[10px] text-zinc-400">Sin horario</span>
               )}
             </div>
 
@@ -307,8 +308,8 @@ function SubjectComponent({
       s.gruposSeleccionados?.[materiaCodigo] ??
       s.gruposSeleccionados?.[materia?.codigo],
   );
-  const isExpanded = useMateriasStore(
-    (s) => Boolean(s.expandedSubjects?.[materiaCodigo]),
+  const isExpanded = useMateriasStore((s) =>
+    Boolean(s.expandedSubjects?.[materiaCodigo]),
   );
   const toggleSubjectExpanded = useMateriasStore(
     (s) => s.toggleSubjectExpanded,
@@ -459,7 +460,10 @@ function SubjectComponent({
           for (let hr = horario.horaInicio; hr < horario.horaFin; hr++) {
             const cellKey = `${diaIndex}-${hr}`;
             const occupiedCod = occupiedScheduleCells?.get(cellKey);
-            if (occupiedCod && String(occupiedCod) !== String(materia?.codigo)) {
+            if (
+              occupiedCod &&
+              String(occupiedCod) !== String(materia?.codigo)
+            ) {
               return true;
             }
             if (occupiedManualCells?.has(cellKey)) {
@@ -738,11 +742,13 @@ function SubjectComponent({
             )}
 
             {/* Badge Con Conflictos si todos los grupos con cupo tienen colisión de horario */}
-            {!hasZeroCuposGlobally && hasAllGroupsConflicted && !grupoSeleccionado && (
-              <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/80 dark:border-amber-900/60">
-                Con conflictos
-              </span>
-            )}
+            {!hasZeroCuposGlobally &&
+              hasAllGroupsConflicted &&
+              !grupoSeleccionado && (
+                <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/80 dark:border-amber-900/60">
+                  Con conflictos
+                </span>
+              )}
 
             {/* Badge de grupo seleccionado en AZUL */}
             {isManualMode && grupoSeleccionado && (

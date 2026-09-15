@@ -4,11 +4,12 @@ import "./App.css";
 import Sidebar from "./components/Sidebar";
 import LoginSidebar from "./components/LoginSidebar";
 import Schedule from "./components/Schedule";
+import MobileScheduleView from "./components/mobile/MobileScheduleView";
 import Background from "./components/Background";
 import { useMateriasStore } from "./store/materiasStore";
 
 function App() {
-  const { materias, darkTheme } = useMateriasStore();
+  const { materias, darkTheme, mobileActiveView } = useMateriasStore();
   const hasMaterias = materias && materias.length > 0;
 
   // Aplicar/remover clase dark del documento síncronamente antes del paint
@@ -55,7 +56,6 @@ function App() {
             style: {
               background: "#e11d48",
               color: "#ffffff",
-              border: "1px solid #f43f5e",
             },
             iconTheme: {
               primary: "#ffffff",
@@ -76,12 +76,30 @@ function App() {
         </>
       ) : (
         <>
-          {/* Sidebar de la aplicación a la izquierda */}
-          <Sidebar />
+          {/* Vista Desktop (Lado a lado intacto) */}
+          <div className="hidden sm:flex h-screen w-screen overflow-hidden">
+            <Sidebar />
+            <div className="flex-1 h-dvh overflow-auto">
+              <Schedule />
+            </div>
+          </div>
 
-          {/* Horario a la derecha */}
-          <div className="hidden sm:block sm:flex-1 h-dvh overflow-auto">
-            <Schedule />
+          {/* Vista Mobile (Pantalla completa alternando entre Sidebar y MobileScheduleView sin perder estado) */}
+          <div className="sm:hidden h-dvh w-screen overflow-hidden flex flex-col relative">
+            <div
+              className={`h-full w-full ${
+                mobileActiveView === "sidebar" ? "flex flex-col" : "hidden"
+              }`}
+            >
+              <Sidebar />
+            </div>
+            <div
+              className={`h-full w-full ${
+                mobileActiveView === "schedule" ? "flex flex-col" : "hidden"
+              }`}
+            >
+              <MobileScheduleView />
+            </div>
           </div>
         </>
       )}

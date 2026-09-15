@@ -28,10 +28,24 @@ export const useMateriasStore = create(
       allowManualBlocksLocked: false,
       previousAllowManualBlocks: null,
 
-      // Estado del tema: Siempre light por defecto
-      darkTheme: false,
-      themeSyncEnabled: false,
-      
+      // Modo de generación y preferencias de filtros
+      generationMode: 'manual', // 'manual' | 'automatico'
+      setGenerationMode: (mode) => set({ generationMode: mode }),
+      horaMinima: 6,
+      setHoraMinima: (hora) => set({ horaMinima: hora }),
+      evitarHuecos: false,
+      setEvitarHuecos: (val) => set({ evitarHuecos: val }),
+
+      // Estado de navegación en dispositivos móviles ('sidebar' | 'schedule')
+      mobileActiveView: 'sidebar',
+      setMobileActiveView: (view) => set({ mobileActiveView: view }),
+      miniPreviewPos: null, // { top, left }
+      setMiniPreviewPos: (pos) => set({ miniPreviewPos: pos }),
+      miniPreviewRect: null,
+      setMiniPreviewRect: (rect) => set({ miniPreviewRect: rect }),
+      mobileTransition: null, // null | 'shrinking' | 'expanding'
+      setMobileTransition: (t) => set({ mobileTransition: t }),
+
       // Estados transitorios de drag and drop y navegación
       dragEnabled: false,
       draggingMateria: null,
@@ -166,6 +180,10 @@ export const useMateriasStore = create(
         horariosGenerados: [],
         horarioActualIndex: 0,
         manualBlocks: [],
+        mobileActiveView: 'sidebar',
+        generationMode: 'manual',
+        horaMinima: 6,
+        evitarHuecos: false,
       }),
 
       // Toggle selección de una materia
@@ -357,6 +375,9 @@ export const useMateriasStore = create(
         manualBlocks: state.manualBlocks,
         allowManualBlocks: state.allowManualBlocks,
         allowManualBlocksBySchedule: state.allowManualBlocksBySchedule,
+        generationMode: state.generationMode,
+        horaMinima: state.horaMinima,
+        evitarHuecos: state.evitarHuecos,
         darkTheme: state.darkTheme,
       }),
     }

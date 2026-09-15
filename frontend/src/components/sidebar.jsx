@@ -2,9 +2,9 @@ import { useState, useEffect, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { useMateriasStore } from "../store/materiasStore.js";
 import { generarHorarios } from "../services/horarios.js";
-import MobileScheduleModal from "./MobileSchedule.jsx";
+import MobileMiniSchedulePreview from "./mobile/MobileMiniSchedulePreview.jsx";
 import { GENERATION_MODES } from "../constants/sidebar.js";
-import { ArrowLeftIcon } from "../icons/index.js";
+import { ArrowLeftIcon, CalendarIcon } from "../icons/index.js";
 import Tooltip from "./Tooltip.jsx";
 
 // Subcomponentes del sidebar
@@ -17,9 +17,6 @@ export default function Sidebar() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
-  const [generationMode, setGenerationMode] = useState(GENERATION_MODES.MANUAL);
-  const [horaMinima, setHoraMinima] = useState(6);
-  const [evitarHuecos, setEvitarHuecos] = useState(false);
   const [showConfirmModeModal, setShowConfirmModeModal] = useState(false);
   const [pendingMode, setPendingMode] = useState(null);
 
@@ -42,6 +39,13 @@ export default function Sidebar() {
     setAllowManualBlocks,
     dragEnabled,
     setDragEnabled,
+    setMobileActiveView,
+    generationMode,
+    setGenerationMode,
+    horaMinima,
+    setHoraMinima,
+    evitarHuecos,
+    setEvitarHuecos,
   } = useMateriasStore();
 
   // Detección responsiva de dispositivo móvil
@@ -134,7 +138,7 @@ export default function Sidebar() {
       } else {
         setHorariosGenerados(horarios);
         if (isMobile) {
-          setShowMobileSchedule(true);
+          setMobileActiveView("schedule");
         }
       }
     } catch (error) {
@@ -246,7 +250,21 @@ export default function Sidebar() {
           />
         </div>
 
-        {/* Dock Flotante Inferior: Solo visible en modo Automático */}
+        {/* Dock Inferior en Móvil: Botón para ver Horario en Modo Manual */}
+        {isMobile && generationMode === GENERATION_MODES.MANUAL && (
+          <div className="p-3 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-zinc-800 flex-shrink-0 z-20">
+            <button
+              type="button"
+              onClick={() => setMobileActiveView("schedule")}
+              className="w-full h-10 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md active:scale-98 transition-transform cursor-pointer"
+            >
+              <CalendarIcon className="w-4 h-4" />
+              <span>Ver Horario</span>
+            </button>
+          </div>
+        )}
+
+        {/* Dock Flotante Inferior: Visible en modo Automático */}
         <GenerateAction
           generationMode={generationMode}
           isGenerating={isGenerating}
@@ -262,11 +280,12 @@ export default function Sidebar() {
         />
       </aside>
 
-      {/* Modal de horarios para móvil */}
-      <MobileScheduleModal
-        isOpen={showMobileSchedule}
-        onClose={() => setShowMobileSchedule(false)}
-      />
+      {/* Previsualizador miniatura flotante arrastrable para móvil en modo manual */}
+      {isMobile && generationMode === GENERATION_MODES.MANUAL && (
+        <MobileMiniSchedulePreview
+          onOpenSchedule={() => setMobileActiveView("schedule")}
+        />
+      )}
     </>
   );
 }

@@ -439,7 +439,7 @@ function ClassBlockComponent({
               ? { duration: 0.45, ease: "easeInOut" }
               : { duration: 0.15 }
         }
-        className={`w-full h-full rounded-md border border-l-[3.5px] flex flex-col justify-between items-center py-1 px-1.5 overflow-hidden hover:shadow-md select-none group transition-shadow duration-100 ease-out ${
+        className={`relative w-full h-full rounded-md border border-l-[3.5px] flex items-center justify-center p-1 overflow-hidden hover:shadow-md select-none group transition-shadow duration-100 ease-out ${
           isPreview ? "border-dashed ring-2 ring-primary/40 shadow-md" : ""
         } ${pulsing ? "pulse-animate" : ""}`}
         data-no-select
@@ -450,69 +450,68 @@ function ClassBlockComponent({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={onLeave}
       >
-        {/* Badges y Acciones (Grip & Delete) */}
-        <div className="flex items-start w-full justify-between gap-1 z-10">
-          <div className="flex items-center gap-1 flex-wrap min-w-0">
-            {grupo !== null && typeof grupo !== "undefined" && (
-              <span
-                className="font-mono text-xs font-bold px-1.5 py-0.5 rounded leading-none text-white shadow-2xs"
-                style={{ backgroundColor: blockColor }}
-              >
-                G{grupo}
-              </span>
-            )}
-            {aula && (
-              <span className="font-mono text-xs font-medium text-primary dark:text-zinc-100 bg-primary/5 border-primary/40 border px-1 py-0.5 rounded leading-none truncate max-w-[85px]">
-                {aula}
-              </span>
-            )}
-            {isPreview && (
-              <span className="font-mono text-[8.5px] font-bold text-white bg-primary px-1.5 py-0.5 rounded leading-none">
-                PREVIEW
-              </span>
-            )}
-          </div>
-
-          {!isPreview && !isExploding && (
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 ml-auto flex items-center gap-0.5">
-              {isDraggable && (
-                <Tooltip content="Arrastrar materia al horario" position="top">
-                  <div
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center p-0.5 rounded text-zinc-400 dark:text-zinc-400 hover:text-primary dark:hover:text-primary cursor-grab"
-                    aria-label="Arrastrar materia al horario"
-                  >
-                    <GripIcon className="w-3.5 h-3.5" />
-                  </div>
-                </Tooltip>
-              )}
-              <Tooltip
-                content={
-                  manualId
-                    ? "Eliminar bloque manual"
-                    : "Quitar materia del horario"
-                }
-                position="top"
-              >
-                <button
-                  type="button"
-                  onClick={handleRemoveSubject}
-                  className="p-1 absolute top-1 right-1 rounded text-zinc-400 hover:text-red-500 hover:bg-red-500/10 active:scale-90 transition-all flex items-center justify-center cursor-pointer"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                  }}
-                  aria-label={
-                    manualId ? "Eliminar bloque manual" : "Quitar del horario"
-                  }
-                >
-                  <TrashIcon className="w-3.5 h-3.5" />
-                </button>
-              </Tooltip>
-            </div>
+        {/* Badges superiores en posición absolute (arriba a la izquierda) */}
+        <div className="absolute top-1 left-1.5 flex items-center gap-1 flex-wrap min-w-0 z-10 pointer-events-none">
+          {grupo !== null && typeof grupo !== "undefined" && (
+            <span
+              className="font-mono text-xs font-bold px-1.5 py-0.5 rounded leading-none text-white shadow-2xs"
+              style={{ backgroundColor: blockColor }}
+            >
+              G{grupo}
+            </span>
+          )}
+          {aula && (
+            <span className="font-mono text-xs font-medium text-primary dark:text-zinc-100 bg-primary/5 border-primary/40 border px-1 py-0.5 rounded leading-none truncate max-w-[85px]">
+              {aula}
+            </span>
+          )}
+          {isPreview && (
+            <span className="font-mono text-[8.5px] font-bold text-white bg-primary px-1.5 py-0.5 rounded leading-none">
+              PREVIEW
+            </span>
           )}
         </div>
 
-        {/* Nombre del Bloque */}
-        <div className="flex-1 min-w-0 flex items-center justify-center w-full">
+        {/* Acciones en hover en posición absolute */}
+        {!isPreview && !isExploding && (
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20">
+            {isDraggable && (
+              <Tooltip content="Arrastrar materia al horario" position="top">
+                <div
+                  className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center p-0.5 rounded text-zinc-400 dark:text-zinc-400 hover:text-primary dark:hover:text-primary cursor-grab"
+                  aria-label="Arrastrar materia al horario"
+                >
+                  <GripIcon className="w-3.5 h-3.5" />
+                </div>
+              </Tooltip>
+            )}
+            <Tooltip
+              content={
+                manualId
+                  ? "Eliminar bloque manual"
+                  : "Quitar materia del horario"
+              }
+              position="top"
+            >
+              <button
+                type="button"
+                onClick={handleRemoveSubject}
+                className="p-1 absolute top-1 right-1 rounded text-zinc-400 hover:text-red-500 hover:bg-red-500/10 active:scale-90 transition-all flex items-center justify-center cursor-pointer"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                }}
+                aria-label={
+                  manualId ? "Eliminar bloque manual" : "Quitar del horario"
+                }
+              >
+                <TrashIcon className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
+          </div>
+        )}
+
+        {/* Nombre del Bloque en la mitad de todo */}
+        <div className="w-full h-full flex items-center justify-center text-center px-2 py-1 min-w-0 z-0">
           {isEditing && isManual ? (
             <input
               ref={inputRef}
@@ -520,14 +519,14 @@ function ClassBlockComponent({
               onChange={(e) => setEditText(e.target.value)}
               onBlur={commitEdit}
               onKeyDown={handleKeyDown}
-              className="w-full text-xs font-semibold p-1 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full text-xs font-semibold p-1 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-primary text-center"
               onMouseDown={(e) => e.stopPropagation()}
               aria-label="Editar nombre del bloque"
             />
           ) : (
             <p
               onDoubleClick={() => isManual && setIsEditing(true)}
-              className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 leading-snug line-clamp-2"
+              className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 leading-snug line-clamp-2 text-center select-none"
             >
               {displayName}
             </p>

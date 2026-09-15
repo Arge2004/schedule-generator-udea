@@ -464,6 +464,7 @@ export default function SubjectList({
             selectedDias={selectedDias}
             onToggleDia={handleToggleDia}
             onResetFilters={handleResetAdvancedFilters}
+            isMobile={isMobile}
           />
         </div>
 
