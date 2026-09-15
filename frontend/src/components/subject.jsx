@@ -513,7 +513,6 @@ function SubjectComponent({
     if (!isSelected) {
       toggleMateriaSelected(materia.codigo);
     }
-    toast.success(`${materia?.nombre || "Materia"}: Grupo ${numeroGrupo}`);
   };
 
   const handleItemClick = () => {
@@ -678,6 +677,7 @@ function SubjectComponent({
 
   const isCardActive =
     (isManualMode && grupoSeleccionado) || (!isManualMode && isSelected);
+  const isAutomaticDisabled = !isManualMode && hasZeroCuposGlobally;
 
   return (
     <motion.div
@@ -685,11 +685,13 @@ function SubjectComponent({
       animate={isShaking ? { x: [0, -8, 8, -6, 6, -3, 3, 0] } : { x: 0 }}
       transition={{ duration: 0.45, ease: "easeInOut" }}
       className={`rounded-md border select-none duration-200 ${
-        isHighlighted
-          ? "ring-2 ring-primary border-primary bg-primary/10 shadow-md"
-          : isCardActive
-            ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-xs ring-1 ring-primary/20"
-            : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700"
+        isAutomaticDisabled
+          ? "opacity-40 bg-zinc-50/50 dark:bg-zinc-900/30 border-zinc-200 dark:border-zinc-800 cursor-not-allowed"
+          : isHighlighted
+            ? "ring-2 ring-primary border-primary bg-primary/10 shadow-md"
+            : isCardActive
+              ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-xs ring-1 ring-primary/20"
+              : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700"
       }`}
     >
       {/* Cabecera de la materia centrada verticalmente */}
@@ -707,7 +709,9 @@ function SubjectComponent({
         }
         onDragEnd={isManualMode && dragEnabled ? handleDragEnd : undefined}
         onClick={handleItemClick}
-        className="p-2.5 flex items-center justify-between gap-2.5 cursor-pointer"
+        className={`p-2.5 flex items-center justify-between gap-2.5 ${
+          isAutomaticDisabled ? "cursor-not-allowed" : "cursor-pointer"
+        }`}
       >
         <div className="flex-1 min-w-0 flex flex-col text-left space-y-1">
           {/* Fila 1: Badges superiores (Código gris, Grupos disp/total, Sin cupos, Con conflictos, Grupo elegido en AZUL) */}
@@ -796,11 +800,11 @@ function SubjectComponent({
                   if (!hasZeroCuposGlobally) handleChange();
                 }}
                 disabled={hasZeroCuposGlobally}
-                className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all cursor-pointer ${
+                className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${
                   isSelected
                     ? "bg-primary border-primary text-white shadow-2xs scale-105"
                     : "bg-white dark:bg-zinc-800/80 border-zinc-300 dark:border-zinc-700 hover:border-primary/80 dark:hover:border-primary/80"
-                } ${hasZeroCuposGlobally ? "opacity-30 cursor-not-allowed" : ""}`}
+                } ${hasZeroCuposGlobally ? "cursor-not-allowed" : "cursor-pointer"}`}
                 aria-label={`Seleccionar ${materia?.nombre}`}
               >
                 {isSelected && (
